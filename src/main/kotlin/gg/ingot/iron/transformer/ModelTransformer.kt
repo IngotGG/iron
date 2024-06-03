@@ -5,7 +5,7 @@ import gg.ingot.iron.repository.ModelRepository
 import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.representation.EntityModel
 import kotlin.reflect.KClass
-import kotlin.reflect.full.memberProperties
+import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.jvm.javaField
 
 /**
@@ -20,7 +20,7 @@ internal object ModelTransformer {
         return ModelRepository.models.getOrPut(clazz) {
             val fields = mutableListOf<EntityField>()
 
-            for (field in clazz.memberProperties) {
+            for (field in clazz.declaredMemberProperties) {
                 val annotation = field.annotations.find { it is Column } as Column?
 
                 if (annotation != null && annotation.ignore || field.javaField?.isSynthetic == true) {
