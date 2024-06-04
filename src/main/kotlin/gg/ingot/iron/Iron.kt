@@ -49,11 +49,7 @@ class Iron(
         }
         dbms?.load()
 
-        pool = if(
-            settings.isMultiConnectionPool
-            // sqlite doesn't support pooled connections
-//            && dbms != DBMS.SQLITE
-        ) {
+        pool = if(settings.isMultiConnectionPool) {
             logger.trace("Using multi connection pool.")
             MultiConnectionPool(connectionString, settings)
         } else {
