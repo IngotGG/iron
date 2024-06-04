@@ -1,8 +1,12 @@
 package gg.ingot.iron.transformer
 
 import gg.ingot.iron.Iron
+import gg.ingot.iron.representation.EntityField
+import org.slf4j.LoggerFactory
+import java.lang.reflect.Field
 import java.sql.ResultSet
 import kotlin.reflect.KClass
+import kotlin.reflect.jvm.internal.impl.load.java.structure.JavaField
 import kotlin.reflect.jvm.isAccessible
 
 /**
@@ -13,6 +17,10 @@ import kotlin.reflect.jvm.isAccessible
  * @since 1.0
  */
 object ResultTransformer {
+    private val arrayTransformations: Map<KClass<*>, (arr: Array<*>) -> Any?> = mapOf(
+        List::class to { it.toList() },
+        Set::class to { it.toSet() }
+    )
 
     private fun <T: Any> read(result: ResultSet, clazz: KClass<T>): T {
         val entity = ModelTransformer.transform(clazz)
@@ -25,7 +33,7 @@ object ResultTransformer {
             val model = emptyConstructor.call()
 
             for (field in entity.fields) {
-                val value = result.getObject(field.columnName) ?: null
+                val value = result.retrieveValue(field)
                 if (value == null && !field.nullable) {
                     throw IllegalStateException("Field '${field.field.name}' is not nullable but the associated column '${field.columnName}' was null for model: $clazz")
                 }
@@ -39,8 +47,7 @@ object ResultTransformer {
             fullConstructor.isAccessible = true
 
             val fields = entity.fields.map { field ->
-                val value = result.getObject(field.columnName) ?: null
-
+                val value = result.retrieveValue(field)
                 if (value == null && !field.nullable) {
                     throw IllegalStateException("Field '${field.field.name}' is not nullable but the associated column '${field.columnName}' was null for model: $clazz")
                 }
@@ -51,6 +58,39 @@ object ResultTransformer {
             return fullConstructor.call(*fields.toTypedArray())
         } else {
             throw IllegalStateException("No empty or full constructor found for model: $clazz")
+        }
+    }
+
+    /**
+     * Retrieve the value from the result set for the given field.
+     * Will automatically convert an [Array] into a given [Collection] type if the field is said [Collection].
+     * @param field The field to retrieve the value for.
+     * @return The value from the result set.
+     */
+    private fun ResultSet.retrieveValue(field: EntityField): Any? {
+        val type = field.javaField.type
+
+        if(type.isArray) {
+            return getArray(field.columnName)
+                ?.array
+                ?: return null
+        } else if(Collection::class.java.isAssignableFrom(type)) {
+            val arr = getArray(field.columnName)
+                ?.array
+                ?: return null
+
+            if(arr is Array<*>) {
+                val transformation = arrayTransformations.entries
+                    .firstOrNull { it.key.java.isAssignableFrom(type) }
+                    ?.value
+                    ?: return arr
+
+                return transformation(arr)
+            }
+
+            return arr
+        } else {
+            return getObject(field.columnName)
         }
     }
 
