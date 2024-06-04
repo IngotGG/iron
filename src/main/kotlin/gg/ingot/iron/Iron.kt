@@ -18,7 +18,7 @@ import kotlin.reflect.KClass
 @Suppress("MemberVisibilityCanBePrivate")
 class Iron(
     private val connectionString: String,
-    private val defaultDispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
 
     private val logger = LoggerFactory.getLogger(Iron::class.java)
@@ -96,7 +96,7 @@ class Iron(
         val connection = connection
             ?: error("Connection is not open, call connect() before using the connection.")
 
-        return withContext(defaultDispatcher) {
+        return withContext(dispatcher) {
             connection.createStatement().executeQuery(query)
         }
     }
@@ -137,7 +137,7 @@ class Iron(
         val connection = connection
             ?: error("Connection is not open, call connect() before using the connection.")
 
-        return withContext(defaultDispatcher) {
+        return withContext(dispatcher) {
             connection.createStatement().execute(statement)
         }
     }
@@ -154,7 +154,7 @@ class Iron(
         val connection = connection
             ?: error("Connection is not open, call connect() before using the connection.")
 
-        return withContext(Dispatchers.IO) {
+        return withContext(dispatcher) {
             val preparedStatement = connection.prepareStatement(statement)
 
             for ((index, value) in values.withIndex()) {
