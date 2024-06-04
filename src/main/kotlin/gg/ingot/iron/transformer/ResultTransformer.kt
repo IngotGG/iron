@@ -2,11 +2,8 @@ package gg.ingot.iron.transformer
 
 import gg.ingot.iron.Iron
 import gg.ingot.iron.representation.EntityField
-import org.slf4j.LoggerFactory
-import java.lang.reflect.Field
 import java.sql.ResultSet
 import kotlin.reflect.KClass
-import kotlin.reflect.jvm.internal.impl.load.java.structure.JavaField
 import kotlin.reflect.jvm.isAccessible
 
 /**
