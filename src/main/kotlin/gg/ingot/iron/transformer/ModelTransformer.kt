@@ -15,7 +15,11 @@ import kotlin.reflect.jvm.javaField
  * @since 1.0
  */
 internal object ModelTransformer {
-
+    /**
+     * Transforms a class into an entity model, which holds information about the class model.
+     * @param clazz The class to transform into an entity model.
+     * @return The entity model representation of the class.
+     */
     fun transform(clazz: KClass<*>): EntityModel {
         return ModelRepository.models.getOrPut(clazz) {
             val fields = mutableListOf<EntityField>()
@@ -29,7 +33,7 @@ internal object ModelTransformer {
 
                 fields.add(EntityField(
                     field,
-                    field.javaField ?: throw IllegalStateException("Field ${field.name} has no backing field."),
+                    field.javaField ?: error("Field ${field.name} has no backing field."),
                     annotation?.name ?: field.name,
                     field.returnType.isMarkedNullable
                 ))

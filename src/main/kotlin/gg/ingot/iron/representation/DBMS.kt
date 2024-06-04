@@ -22,11 +22,14 @@ internal enum class DBMS(val value: String, val className: String) {
     INTERBASE("interbase", "interbase.interclient.Driver"),
     ;
 
+    /**
+     * Loads the driver for the DBMS, throwing an exception if the driver is not found.
+     */
     fun load() {
         try {
             Class.forName(className)
         } catch (e: ClassNotFoundException) {
-            throw IllegalStateException("Failed to load driver for DBMS $name, make sure the driver is on the classpath or added as a dependency.")
+            error("Failed to load driver for DBMS $name, make sure the driver is on the classpath or added as a dependency.")
         }
     }
 

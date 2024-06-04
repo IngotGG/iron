@@ -27,7 +27,7 @@ object ResultTransformer {
             for (field in entity.fields) {
                 val value = result.getObject(field.columnName) ?: null
                 if (value == null && !field.nullable) {
-                    throw IllegalStateException("Field '${field.field.name}' is not nullable but the associated column '${field.columnName}' was null for model: $clazz")
+                    error("Field '${field.field.name}' is not nullable but the associated column '${field.columnName}' was null for model: $clazz")
                 }
 
                 field.javaField.setAccessible(true)
@@ -42,7 +42,7 @@ object ResultTransformer {
                 val value = result.getObject(field.columnName) ?: null
 
                 if (value == null && !field.nullable) {
-                    throw IllegalStateException("Field '${field.field.name}' is not nullable but the associated column '${field.columnName}' was null for model: $clazz")
+                    error("Field '${field.field.name}' is not nullable but the associated column '${field.columnName}' was null for model: $clazz")
                 }
 
                 value
@@ -50,7 +50,7 @@ object ResultTransformer {
 
             return fullConstructor.call(*fields.toTypedArray())
         } else {
-            throw IllegalStateException("No empty or full constructor found for model: $clazz")
+            error("No empty or full constructor found for model: $clazz")
         }
     }
 
