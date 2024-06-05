@@ -5,8 +5,7 @@ import gg.ingot.iron.pool.MultiConnectionPool
 import gg.ingot.iron.pool.SingleConnectionPool
 import gg.ingot.iron.representation.DBMS
 import gg.ingot.iron.sql.MappedResultSet
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.sql.Connection
@@ -21,7 +20,8 @@ import kotlin.reflect.KClass
 @Suppress("MemberVisibilityCanBePrivate")
 class Iron(
     private val connectionString: String,
-    private val settings: IronSettings = IronSettings()
+    private val settings: IronSettings = IronSettings(),
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
     private val logger = LoggerFactory.getLogger(Iron::class.java)
 
@@ -67,7 +67,7 @@ class Iron(
      */
     suspend fun <T: Any?> use(block: suspend (Connection) -> T): T {
         val connection = pool?.connection()
-            ?: throw IllegalStateException("Connection is not open, call connect() before using the connection.")
+            ?: error("Connection is not open, call connect() before using the connection.")
 
         return block(connection).also { pool?.release(connection) }
     }
@@ -78,7 +78,7 @@ class Iron(
      */
     suspend fun <T: Any?> transaction(block: suspend Iron.() -> T): T {
         val connection = pool?.connection()
-            ?: throw IllegalStateException("Connection is not open, call connect() before using the connection.")
+            ?: error("Connection is not open, call connect() before using the connection.")
 
         try {
             connection.autoCommit = false
@@ -97,6 +97,7 @@ class Iron(
 
     /**
      * Executes a raw query on the database and returns the result set.
+     *
      * **Note:** This method does no validation on the query, it is up to the user to ensure the query is safe.
      * @param query The query to execute on the database.
      * @return The result set from the query.
@@ -104,15 +105,16 @@ class Iron(
      */
     suspend fun query(@Language("SQL") query: String): ResultSet {
         val connection = pool?.connection()
-            ?: throw IllegalStateException("Connection is not open, call connect() before using the connection.")
+            ?: error("Connection is not open, call connect() before using the connection.")
 
-        return withContext(Dispatchers.IO) {
+        return withContext(dispatcher) {
             connection.createStatement().executeQuery(query)
         }.also { pool?.release(connection) }
     }
 
     /**
      * Executes a raw query on the database and maps the result set to a model.
+     *
      * **Note:** This method does no validation on the query, it is up to the user to ensure the query is safe.
      * @param query The query to execute on the database.
      * @param clazz The class to map the result set to.
@@ -136,6 +138,7 @@ class Iron(
 
     /**
      * Executes a raw statement on the database.
+     *
      * **Note:** This method does no validation on the statement, it is up to the user to ensure the statement is safe.
      * @param statement The statement to execute on the database.
      * @return If the first result is a ResultSet object; false if it is an update count or there are no results
@@ -143,9 +146,9 @@ class Iron(
      */
     suspend fun execute(@Language("SQL") statement: String): Boolean {
         val connection = pool?.connection()
-            ?: throw IllegalStateException("Connection is not open, call connect() before using the connection.")
+            ?: error("Connection is not open, call connect() before using the connection.")
 
-        return withContext(Dispatchers.IO) {
+        return withContext(dispatcher) {
             connection.createStatement().execute(statement)
         }.also { pool?.release(connection) }
     }
@@ -160,9 +163,9 @@ class Iron(
      */
     suspend fun prepare(@Language("SQL") statement: String, vararg values: Any): ResultSet? {
         val connection = pool?.connection()
-            ?: throw IllegalStateException("Connection is not open, call connect() before using the connection.")
+            ?: error("Connection is not open, call connect() before using the connection.")
 
-        return withContext(Dispatchers.IO) {
+        return withContext(dispatcher) {
             val preparedStatement = connection.prepareStatement(statement)
 
             for ((index, value) in values.withIndex()) {
@@ -187,7 +190,7 @@ class Iron(
      */
     suspend fun <T: Any> prepare(@Language("SQL") statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T> {
         val resultSet = prepare(statement, *values)
-            ?: throw IllegalStateException("No result set was returned from the prepared statement.")
+            ?: error("No result set was returned from the prepared statement.")
 
         return MappedResultSet(resultSet, clazz)
     }

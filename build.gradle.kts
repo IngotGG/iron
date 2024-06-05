@@ -19,6 +19,7 @@ dependencies {
 
     // unit tests
     testImplementation(kotlin("test"))
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0-RC")
     testImplementation("org.xerial:sqlite-jdbc:3.46.0.0")
     testImplementation("ch.qos.logback:logback-classic:1.5.6")
 }

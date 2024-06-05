@@ -11,13 +11,19 @@ import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.coroutines.test.runTest
+import java.sql.SQLException
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 class DatabaseTest {
+    private val connection = Iron("jdbc:sqlite::memory:")
+        .connect()
 
     @Test
-    fun testIronUse(): Unit = runBlocking {
-        val connection = Iron("jdbc:sqlite::memory:").connect()
-
+    fun testIronUse() = runTest {
         val success = connection.use {
             it.createStatement().execute("SELECT 1 + 1")
         }
@@ -26,17 +32,13 @@ class DatabaseTest {
     }
 
     @Test
-    fun testIronQuery(): Unit = runBlocking {
-        val connection = Iron("jdbc:sqlite::memory:").connect()
-
+    fun testIronQuery() = runTest {
         val result = connection.query("SELECT 1 + 1").getInt(1)
         assertEquals(2, result)
     }
 
     @Test
-    fun testIronTransaction(): Unit = runBlocking {
-        val connection = Iron("jdbc:sqlite::memory:").connect()
-
+    fun testIronTransaction() = runTest {
         connection.transaction {
             execute("CREATE TABLE test (id INTEGER PRIMARY KEY)")
             execute("INSERT INTO test VALUES (1)")
@@ -47,9 +49,7 @@ class DatabaseTest {
     }
 
     @Test
-    fun testIronBrokenTransaction(): Unit = runBlocking {
-        val connection = Iron("jdbc:sqlite::memory:").connect()
-
+    fun testIronBrokenTransaction() = runTest {
         try {
             connection.transaction {
                 execute("CREATE TABLE test (id INTEGER PRIMARY KEY)")
@@ -69,9 +69,7 @@ class DatabaseTest {
     }
 
     @Test
-    fun testIronPrepared(): Unit = runBlocking {
-        val connection = Iron("jdbc:sqlite::memory:").connect()
-
+    fun testIronPrepared() = runTest {
         val result = connection.transaction {
             execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)")
 
@@ -94,9 +92,7 @@ class DatabaseTest {
     }
 
     @Test
-    fun testMapper(): Unit = runBlocking {
-        val connection = Iron("jdbc:sqlite::memory:").connect()
-
+    fun testMapper() = runTest {
         connection.transaction {
             execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)")
             execute("INSERT INTO test VALUES (1, 'test')")
@@ -112,9 +108,7 @@ class DatabaseTest {
     }
 
     @Test
-    fun testMapperAll(): Unit = runBlocking {
-        val connection = Iron("jdbc:sqlite::memory:").connect()
-
+    fun testMapperAll() = runTest {
         connection.transaction {
             execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)")
             execute("INSERT INTO test VALUES (1, 'test1')")
@@ -133,9 +127,7 @@ class DatabaseTest {
     }
 
     @Test
-    fun testMapperNext(): Unit = runBlocking {
-        val connection = Iron("jdbc:sqlite::memory:").connect()
-
+    fun testMapperNext() = runTest {
         connection.transaction {
             execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)")
             execute("INSERT INTO test VALUES (1, 'test1')")
@@ -149,5 +141,33 @@ class DatabaseTest {
         val result = connection.prepare<TestModel>("SELECT * FROM test").getNext()
         assertEquals(1, result?.id)
         assertEquals("test1", result?.name)
+    }
+
+    @Test
+    fun `get single`() = runTest {
+        data class User(val id: Int)
+
+        val user = connection.transaction {
+            execute("CREATE TABLE users (id INTEGER PRIMARY KEY)")
+
+            prepare<User>("INSERT INTO users VALUES (1) RETURNING *;")
+                .single()
+        }
+
+        assertEquals(1, user.id)
+    }
+
+    @Test
+    fun `fail get single`() = runTest {
+        data class User(val id: Int)
+
+        try {
+            connection.execute("CREATE TABLE users (id INTEGER PRIMARY KEY)")
+
+            connection.prepare<User>("INSERT INTO users VALUES (1), (2) RETURNING *;")
+                .single()
+        } catch (ex: Exception) {
+            assert(ex is IllegalStateException)
+        }
     }
 }
