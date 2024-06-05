@@ -1,6 +1,7 @@
 package gg.ingot.iron.transformer
 
 import gg.ingot.iron.Iron
+import gg.ingot.iron.representation.EntityField
 import java.sql.ResultSet
 import kotlin.reflect.KClass
 import kotlin.reflect.jvm.isAccessible
@@ -13,6 +14,10 @@ import kotlin.reflect.jvm.isAccessible
  * @since 1.0
  */
 object ResultTransformer {
+    private val arrayTransformations: Map<KClass<*>, (arr: Array<*>) -> Any?> = mapOf(
+        List::class to { it.toList() },
+        Set::class to { it.toSet() }
+    )
 
     private fun <T: Any> read(result: ResultSet, clazz: KClass<T>): T {
         val entity = ModelTransformer.transform(clazz)
@@ -25,7 +30,7 @@ object ResultTransformer {
             val model = emptyConstructor.call()
 
             for (field in entity.fields) {
-                val value = result.getObject(field.columnName) ?: null
+                val value = ValueTransformer.convert(result, field)
                 if (value == null && !field.nullable) {
                     error("Field '${field.field.name}' is not nullable but the associated column '${field.columnName}' was null for model: $clazz")
                 }
@@ -39,8 +44,7 @@ object ResultTransformer {
             fullConstructor.isAccessible = true
 
             val fields = entity.fields.map { field ->
-                val value = result.getObject(field.columnName) ?: null
-
+                val value = ValueTransformer.convert(result, field)
                 if (value == null && !field.nullable) {
                     error("Field '${field.field.name}' is not nullable but the associated column '${field.columnName}' was null for model: $clazz")
                 }
