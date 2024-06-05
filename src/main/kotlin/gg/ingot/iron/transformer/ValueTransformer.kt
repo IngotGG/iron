@@ -52,6 +52,7 @@ internal object ValueTransformer {
         val arr = toArray(resultSet, columnName) as Array<*>
 
         val transformation = arrayTransformations.entries
+            // retrieve the first transformation that matches the type
             .firstOrNull { it.key.java.isAssignableFrom(type) }
             ?.value
             ?: error("Unsupported collection type: $type")
