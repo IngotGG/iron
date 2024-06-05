@@ -15,7 +15,11 @@
 Iron is a simple yet powerful JDBC Wrapper used by [ingot.gg](https://ingot.gg) backend services to interact
 with our SQL Databases.
 
+Feel free to read the [Contribution Guide](https://github.com/IngotGG/iron/blob/master/CONTRIBUTING.md) to learn how to contribute to Iron or report issues.
+
 ## Importing
+
+Tags & Releases can be found on our [Jitpack](https://jitpack.io/#gg.ingot/iron).
 
 ### Gradle
 
@@ -51,7 +55,7 @@ dependencies {
 
 ## Basic Usage
 
-### Connection
+### [Connection](#single-connection)
 ```kotlin
 data class User(val id: Int, val name: String)
 
@@ -70,7 +74,7 @@ suspend fun main() {
 }
 ```
 
-### Pooled Connection
+### [Pooled Connection](#pooled-connection)
 ```kotlin
 suspend fun main() {
     val connection = Iron(
@@ -88,7 +92,7 @@ suspend fun main() {
     println(added)
 }
 ```
-### JSON Deserialization Support
+### [JSON Deserialization Support](#json-deserde)
 ```kotlin
 data class Example(val field: String)
 data class ExampleModel(
