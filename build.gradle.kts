@@ -1,5 +1,7 @@
 plugins {
     kotlin("jvm") version "2.0.0"
+
+    `maven-publish`
 }
 
 group = "gg.ingot.iron"
@@ -30,4 +32,9 @@ tasks.test {
 
 kotlin {
     jvmToolchain(17)
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
 }
