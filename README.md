@@ -48,23 +48,23 @@ dependencies {
 ```
 
 ## Features
-* Simple Connection Pooling
-* Automatic Model Deserialization
-* Built-in JSON Field Deserialization
+* [Simple Connection Pooling](#pooled-connection)
+* [Query Model Mapping](#query-model-mapping)
+* [Built-in JSON Field Deserialization](#json-deserialization-support)
 * Kotlin Coroutines Support
 
 ## Basic Usage
 
-### [Connection](#single-connection)
+### Connection
 ```kotlin
-data class User(val id: Int, val name: String)
+data class User(val id: Int, val firstName: String, val lastName: String)
 
 suspend fun main() {
     val connection = Iron("jdbc:sqlite:memory:").connect()
 
     val user = connection.transaction {
-        execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL)")
-        execute("INSERT INTO users (name) VALUES ('Ingot')")
+        execute("CREATE TABLE users (id INTEGER PRIMARY KEY, firstName TEXT NOT NULL, lastName TEXT NOT NULL)")
+        execute("INSERT INTO users (firstName, lastName) VALUES ('Ingot', 'Team')")
         
         query<User>("SELECT * FROM users LIMIT 1;")
             .single()
@@ -74,7 +74,7 @@ suspend fun main() {
 }
 ```
 
-### [Pooled Connection](#pooled-connection)
+### Pooled Connection
 ```kotlin
 suspend fun main() {
     val connection = Iron(
@@ -94,7 +94,22 @@ suspend fun main() {
     println(added)
 }
 ```
-### [JSON Deserialization Support](#json-deserde)
+
+### Query Model Mapping
+```kotlin
+data class PartialUser(val firstName: String, val lastName: String)
+
+suspend fun main() {
+    val connection = Iron("jdbc:sqlite:memory:").connect()
+
+    // we can easily map data from our queries to a model.
+    val user = connection.query<PartialUser>("SELECT firstName, lastName FROM users LIMIT 1;")
+        .single()
+    println(user)
+}
+```
+
+### JSON Deserialization Support
 ```kotlin
 data class Example(val field: String)
 data class ExampleModel(
