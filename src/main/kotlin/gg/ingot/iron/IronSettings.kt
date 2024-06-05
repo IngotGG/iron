@@ -20,7 +20,7 @@ data class IronSettings(
     val connectionPollTimeout: Duration = 30.seconds,
     /** The driver to use for the connection pool. */
     val driver: DatabaseDriver? = null,
-
+    /** The serialization adapter to use for models. */
     val serialization: SerializationAdapter? = null
 ) {
     /** Whether the connection pool is a multi connection pool. */
