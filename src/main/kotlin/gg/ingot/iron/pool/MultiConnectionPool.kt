@@ -56,14 +56,27 @@ class MultiConnectionPool(
                 openConnections.incrementAndGet()
             }
 
+            if(acquiredConnection?.isClosed == true) {
+                openConnections.decrementAndGet()
+                logger.warn("Acquired a closed connection, attempting recovery.")
+                return connection()
+            }
+
             return acquiredConnection ?: error("Failed to get a connection from the pool.")
         }
 
         // if we have an available connection, use it or if we haven't
         // hit our max just create one
-        val acquiredConnection = pool.poll() ?: DriverManager.getConnection(connectionString)
-        if(acquiredConnection != null) {
+        val acquiredConnection = pool.poll() ?: run {
+            // incr open conns if we have to establish a new one
             openConnections.incrementAndGet()
+            DriverManager.getConnection(connectionString)
+        }
+
+        if(acquiredConnection.isClosed) {
+            openConnections.decrementAndGet()
+            logger.warn("Acquired a closed connection, attempting recovery.")
+            return connection()
         }
 
         return acquiredConnection ?: error("Failed to get a connection from the pool.")

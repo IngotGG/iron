@@ -14,12 +14,12 @@ class SingleConnectionPool(
     private val connection = DriverManager.getConnection(connectionString)
 
     override fun connection(): Connection {
-        return connection!!
+        return connection
     }
 
     override fun release(connection: Connection) = Unit
 
     override fun close() {
-        connection?.close()
+        connection.close()
     }
 }
