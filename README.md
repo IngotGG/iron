@@ -60,7 +60,8 @@ suspend fun main() {
 
     val user = connection.transaction {
         execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL)")
-
+        execute("INSERT INTO users (name) VALUES ('Ingot')")
+        
         query<User>("SELECT * FROM users LIMIT 1;")
             .single()
     }
