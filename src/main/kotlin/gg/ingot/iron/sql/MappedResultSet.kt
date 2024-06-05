@@ -42,8 +42,10 @@ class MappedResultSet<T: Any> internal constructor(
 
     /**
      * Gets the model from the result set at its current row.
+     * Always expects exactly a single result to exist and throws an exception if there are more or less.
      * @return The model from the result set.
      * @since 1.1
+     * @throws IllegalStateException If the result set is empty.
      */
     fun single(): T {
         return singleNullable() ?: error("Expected a single result, but found none.")
