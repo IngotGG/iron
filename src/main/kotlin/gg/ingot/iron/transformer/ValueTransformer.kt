@@ -1,6 +1,7 @@
 package gg.ingot.iron.transformer
 
 import gg.ingot.iron.representation.EntityField
+import gg.ingot.iron.serialization.SerializationAdapter
 import java.sql.ResultSet
 import kotlin.reflect.KClass
 
@@ -9,7 +10,9 @@ import kotlin.reflect.KClass
  * @author DebitCardz
  * @since 1.2
  */
-internal object ValueTransformer {
+internal class ValueTransformer(
+    private val serializationAdapter: SerializationAdapter?
+) {
     private val arrayTransformations: Map<KClass<*>, (Array<*>) -> Collection<*>> = mapOf(
         List::class to { it.toList() },
         Set::class to { it.toSet() }
@@ -26,7 +29,8 @@ internal object ValueTransformer {
         val type = field.javaField.type
 
         return when {
-            type.isArray -> return toArray(resultSet, field.columnName)
+            field.isJson -> toJsonObject(resultSet, field)
+            type.isArray -> toArray(resultSet, field.columnName)
             Collection::class.java.isAssignableFrom(type) -> toCollection(resultSet, field.columnName, type)
             else -> return toObject(resultSet, field.columnName)
         }
@@ -68,5 +72,14 @@ internal object ValueTransformer {
      */
     private fun toObject(resultSet: ResultSet, columnName: String): Any? {
         return resultSet.getObject(columnName)
+    }
+
+    private fun toJsonObject(resultSet: ResultSet, field: EntityField): Any? {
+        checkNotNull(serializationAdapter) { "Serialization adapter is not set" }
+
+        val obj = toObject(resultSet, field.columnName)
+            ?: return null
+
+        return serializationAdapter.deserialize(obj, field.javaField.type)
     }
 }

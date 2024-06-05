@@ -1,10 +1,14 @@
 
+import com.google.gson.Gson
 import gg.ingot.iron.Iron
-import gg.ingot.iron.transformer.ResultTransformer.model
+import gg.ingot.iron.IronSettings
+import gg.ingot.iron.annotations.Column
+import gg.ingot.iron.serialization.SerializationAdapter
 import java.sql.SQLException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlinx.coroutines.test.runTest
+import kotlin.test.assertNotNull
 
 class DatabaseTest {
     private val connection = Iron("jdbc:sqlite::memory:")
@@ -80,22 +84,6 @@ class DatabaseTest {
     }
 
     @Test
-    fun testMapper() = runTest {
-        connection.transaction {
-            execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)")
-            execute("INSERT INTO test VALUES (1, 'test')")
-        }
-
-        val result = connection.query("SELECT * FROM test").model(TestModel::class)
-        assertEquals(1, result.id)
-        assertEquals("test", result.name)
-
-        val result2 = connection.query("SELECT * FROM test").model(TestModel2::class)
-        assertEquals(1, result.id)
-        assertEquals("test", result.name)
-    }
-
-    @Test
     fun testMapperAll() = runTest {
         connection.transaction {
             execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)")
@@ -157,5 +145,31 @@ class DatabaseTest {
         } catch (ex: Exception) {
             assert(ex is IllegalStateException)
         }
+    }
+
+    @Test
+    fun `json obj deserialization`() = runTest {
+        val ironSerializationInstance = Iron(
+            "jdbc:sqlite::memory:",
+            IronSettings(
+                serialization = SerializationAdapter.Gson(Gson())
+            )
+        ).connect()
+
+        data class EmbeddedJson(val test: String)
+        data class ExampleResponse(
+            @Column(json = true)
+            val test: EmbeddedJson
+        )
+
+        val res = ironSerializationInstance.transaction {
+            execute("CREATE TABLE example(id INTEGER PRIMARY KEY, test JSONB)")
+            execute("INSERT INTO example(test) VALUES ('{\"test\": \"hello\"}')")
+            query<ExampleResponse>("SELECT * FROM example LIMIT 1;")
+                .singleNullable()
+        }
+
+        assertNotNull(res)
+        assert(res.test.test == "hello")
     }
 }

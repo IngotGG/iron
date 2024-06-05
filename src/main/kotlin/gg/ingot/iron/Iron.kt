@@ -5,6 +5,8 @@ import gg.ingot.iron.pool.MultiConnectionPool
 import gg.ingot.iron.pool.SingleConnectionPool
 import gg.ingot.iron.representation.DBMS
 import gg.ingot.iron.sql.MappedResultSet
+import gg.ingot.iron.transformer.ResultTransformer
+import gg.ingot.iron.transformer.ValueTransformer
 import kotlinx.coroutines.*
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
@@ -26,6 +28,16 @@ class Iron(
     private val logger = LoggerFactory.getLogger(Iron::class.java)
 
     private var pool: ConnectionPool? = null
+
+    /**
+     * The value transformer used to transform values from the result set into their corresponding types.
+     */
+    internal val valueTransformer = ValueTransformer(settings.serialization)
+
+    /**
+     * The result transformer used to transform the result set into a model.
+     */
+    internal val resultTransformer = ResultTransformer(valueTransformer)
 
     /**
      * Establishes a connection to the database using the provided connection string.
@@ -123,7 +135,7 @@ class Iron(
      */
     suspend fun <T: Any> query(@Language("SQL") query: String, clazz: KClass<T>): MappedResultSet<T> {
         val resultSet = query(query)
-        return MappedResultSet(resultSet, clazz)
+        return MappedResultSet(resultSet, clazz, resultTransformer)
     }
 
     /**
@@ -192,7 +204,7 @@ class Iron(
         val resultSet = prepare(statement, *values)
             ?: error("No result set was returned from the prepared statement.")
 
-        return MappedResultSet(resultSet, clazz)
+        return MappedResultSet(resultSet, clazz, resultTransformer)
     }
 
     /**
