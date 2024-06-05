@@ -1,14 +1,14 @@
 package gg.ingot.iron.sql
 
-import gg.ingot.iron.transformer.ResultTransformer.model
+import gg.ingot.iron.transformer.ResultTransformer
 import java.sql.ResultSet
 import kotlin.reflect.KClass
 
 class MappedResultSet<T: Any> internal constructor(
     private val resultSet: ResultSet,
-    private val clazz: KClass<T>
-){
-
+    private val clazz: KClass<T>,
+    private val transformer: ResultTransformer
+) {
     /**
      * Moves the cursor to the next row in the result set.
      * @return True if the cursor is moved to a valid row, false if there are no more rows.
@@ -24,7 +24,7 @@ class MappedResultSet<T: Any> internal constructor(
      * @since 1.0
      */
     fun get(): T {
-        return resultSet.model(clazz)
+        return transformer.read(resultSet, clazz)
     }
 
     /**
@@ -71,7 +71,7 @@ class MappedResultSet<T: Any> internal constructor(
     fun all(): List<T> {
         val models = mutableListOf<T>()
         while (resultSet.next()) {
-            models.add(resultSet.model(clazz))
+            models.add(transformer.read(resultSet, clazz))
         }
         return models
     }
@@ -83,5 +83,4 @@ class MappedResultSet<T: Any> internal constructor(
     fun close() {
         resultSet.close()
     }
-
 }

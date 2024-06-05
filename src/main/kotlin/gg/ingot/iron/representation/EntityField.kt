@@ -13,5 +13,6 @@ internal data class EntityField(
     val field: KProperty<*>,
     val javaField: Field,
     val columnName: String,
-    val nullable: Boolean
+    val nullable: Boolean,
+    val isJson: Boolean
 )

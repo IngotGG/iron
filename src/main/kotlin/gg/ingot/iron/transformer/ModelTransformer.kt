@@ -31,16 +31,26 @@ internal object ModelTransformer {
                     continue
                 }
 
+                // defaults to "" if column is added but no name is provided
+                val name = if(
+                    annotation != null
+                    && annotation.name.isNotEmpty()
+                ) {
+                    annotation.name
+                } else {
+                    field.name
+                }
+
                 fields.add(EntityField(
                     field,
                     field.javaField ?: error("Field ${field.name} has no backing field."),
-                    annotation?.name ?: field.name,
-                    field.returnType.isMarkedNullable
+                    name,
+                    field.returnType.isMarkedNullable,
+                    annotation?.json ?: false
                 ))
             }
 
             EntityModel(clazz, fields)
         }
     }
-
 }
