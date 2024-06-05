@@ -5,7 +5,7 @@ import kotlinx.serialization.serializerOrNull
 /**
  * Adapter for deserializing SQL Json to Kotlin objects.
  * @author DebitCardz
- * @since 1.2
+ * @since 1.3
  */
 sealed interface SerializationAdapter {
     /**
