@@ -172,7 +172,7 @@ class DatabaseTest {
         }
 
         assertNotNull(res)
-        assert(res.test.test == "hello")
+        assertEquals("hello", res.test.test)
     }
 
     @Test
