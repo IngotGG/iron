@@ -1,12 +1,10 @@
 
 import gg.ingot.iron.Iron
 import gg.ingot.iron.transformer.ResultTransformer.model
-import kotlinx.coroutines.test.runTest
 import java.sql.SQLException
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertIs
+import kotlinx.coroutines.test.runTest
 
 class DatabaseTest {
     private val connection = Iron("jdbc:sqlite::memory:")

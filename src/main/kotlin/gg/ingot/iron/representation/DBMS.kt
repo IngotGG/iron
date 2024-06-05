@@ -5,7 +5,7 @@ package gg.ingot.iron.representation
  * @param value The value of the DBMS in the JDBC connection string.
  * @param className The class name of the driver to load.
  */
-internal enum class DBMS(val value: String, val className: String) {
+enum class DBMS(val value: String, val className: String) {
     SQLITE("sqlite", "org.sqlite.JDBC"),
     MYSQL("mysql", "com.mysql.cj.jdbc.Driver"),
     POSTGRESQL("postgresql", "org.postgresql.Driver"),
@@ -35,7 +35,12 @@ internal enum class DBMS(val value: String, val className: String) {
 
     companion object {
         fun fromValue(value: String): DBMS? {
-            return entries.firstOrNull { it.value == value }
+            return entries.firstOrNull { it.value == value.lowercase() }
         }
     }
 }
+
+/**
+ * Represents a database driver, which is an alias for the DBMS.
+ */
+typealias DatabaseDriver = DBMS
