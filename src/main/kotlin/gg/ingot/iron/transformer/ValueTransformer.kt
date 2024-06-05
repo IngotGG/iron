@@ -75,7 +75,9 @@ internal class ValueTransformer(
     }
 
     private fun toJsonObject(resultSet: ResultSet, field: EntityField): Any? {
-        checkNotNull(serializationAdapter) { "Serialization adapter is not set" }
+        checkNotNull(serializationAdapter) {
+            "A serializer adapter has not been passed through IronSettings, you will not be able to automatically deserialize JSON."
+        }
 
         val obj = toObject(resultSet, field.columnName)
             ?: return null
