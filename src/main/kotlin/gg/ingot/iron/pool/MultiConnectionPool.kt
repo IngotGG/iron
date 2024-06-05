@@ -40,8 +40,8 @@ class MultiConnectionPool(
         // always keep a minimum amount of connections
         repeat(settings.minimumActiveConnections) {
             pool.add(DriverManager.getConnection(connectionString))
-                .also { openConnections.incrementAndGet()  }
         }
+        openConnections.set(settings.minimumActiveConnections)
     }
 
     override fun connection(): Connection {
