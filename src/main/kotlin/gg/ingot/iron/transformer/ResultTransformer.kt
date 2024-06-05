@@ -30,7 +30,7 @@ object ResultTransformer {
             val model = emptyConstructor.call()
 
             for (field in entity.fields) {
-                val value = result.retrieveValue(field)
+                val value = ValueTransformer.convert(result, field)
                 if (value == null && !field.nullable) {
                     throw IllegalStateException("Field '${field.field.name}' is not nullable but the associated column '${field.columnName}' was null for model: $clazz")
                 }
@@ -44,7 +44,7 @@ object ResultTransformer {
             fullConstructor.isAccessible = true
 
             val fields = entity.fields.map { field ->
-                val value = result.retrieveValue(field)
+                val value = ValueTransformer.convert(result, field)
                 if (value == null && !field.nullable) {
                     throw IllegalStateException("Field '${field.field.name}' is not nullable but the associated column '${field.columnName}' was null for model: $clazz")
                 }
@@ -55,39 +55,6 @@ object ResultTransformer {
             return fullConstructor.call(*fields.toTypedArray())
         } else {
             throw IllegalStateException("No empty or full constructor found for model: $clazz")
-        }
-    }
-
-    /**
-     * Retrieve the value from the result set for the given field.
-     * Will automatically convert an [Array] into a given [Collection] type if the field is said [Collection].
-     * @param field The field to retrieve the value for.
-     * @return The value from the result set.
-     */
-    private fun ResultSet.retrieveValue(field: EntityField): Any? {
-        val type = field.javaField.type
-
-        if(type.isArray) {
-            return getArray(field.columnName)
-                ?.array
-                ?: return null
-        } else if(Collection::class.java.isAssignableFrom(type)) {
-            val arr = getArray(field.columnName)
-                ?.array
-                ?: return null
-
-            if(arr is Array<*>) {
-                val transformation = arrayTransformations.entries
-                    .firstOrNull { it.key.java.isAssignableFrom(type) }
-                    ?.value
-                    ?: return arr
-
-                return transformation(arr)
-            }
-
-            return arr
-        } else {
-            return getObject(field.columnName)
         }
     }
 
