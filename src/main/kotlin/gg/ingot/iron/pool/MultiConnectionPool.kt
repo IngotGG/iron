@@ -83,8 +83,6 @@ class MultiConnectionPool(
     }
 
     override fun release(connection: Connection) {
-        openConnections.decrementAndGet()
-
         // give some buffer room in case we need to handle bursts
         // this'll wait a bit so if connections are taken we have one
         // ready to be put back in the pool
@@ -96,6 +94,7 @@ class MultiConnectionPool(
 
         if (!success) {
             connection.close()
+            openConnections.decrementAndGet()
         }
     }
 
