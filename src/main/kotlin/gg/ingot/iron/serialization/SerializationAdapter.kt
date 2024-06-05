@@ -7,7 +7,7 @@ import kotlinx.serialization.serializerOrNull
  * @author DebitCardz
  * @since 1.3
  */
-sealed interface SerializationAdapter {
+interface SerializationAdapter {
     /**
      * Deserialize the given object into the given class.
      * @param obj The object to deserialize.
