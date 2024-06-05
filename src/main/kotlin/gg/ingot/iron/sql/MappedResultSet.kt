@@ -41,6 +41,29 @@ class MappedResultSet<T: Any> internal constructor(
     }
 
     /**
+     * Gets the model from the result set at its current row.
+     * @return The model from the result set.
+     * @since 1.1
+     */
+    fun single(): T {
+        return singleNullable() ?: error("Expected a single result, but found none.")
+    }
+
+    /**
+     * Gets the model from the result set at its current row.
+     * @return The model from the result set or null if the result set is empty.
+     * @since 1.1
+     */
+    fun singleNullable(): T? {
+        val value = getNext()
+        if (next()) {
+            error("Expected a single or no result, but found more than one")
+        }
+
+        return value
+    }
+
+    /**
      * Get all the models from the result set.
      * @return A list of the mapped models.
      * @since 1.0
