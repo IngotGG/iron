@@ -1,6 +1,6 @@
 <a href="https://ingot.gg/">
     <p align="center">
-        <img width="325" height="325" src="https://raw.githubusercontent.com/IngotGG/branding/master/branding.svg" alt="iron"/>
+        <img width="225" height="225" src="https://raw.githubusercontent.com/IngotGG/branding/master/branding.svg" alt="iron"/>
     </p>
 </a>
 
