@@ -86,7 +86,9 @@ suspend fun main() {
         )
     ).connect()
 
-    // Pooled connections are identical to single connections.
+    // Pooled connections are identical to single connections
+    // in terms of how you interact with them, but more connections
+    // allow for more throughput in your application.
     val added = connection.query("SELECT 1+1;")
         .getInt(1)
     println(added)
