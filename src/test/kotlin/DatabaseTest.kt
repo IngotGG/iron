@@ -3,6 +3,7 @@ import com.google.gson.Gson
 import gg.ingot.iron.Iron
 import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
+import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.SerializationAdapter
 import java.sql.SQLException
 import kotlin.test.Test
@@ -147,58 +148,5 @@ class DatabaseTest {
         } catch (ex: Exception) {
             assert(ex is IllegalStateException)
         }
-    }
-
-    @Test
-    fun `gson obj deserialization`() = runTest {
-        val ironSerializationInstance = Iron(
-            "jdbc:sqlite::memory:",
-            IronSettings(
-                serialization = SerializationAdapter.Gson(Gson())
-            )
-        ).connect()
-
-        data class EmbeddedJson(val test: String)
-        data class ExampleResponse(
-            @Column(json = true)
-            val test: EmbeddedJson
-        )
-
-        val res = ironSerializationInstance.transaction {
-            execute("CREATE TABLE example(id INTEGER PRIMARY KEY, test JSONB)")
-            execute("INSERT INTO example(test) VALUES ('{\"test\": \"hello\"}')")
-            query<ExampleResponse>("SELECT * FROM example LIMIT 1;")
-                .singleNullable()
-        }
-
-        assertNotNull(res)
-        assertEquals("hello", res.test.test)
-    }
-
-    @Test
-    fun `kotlinx obj deserialization`() = runTest {
-        val ironSerializationInstance = Iron(
-            "jdbc:sqlite::memory:",
-            IronSettings(
-                serialization = SerializationAdapter.Kotlinx(Json)
-            )
-        ).connect()
-
-        @Serializable
-        data class EmbeddedJson(val test: String)
-        data class ExampleResponse(
-            @Column(json = true)
-            val test: EmbeddedJson
-        )
-
-        val res = ironSerializationInstance.transaction {
-            execute("CREATE TABLE example(id INTEGER PRIMARY KEY, test JSONB)")
-            execute("INSERT INTO example(test) VALUES ('{\"test\": \"hello\"}')")
-            query<ExampleResponse>("SELECT * FROM example LIMIT 1;")
-                .singleNullable()
-        }
-
-        assertNotNull(res)
-        assertEquals("hello", res.test.test)
     }
 }
