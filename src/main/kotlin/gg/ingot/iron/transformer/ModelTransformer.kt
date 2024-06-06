@@ -4,7 +4,11 @@ import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.repository.ModelRepository
 import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.representation.EntityModel
+import gg.ingot.iron.serialization.ColumnDeserializer
+import gg.ingot.iron.serialization.EmptyDeserializer
 import kotlin.reflect.KClass
+import kotlin.reflect.KProperty1
+import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.jvm.javaField
 
@@ -31,26 +35,53 @@ internal object ModelTransformer {
                     continue
                 }
 
-                // defaults to "" if column is added but no name is provided
-                val name = if(
-                    annotation != null
-                    && annotation.name.isNotEmpty()
-                ) {
-                    annotation.name
-                } else {
-                    field.name
-                }
-
                 fields.add(EntityField(
                     field,
                     field.javaField ?: error("Field ${field.name} has no backing field."),
-                    name,
+                    retrieveName(field, annotation),
                     field.returnType.isMarkedNullable,
-                    annotation?.json ?: false
+                    annotation?.json ?: false,
+                    retrieveDeserializer(annotation)
                 ))
             }
 
             EntityModel(clazz, fields)
         }
+    }
+
+    /**
+     * Retrieve the name for the given field.
+     * @param field The field to retrieve the name for.
+     * @param annotation The column annotation for the field.
+     * @return The name for the field.
+     */
+    private fun retrieveName(
+        field: KProperty1<out Any, *>,
+        annotation: Column?
+    ): String {
+        // defaults to "" if column is added but no name is provided
+        return if(
+            annotation != null
+            && annotation.name.isNotEmpty()
+        ) {
+            annotation.name
+        } else {
+            field.name
+        }
+    }
+
+    /**
+     * Retrieve the deserializer for the given field.
+     * @param annotation The column annotation for the field.
+     * @return The deserializer for the field if it exists, otherwise null.
+     */
+    private fun retrieveDeserializer(
+        annotation: Column?
+    ): ColumnDeserializer<*, *>? {
+        if(annotation?.deserializer == EmptyDeserializer::class) {
+            return null
+        }
+
+        return annotation?.deserializer?.objectInstance ?: annotation?.deserializer?.createInstance()
     }
 }

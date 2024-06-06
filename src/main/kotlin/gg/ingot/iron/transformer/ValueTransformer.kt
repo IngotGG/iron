@@ -1,6 +1,7 @@
 package gg.ingot.iron.transformer
 
 import gg.ingot.iron.representation.EntityField
+import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.SerializationAdapter
 import java.sql.ResultSet
 import kotlin.reflect.KClass
@@ -29,6 +30,7 @@ internal class ValueTransformer(
         val type = field.javaField.type
 
         return when {
+            field.deserializer != null -> toCustomDeserializedObj(resultSet, field)
             field.isJson -> toJsonObject(resultSet, field)
             type.isArray -> toArray(resultSet, field.columnName)
             Collection::class.java.isAssignableFrom(type) -> toCollection(resultSet, field.columnName, type)
@@ -74,6 +76,12 @@ internal class ValueTransformer(
         return resultSet.getObject(columnName)
     }
 
+    /**
+     * Retrieve the value as a deserialized JSON object from the result set.
+     * @param resultSet The result set to retrieve the value from.
+     * @param field The field to retrieve the value for.
+     * @return The value from the result set.
+     */
     private fun toJsonObject(resultSet: ResultSet, field: EntityField): Any? {
         checkNotNull(serializationAdapter) {
             "A serializer adapter has not been passed through IronSettings, you will not be able to automatically deserialize JSON."
@@ -83,5 +91,22 @@ internal class ValueTransformer(
             ?: return null
 
         return serializationAdapter.deserialize(obj, field.javaField.type)
+    }
+
+    /**
+     * Retrieve the value as a deserialized object from the provided
+     * [ColumnDeserializer].
+     * @param resultSet The result set to retrieve the value from.
+     * @param field The field to retrieve the value for.
+     * @return The value from the result set.
+     */
+    private fun toCustomDeserializedObj(resultSet: ResultSet, field: EntityField): Any? {
+        val obj = toObject(resultSet, field.columnName)
+            ?: return null
+
+        val deserializer = field.deserializer as? ColumnDeserializer<Any, *>
+            ?: error("Deserializer is null, but it should not be.")
+
+        return deserializer.deserialize(obj)
     }
 }
