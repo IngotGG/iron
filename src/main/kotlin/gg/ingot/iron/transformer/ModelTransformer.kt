@@ -7,6 +7,7 @@ import gg.ingot.iron.representation.EntityModel
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.EmptyDeserializer
 import kotlin.reflect.KClass
+import kotlin.reflect.KProperty
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.declaredMemberProperties
@@ -56,7 +57,7 @@ internal object ModelTransformer {
      * @return The name for the field.
      */
     private fun retrieveName(
-        field: KProperty1<out Any, *>,
+        field: KProperty<*>,
         annotation: Column?
     ): String {
         // defaults to "" if column is added but no name is provided
