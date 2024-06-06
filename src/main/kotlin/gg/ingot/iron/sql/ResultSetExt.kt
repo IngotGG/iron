@@ -83,6 +83,11 @@ inline fun <reified T> ResultSet.get(column: Int): T {
  * @return The value from the result set, or null if the value is null.
  */
 inline fun <reified T> ResultSet.getNullable(column: String): T? {
+    // use array and convert to a collection from that if you need to
+    if(Collection::class.java.isAssignableFrom(T::class.java)) {
+        error("Use the Array type instead of a Collection")
+    }
+
     // for some reason throwing it in the when clause
     // doesn't work?
     if(Array::class.java.isAssignableFrom(T::class.java)) {
