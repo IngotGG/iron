@@ -1,6 +1,7 @@
 package gg.ingot.iron.pool
 
 import gg.ingot.iron.IronSettings
+import kotlinx.coroutines.*
 import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.sql.DriverManager
@@ -16,18 +17,17 @@ import kotlin.time.Duration.Companion.seconds
  */
 class MultiConnectionPool(
     private val connectionString: String,
-    private val settings: IronSettings
+    private val settings: IronSettings,
+    dispatcher: CoroutineDispatcher
 ) : ConnectionPool {
     private val logger = LoggerFactory.getLogger(MultiConnectionPool::class.java)
 
-    /**
-     * The pool of connections.
-     */
+    private val coroutineScope = CoroutineScope(dispatcher + SupervisorJob())
+
+    /** The pool of connections. */
     private val pool = ArrayBlockingQueue<Connection>(settings.minimumActiveConnections)
 
-    /**
-     * The amount of open connections in the pool.
-     */
+    /** The amount of open connections in the pool. */
     private val openConnections = AtomicInteger(0)
 
     init {
@@ -83,22 +83,33 @@ class MultiConnectionPool(
     }
 
     override fun release(connection: Connection) {
-        // give some buffer room in case we need to handle bursts
-        // this'll wait a bit so if connections are taken we have one
-        // ready to be put back in the pool
-        val success = pool.offer(
-            connection,
-            10.seconds.inWholeMilliseconds,
-            TimeUnit.MILLISECONDS
-        )
+        // ensure releasing doesn't block the consumer
+        coroutineScope.launch {
+            runCatching {
+                // give some buffer room in case we need to handle bursts
+                // this'll wait a bit so if connections are taken we have one
+                // ready to be put back in the pool
+                val success = pool.offer(
+                    connection,
+                    10.seconds.inWholeMilliseconds,
+                    TimeUnit.MILLISECONDS
+                )
 
-        if (!success) {
-            connection.close()
-            openConnections.decrementAndGet()
+                if (!success) {
+                    connection.close()
+                    openConnections.decrementAndGet()
+                }
+            }.onFailure {
+                logger.error("Failed to release connection back to the pool, {}", it.message)
+
+                connection.close()
+                openConnections.decrementAndGet()
+            }
         }
     }
 
     override fun close() {
+        coroutineScope.cancel()
         pool.forEach(Connection::close)
         openConnections.set(0)
     }

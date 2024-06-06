@@ -63,7 +63,7 @@ class Iron(
 
         pool = if(settings.isMultiConnectionPool) {
             logger.trace("Using multi connection pool.")
-            MultiConnectionPool(connectionString, settings)
+            MultiConnectionPool(connectionString, settings, dispatcher)
         } else {
             logger.trace("Using single connection pool.")
             SingleConnectionPool(connectionString, settings)
