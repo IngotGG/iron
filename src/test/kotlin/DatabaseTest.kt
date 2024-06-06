@@ -4,6 +4,9 @@ import gg.ingot.iron.Iron
 import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.serialization.SerializationAdapter
+import gg.ingot.iron.sql.allValues
+import gg.ingot.iron.sql.get
+import gg.ingot.iron.sql.singleValue
 import java.sql.SQLException
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -239,7 +242,7 @@ class DatabaseTest {
 
                 query("SELECT * FROM test LIMIT 1;")
                     .singleValue<String>()
-            }
+           }
         } catch(ex: Exception) {
             assert(ex is IllegalStateException)
         }
@@ -253,19 +256,6 @@ class DatabaseTest {
 
             query("SELECT name FROM test LIMIT 1;")
                 .get<String>("name")
-        }
-
-        assertEquals("test1", name)
-    }
-
-    @Test
-    fun `retrieve column value by column number`() = runTest {
-        val name = connection.transaction {
-            execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)")
-            execute("INSERT INTO test(name) VALUES ('test1')")
-
-            query("SELECT name FROM test LIMIT 1;")
-                .get<String>(1)
         }
 
         assertEquals("test1", name)

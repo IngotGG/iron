@@ -83,6 +83,12 @@ inline fun <reified T> ResultSet.get(column: Int): T {
  * @return The value from the result set, or null if the value is null.
  */
 inline fun <reified T> ResultSet.getNullable(column: String): T? {
+    // for some reason throwing it in the when clause
+    // doesn't work?
+    if(Array::class.java.isAssignableFrom(T::class.java)) {
+        return getArray(column)?.array as? T
+    }
+
     return when (T::class) {
         Int::class -> getInt(column)
         Double::class -> getDouble(column)
@@ -107,5 +113,5 @@ inline fun <reified T> ResultSet.getNullable(column: String): T? {
  * @return The value from the result set.
  */
 inline fun <reified T> ResultSet.getNullable(column: Int): T? {
-    return getNullable(this.metaData.getColumnName(column))
+    return getNullable(metaData.getColumnName(column))
 }
