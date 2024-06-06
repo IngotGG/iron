@@ -5,7 +5,7 @@ plugins {
     `maven-publish`
 }
 
-group = "gg.ingot.iron"
+group = "gg.ingot"
 version = "1.0.3"
 
 repositories {
