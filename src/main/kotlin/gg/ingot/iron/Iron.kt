@@ -66,7 +66,7 @@ class Iron(
             MultiConnectionPool(connectionString, settings)
         } else {
             logger.trace("Using single connection pool.")
-            SingleConnectionPool(connectionString)
+            SingleConnectionPool(connectionString, settings)
         }
 
         return this
