@@ -1,5 +1,6 @@
 package gg.ingot.iron.representation
 
+import gg.ingot.iron.serialization.ColumnDeserializer
 import java.lang.reflect.Field
 import kotlin.reflect.KProperty
 
@@ -14,5 +15,6 @@ internal data class EntityField(
     val javaField: Field,
     val columnName: String,
     val nullable: Boolean,
-    val isJson: Boolean
+    val isJson: Boolean,
+    val deserializer: ColumnDeserializer<*, *>?
 )

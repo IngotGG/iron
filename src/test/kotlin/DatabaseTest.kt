@@ -4,9 +4,6 @@ import gg.ingot.iron.Iron
 import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.serialization.SerializationAdapter
-import gg.ingot.iron.sql.allValues
-import gg.ingot.iron.sql.get
-import gg.ingot.iron.sql.singleValue
 import java.sql.SQLException
 import kotlin.test.Test
 import kotlin.test.assertEquals
