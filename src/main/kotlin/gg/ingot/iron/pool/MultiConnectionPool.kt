@@ -39,7 +39,7 @@ class MultiConnectionPool(
 
         // always keep a minimum amount of connections
         repeat(settings.minimumActiveConnections) {
-            pool.add(DriverManager.getConnection(connectionString))
+            pool.add(createConnection())
         }
         openConnections.set(settings.minimumActiveConnections)
     }
@@ -70,7 +70,7 @@ class MultiConnectionPool(
         val acquiredConnection = pool.poll() ?: run {
             // incr open conns if we have to establish a new one
             openConnections.incrementAndGet()
-            DriverManager.getConnection(connectionString)
+            createConnection()
         }
 
         if(acquiredConnection.isClosed) {
@@ -101,5 +101,13 @@ class MultiConnectionPool(
     override fun close() {
         pool.forEach(Connection::close)
         openConnections.set(0)
+    }
+
+    private fun createConnection(): Connection {
+        return if(settings.driverProperties != null) {
+            DriverManager.getConnection(connectionString, settings.driverProperties)
+        } else {
+            DriverManager.getConnection(connectionString)
+        }
     }
 }

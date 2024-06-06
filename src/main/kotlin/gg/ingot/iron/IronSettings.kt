@@ -2,6 +2,7 @@ package gg.ingot.iron
 
 import gg.ingot.iron.representation.DatabaseDriver
 import gg.ingot.iron.serialization.SerializationAdapter
+import java.util.Properties
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -21,7 +22,9 @@ data class IronSettings(
     /** The driver to use for the connection pool. */
     val driver: DatabaseDriver? = null,
     /** The serialization adapter to use for models. */
-    val serialization: SerializationAdapter? = null
+    val serialization: SerializationAdapter? = null,
+    /** Additional properties to pass into the [java.sql.DriverManager] */
+    val driverProperties: Properties? = null
 ) {
     /** Whether the connection pool is a multi connection pool. */
     val isMultiConnectionPool: Boolean
