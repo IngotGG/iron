@@ -107,19 +107,5 @@ inline fun <reified T> ResultSet.getNullable(column: String): T? {
  * @return The value from the result set.
  */
 inline fun <reified T> ResultSet.getNullable(column: Int): T? {
-    return when (T::class) {
-        Int::class -> getInt(column)
-        Double::class -> getDouble(column)
-        Float::class -> getFloat(column)
-        Short::class -> getShort(column)
-        Long::class -> getLong(column)
-        Byte::class -> getByte(column)
-        ByteArray::class -> getBytes(column)
-        String::class -> getString(column)
-        java.sql.Date::class -> getDate(column)
-        java.sql.Time::class -> getTime(column)
-        java.sql.Timestamp::class -> getTimestamp(column)
-        java.net.URL::class -> getURL(column)
-        else -> error("Unsupported type ${T::class.simpleName}")
-    } as? T
+    return getNullable(this.metaData.getColumnName(column))
 }
