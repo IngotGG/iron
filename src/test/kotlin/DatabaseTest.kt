@@ -4,6 +4,8 @@ import gg.ingot.iron.Iron
 import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.serialization.SerializationAdapter
+import gg.ingot.iron.sql.allValues
+import gg.ingot.iron.sql.singleValue
 import java.sql.SQLException
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -200,5 +202,48 @@ class DatabaseTest {
 
         assertNotNull(res)
         assertEquals("hello", res.test.test)
+    }
+
+    @Test
+    fun `retrieve single value`() = runTest {
+        val name = connection.transaction {
+            execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)")
+            execute("INSERT INTO test(name) VALUES ('test1')")
+
+            query("SELECT name FROM test LIMIT 1;")
+                .singleValue<String>()
+        }
+
+        assertEquals("test1", name)
+    }
+
+    @Test
+    fun `retrieve list of values`() = runTest {
+        val names = connection.transaction {
+            execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)")
+            repeat(5) {
+                execute("INSERT INTO test(name) VALUES ('test${it}')")
+            }
+
+            query("SELECT name FROM test;")
+                .allValues<String>()
+        }
+
+        assertEquals(5, names.size)
+    }
+
+    @Test
+    fun `retrieve single value fail`() = runTest {
+        try {
+            connection.transaction {
+                execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)")
+                execute("INSERT INTO test(name) VALUES ('test1')")
+
+                query("SELECT * FROM test LIMIT 1;")
+                    .singleValue<String>()
+            }
+        } catch(ex: Exception) {
+            assert(ex is IllegalStateException)
+        }
     }
 }
