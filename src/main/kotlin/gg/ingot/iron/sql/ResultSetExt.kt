@@ -32,11 +32,14 @@ inline fun <reified T> ResultSet.singleValueNullable(): T? {
  * Extension function to retrieve all values from a result set.
  * @return A list of values from the result set.
  */
+@Suppress("UNCHECKED_CAST")
 inline fun <reified T> ResultSet.allValues(): List<T> {
-    check(metaData.columnCount == 1) { "Result set must have exactly one column" }
+    val values = allValuesNullable<T>()
+    check(!values.any { it == null }) { "Result set contains null values" }
 
-    return allValuesNullable<T>()
-        .mapNotNull { it }
+    // we've already checked there are no null values
+    // & i don't want to re-allocate a new ArrayList for this op - tech
+    return values as List<T>
 }
 
 /**
