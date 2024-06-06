@@ -47,3 +47,11 @@ java {
     withJavadocJar()
     withSourcesJar()
 }
+
+publishing {
+    publications {
+        register<MavenPublication>("gpr") {
+            from(components["java"])
+        }
+    }
+}
