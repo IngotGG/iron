@@ -4,6 +4,7 @@ import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.SerializationAdapter
+import gg.ingot.iron.sql.executor.queryMapped
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -30,7 +31,7 @@ class DeserializationTest {
         val res = ironSerializationInstance.transaction {
             execute("CREATE TABLE example(id INTEGER PRIMARY KEY, test JSONB)")
             execute("INSERT INTO example(test) VALUES ('{\"test\": \"hello\"}')")
-            query<ExampleResponse>("SELECT * FROM example LIMIT 1;")
+            queryMapped<ExampleResponse>("SELECT * FROM example LIMIT 1;")
                 .singleNullable()
         }
 
@@ -57,7 +58,7 @@ class DeserializationTest {
         val res = ironSerializationInstance.transaction {
             execute("CREATE TABLE example(id INTEGER PRIMARY KEY, test JSONB)")
             execute("INSERT INTO example(test) VALUES ('{\"test\": \"hello\"}')")
-            query<ExampleResponse>("SELECT * FROM example LIMIT 1;")
+            queryMapped<ExampleResponse>("SELECT * FROM example LIMIT 1;")
                 .singleNullable()
         }
 
@@ -82,7 +83,7 @@ class DeserializationTest {
         val res = connection.transaction {
             execute("CREATE TABLE example(id INTEGER PRIMARY KEY, example TEXT)")
             execute("INSERT INTO example(example) VALUES ('hello')")
-            query<Response>("SELECT * FROM example LIMIT 1;")
+            queryMapped<Response>("SELECT * FROM example LIMIT 1;")
                 .singleNullable()
         }
 
