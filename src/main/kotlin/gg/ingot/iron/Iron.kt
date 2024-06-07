@@ -100,47 +100,103 @@ class Iron(
         pool?.close()
     }
 
+    /**
+     * Starts a transaction on the connection.
+     * @since 1.0
+     */
     suspend fun <T : Any?> transaction(block: Controller.() -> T): T {
         return withContext(dispatcher) { withController { controller ->
             controller.transaction(block)
         } }
     }
 
+    /**
+     * Executes a raw query on the database and returns the result set.
+     *
+     * **Note:** This method does no validation on the query, it is up to the user to ensure the query is safe.
+     * @param query The query to execute on the database.
+     * @return The result set from the query.
+     * @since 1.0
+     */
     suspend fun query(@Language("SQL") statement: String): ResultSet {
         return withContext(dispatcher) { withController { controller ->
             controller.query(statement)
         } }
     }
 
+    /**
+     * Executes a raw query on the database and maps the result set to a model.
+     *
+     * **Note:** This method does no validation on the query, it is up to the user to ensure the query is safe.
+     * @param query The query to execute on the database.
+     * @param clazz The class to map the result set to.
+     * @return A result set mapped to the model.
+     * @since 1.0
+     */
     suspend fun <T : Any> queryMapped(@Language("SQL") statement: String, clazz: KClass<T>): MappedResultSet<T> {
         return withContext(dispatcher) { withController { controller ->
             controller.query(statement, clazz)
         } }
     }
 
+    /**
+     * Helper method allowing for inline usage of the query method.
+     * @see query
+     * @since 1.0
+     */
     suspend inline fun <reified T : Any> queryMapped(@Language("SQL") statement: String): MappedResultSet<T> = queryMapped(statement, T::class)
 
+    /**
+     * Executes a raw statement on the database.
+     *
+     * **Note:** This method does no validation on the statement, it is up to the user to ensure the statement is safe.
+     * @param statement The statement to execute on the database.
+     * @return If the first result is a ResultSet object; false if it is an update count or there are no results
+     * @since 1.0
+     */
     suspend fun execute(statement: String): Boolean {
         return withContext(dispatcher) { withController { controller ->
             controller.execute(statement)
         } }
     }
 
+    /**
+     * Prepares a statement on the database. This method should be preferred over [execute] for security reasons.
+     * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
+     * the values, any values passed in through this parameter is not sanitized.
+     * @param values The values to bind to the statement.
+     * @return The prepared statement.
+     * @since 1.0
+     */
     suspend fun prepare(@Language("SQL") statement: String, vararg values: Any): ResultSet? {
         return withContext(dispatcher) { withController { controller ->
             controller.prepare(statement, *values)
         } }
     }
 
+    /**
+     * Prepares a statement on the database and maps the result set to a model. This method should be preferred over
+     * [execute] for security reasons.
+     * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
+     * the values, any values passed in through this parameter is not sanitized.
+     * @param clazz The class to map the result set to.
+     * @param values The values to bind to the statement.
+     * @return A result set mapped to the model.
+     */
     suspend fun <T : Any> prepareMapped(@Language("SQL") statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T> {
         return withContext(dispatcher) { withController { controller ->
             controller.prepare(statement, clazz, *values)
         } }
     }
 
+    /**
+     * Helper method allowing for inline usage of the prepare method.
+     * @see prepare
+     * @since 1.0
+     */
     suspend inline fun <reified T : Any> prepareMapped(@Language("SQL") statement: String, vararg values: Any) = prepareMapped(statement, T::class, *values)
 
-    companion object {
+    internal companion object {
         /** Error message to send when a connection is requested but [Iron.connect] has not been called. */
         private const val UNOPENED_CONNECTION_MESSAGE = "Connection is not open, call connect() before using the connection."
     }

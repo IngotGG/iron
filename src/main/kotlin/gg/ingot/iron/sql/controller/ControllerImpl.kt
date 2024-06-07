@@ -6,6 +6,11 @@ import java.sql.Connection
 import java.sql.ResultSet
 import kotlin.reflect.KClass
 
+/**
+ * Controller implementation for handling database transactions and queries.
+ * @author DebitCardz
+ * @since 1.3
+ */
 internal class ControllerImpl(
     private val connection: Connection,
     private val resultTransformer: ResultTransformer
