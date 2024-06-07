@@ -4,10 +4,12 @@ import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.SerializationAdapter
+import gg.ingot.iron.sql.singleValue
 import gg.ingot.iron.sql.controller.queryMapped
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.junit.jupiter.api.Assertions.assertTrue
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -89,5 +91,55 @@ class DeserializationTest {
 
         assertNotNull(res)
         assertEquals("hello", res.example.str)
+    }
+
+    private enum class TestEnum { EXAMPLE, EXAMPLE_2; }
+
+    @Test
+    fun `enum deserializer`() = runTest {
+        data class Response(val example: TestEnum)
+        val connection = Iron("jdbc:sqlite::memory:").connect()
+
+        val res = connection.transaction {
+            execute("CREATE TABLE example(id INTEGER PRIMARY KEY, example TEXT)")
+            execute("INSERT INTO example(example) VALUES ('EXAMPLE')")
+            queryMapped<Response>("SELECT * FROM example LIMIT 1;")
+                .singleNullable()
+        }
+
+        assertNotNull(res)
+        assertEquals(res.example, TestEnum.EXAMPLE)
+    }
+
+    @Test
+    fun `enum deserializer fail`() = runTest {
+        data class Response(val example: TestEnum)
+        val connection = Iron("jdbc:sqlite::memory:").connect()
+
+        try {
+            connection.transaction {
+                execute("CREATE TABLE example(id INTEGER PRIMARY KEY, example TEXT)")
+                execute("INSERT INTO example(example) VALUES ('INVALID')")
+                queryMapped<Response>("SELECT * FROM example LIMIT 1;")
+                    .singleNullable()
+            }
+        } catch(ex: Exception) {
+            assert(ex is IllegalArgumentException)
+        }
+    }
+
+    @Test
+    fun `enum deserializer single`() = runTest {
+        val connection = Iron("jdbc:sqlite::memory:").connect()
+
+        val enumValue = connection.transaction {
+            execute("CREATE TABLE example(id INTEGER PRIMARY KEY, example TEXT)")
+            execute("INSERT INTO example(example) VALUES ('EXAMPLE')")
+
+            query("SELECT example FROM example LIMIT 1;")
+                .singleValue<TestEnum>()
+        }
+
+        assertEquals(enumValue, TestEnum.EXAMPLE)
     }
 }

@@ -6,9 +6,9 @@ import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.representation.EntityModel
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.EmptyDeserializer
+import gg.ingot.iron.serialization.EnumColumnDeserializer
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
-import kotlin.reflect.KProperty1
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.jvm.javaField
@@ -42,7 +42,7 @@ internal object ModelTransformer {
                     retrieveName(field, annotation),
                     field.returnType.isMarkedNullable,
                     annotation?.json ?: false,
-                    retrieveDeserializer(annotation)
+                    retrieveDeserializer(field, annotation)
                 ))
             }
 
@@ -76,11 +76,19 @@ internal object ModelTransformer {
      * @param annotation The column annotation for the field.
      * @return The deserializer for the field if it exists, otherwise null.
      */
+    @Suppress("UNCHECKED_CAST")
     private fun retrieveDeserializer(
+        field: KProperty<*>,
         annotation: Column?
     ): ColumnDeserializer<*, *>? {
         if(annotation?.deserializer == EmptyDeserializer::class) {
             return null
+        }
+
+        // make an enum deserializer
+        val classifier = field.returnType.classifier
+        if(classifier is KClass<*> && classifier.java.isEnum) {
+            return EnumColumnDeserializer(classifier.java as Class<out Enum<*>>)
         }
 
         return annotation?.deserializer?.objectInstance ?: annotation?.deserializer?.createInstance()
