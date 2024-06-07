@@ -3,6 +3,7 @@ import gg.ingot.iron.Iron
 import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.serialization.ColumnDeserializer
+import gg.ingot.iron.serialization.EnumColumnDeserializer
 import gg.ingot.iron.serialization.SerializationAdapter
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
@@ -88,5 +89,40 @@ class DeserializationTest {
 
         assertNotNull(res)
         assertEquals("hello", res.example.str)
+    }
+
+    private enum class TestEnum { EXAMPLE, EXAMPLE_2; }
+
+    @Test
+    fun `enum deserializer`() = runTest {
+        data class Response(val example: TestEnum)
+        val connection = Iron("jdbc:sqlite::memory:").connect()
+
+        val res = connection.transaction {
+            execute("CREATE TABLE example(id INTEGER PRIMARY KEY, example TEXT)")
+            execute("INSERT INTO example(example) VALUES ('EXAMPLE')")
+            query<Response>("SELECT * FROM example LIMIT 1;")
+                .singleNullable()
+        }
+
+        assertNotNull(res)
+        assertEquals(res.example, TestEnum.EXAMPLE)
+    }
+
+    @Test
+    fun `enum deserializer fail`() = runTest {
+        data class Response(val example: TestEnum)
+        val connection = Iron("jdbc:sqlite::memory:").connect()
+
+        try {
+            connection.transaction {
+                execute("CREATE TABLE example(id INTEGER PRIMARY KEY, example TEXT)")
+                execute("INSERT INTO example(example) VALUES ('INVALID')")
+                query<Response>("SELECT * FROM example LIMIT 1;")
+                    .singleNullable()
+            }
+        } catch(ex: Exception) {
+            assert(ex is IllegalArgumentException)
+        }
     }
 }
