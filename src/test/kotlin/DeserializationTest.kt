@@ -103,7 +103,7 @@ class DeserializationTest {
         val res = connection.transaction {
             execute("CREATE TABLE example(id INTEGER PRIMARY KEY, example TEXT)")
             execute("INSERT INTO example(example) VALUES ('EXAMPLE')")
-            query<Response>("SELECT * FROM example LIMIT 1;")
+            queryMapped<Response>("SELECT * FROM example LIMIT 1;")
                 .singleNullable()
         }
 
@@ -120,7 +120,7 @@ class DeserializationTest {
             connection.transaction {
                 execute("CREATE TABLE example(id INTEGER PRIMARY KEY, example TEXT)")
                 execute("INSERT INTO example(example) VALUES ('INVALID')")
-                query<Response>("SELECT * FROM example LIMIT 1;")
+                queryMapped<Response>("SELECT * FROM example LIMIT 1;")
                     .singleNullable()
             }
         } catch(ex: Exception) {
