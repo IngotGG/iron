@@ -6,7 +6,12 @@ import java.sql.Connection
 import java.sql.ResultSet
 import kotlin.reflect.KClass
 
-internal class StatementExecution(
+/**
+ * Executes statements on the database.
+ * @author DebitCardz
+ * @since 1.3
+ */
+internal class ConnectionStatementExecution(
     private val conn: Connection,
     private val resultTransformer: ResultTransformer
 ) : StatementExecutor {

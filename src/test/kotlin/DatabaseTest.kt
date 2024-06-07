@@ -5,7 +5,6 @@ import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.serialization.SerializationAdapter
 import gg.ingot.iron.sql.allValues
-import gg.ingot.iron.sql.executor.prepare
 import gg.ingot.iron.sql.executor.prepareMapped
 import gg.ingot.iron.sql.executor.queryMapped
 import gg.ingot.iron.sql.get
@@ -134,7 +133,7 @@ class DatabaseTest {
         val user = connection.transaction {
             execute("CREATE TABLE users (id INTEGER PRIMARY KEY)")
 
-            prepare<User>("INSERT INTO users VALUES (1) RETURNING *;")
+            prepareMapped<User>("INSERT INTO users VALUES (1) RETURNING *;")
                 .single()
         }
 

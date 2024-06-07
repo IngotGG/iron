@@ -5,7 +5,7 @@ import gg.ingot.iron.pool.MultiConnectionPool
 import gg.ingot.iron.pool.SingleConnectionPool
 import gg.ingot.iron.representation.DBMS
 import gg.ingot.iron.sql.MappedResultSet
-import gg.ingot.iron.sql.executor.StatementExecution
+import gg.ingot.iron.sql.executor.ConnectionStatementExecution
 import gg.ingot.iron.sql.executor.StatementExecutor
 import gg.ingot.iron.sql.executor.SuspendingStatementExecutor
 import gg.ingot.iron.transformer.ResultTransformer
@@ -89,7 +89,7 @@ class Iron(
             ?: error("Connection is not open, call connect() before using the connection.")
 
         return withContext(dispatcher) {
-            StatementExecution(conn, resultTransformer)
+            ConnectionStatementExecution(conn, resultTransformer)
                 .transaction(block)
         }.also { pool?.release(conn) }
     }
@@ -99,7 +99,7 @@ class Iron(
             ?: error("Connection is not open, call connect() before using the connection.")
 
         return withContext(dispatcher) {
-            StatementExecution(conn, resultTransformer)
+            ConnectionStatementExecution(conn, resultTransformer)
                 .execute(statement)
         }.also { pool?.release(conn) }
     }
@@ -109,7 +109,7 @@ class Iron(
             ?: error("Connection is not open, call connect() before using the connection.")
 
         return withContext(dispatcher) {
-            StatementExecution(conn, resultTransformer)
+            ConnectionStatementExecution(conn, resultTransformer)
                 .query(query)
         }.also { pool?.release(conn) }
     }
@@ -119,7 +119,7 @@ class Iron(
             ?: error("Connection is not open, call connect() before using the connection.")
 
         return withContext(dispatcher) {
-            StatementExecution(conn, resultTransformer)
+            ConnectionStatementExecution(conn, resultTransformer)
                 .queryMapped(query, clazz)
         }.also { pool?.release(conn) }
     }
@@ -129,18 +129,19 @@ class Iron(
             ?: error("Connection is not open, call connect() before using the connection.")
 
         return withContext(dispatcher) {
-            StatementExecution(conn, resultTransformer)
+            ConnectionStatementExecution(conn, resultTransformer)
                 .prepare(statement, *values)
         }.also { pool?.release(conn) }
     }
 
-    override fun <T : Any> prepareMapped(statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T> {
+    override suspend fun <T : Any> prepareMapped(statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T> {
         val conn = pool?.connection()
             ?: error("Connection is not open, call connect() before using the connection.")
 
-        return StatementExecution(conn, resultTransformer)
-            .prepareMapped(statement, clazz, *values)
-            .also { pool?.release(conn) }
+        return withContext(dispatcher) {
+            ConnectionStatementExecution(conn, resultTransformer)
+                .prepareMapped(statement, clazz, *values)
+        }.also { pool?.release(conn) }
     }
 
     /**
