@@ -3,8 +3,11 @@ import com.google.gson.Gson
 import gg.ingot.iron.Iron
 import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
+import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.serialization.SerializationAdapter
 import gg.ingot.iron.sql.allValues
+import gg.ingot.iron.sql.controller.prepareMapped
+import gg.ingot.iron.sql.controller.queryMapped
 import gg.ingot.iron.sql.get
 import gg.ingot.iron.sql.singleValue
 import java.sql.SQLException
@@ -100,7 +103,7 @@ class DatabaseTest {
             execute("INSERT INTO test VALUES (6, 'test6')")
         }
 
-        val results = connection.prepare<TestModel>("SELECT * FROM test")
+        val results = connection.prepareMapped<TestModel>("SELECT * FROM test")
         results.all().forEachIndexed { index, result ->
             assertEquals(index + 1, result.id)
             assertEquals("test${index + 1}", result.name)
@@ -119,7 +122,7 @@ class DatabaseTest {
             execute("INSERT INTO test VALUES (6, 'test6')")
         }
 
-        val result = connection.prepare<TestModel>("SELECT * FROM test").getNext()
+        val result = connection.prepareMapped<TestModel>("SELECT * FROM test").getNext()
         assertEquals(1, result?.id)
         assertEquals("test1", result?.name)
     }
@@ -131,7 +134,7 @@ class DatabaseTest {
         val user = connection.transaction {
             execute("CREATE TABLE users (id INTEGER PRIMARY KEY)")
 
-            prepare<User>("INSERT INTO users VALUES (1) RETURNING *;")
+            prepareMapped<User>("INSERT INTO users VALUES (1) RETURNING *;")
                 .single()
         }
 
@@ -145,7 +148,7 @@ class DatabaseTest {
         try {
             connection.execute("CREATE TABLE users (id INTEGER PRIMARY KEY)")
 
-            connection.prepare<User>("INSERT INTO users VALUES (1), (2) RETURNING *;")
+            connection.prepareMapped<User>("INSERT INTO users VALUES (1), (2) RETURNING *;")
                 .single()
         } catch (ex: Exception) {
             assert(ex is IllegalStateException)
@@ -170,7 +173,7 @@ class DatabaseTest {
         val res = ironSerializationInstance.transaction {
             execute("CREATE TABLE example(id INTEGER PRIMARY KEY, test JSONB)")
             execute("INSERT INTO example(test) VALUES ('{\"test\": \"hello\"}')")
-            query<ExampleResponse>("SELECT * FROM example LIMIT 1;")
+            queryMapped<ExampleResponse>("SELECT * FROM example LIMIT 1;")
                 .singleNullable()
         }
 
@@ -197,7 +200,7 @@ class DatabaseTest {
         val res = ironSerializationInstance.transaction {
             execute("CREATE TABLE example(id INTEGER PRIMARY KEY, test JSONB)")
             execute("INSERT INTO example(test) VALUES ('{\"test\": \"hello\"}')")
-            query<ExampleResponse>("SELECT * FROM example LIMIT 1;")
+            queryMapped<ExampleResponse>("SELECT * FROM example LIMIT 1;")
                 .singleNullable()
         }
 
@@ -259,5 +262,44 @@ class DatabaseTest {
         }
 
         assertEquals("test1", name)
+    }
+
+    @Test
+    fun `exploding model`() = runTest {
+        data class TestModel(
+            val firstName: String = "Ingot",
+            val lastName: String = "Team"
+        ) : ExplodingModel
+
+        val model = TestModel()
+
+        val result = connection.transaction {
+            execute("CREATE TABLE test (id INTEGER PRIMARY KEY, firstName TEXT, lastName TEXT);")
+            prepare("INSERT INTO test(firstName, lastName) VALUES (?, ?);", *model.explode())
+
+            prepareMapped<TestModel>("""
+                SELECT firstName, lastName FROM test 
+                  WHERE firstName = ? AND lastName = ? LIMIT 2;
+            """.trimIndent(), *model.explode())
+                .single()
+        }
+
+        assertEquals("Ingot", result.firstName)
+        assertEquals("Team", result.lastName)
+    }
+
+    @Test
+    fun `improper param size`() = runTest {
+        data class TestModel(val a: String = "", val b: String = "") : ExplodingModel
+        val model = TestModel()
+
+        try {
+            connection.transaction {
+                execute("CREATE TABLE test (id INTEGER PRIMARY KEY, a TEXT);")
+                prepare("INSERT INTO test(a) VALUES (?);", *model.explode())
+            }
+        } catch(ex: Exception) {
+            assert(ex is IllegalArgumentException)
+        }
     }
 }
