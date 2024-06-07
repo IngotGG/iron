@@ -5,6 +5,8 @@ import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.serialization.SerializationAdapter
 import gg.ingot.iron.sql.allValues
+import gg.ingot.iron.sql.controller.prepareMapped
+import gg.ingot.iron.sql.controller.queryMapped
 import gg.ingot.iron.sql.get
 import gg.ingot.iron.sql.singleValue
 import java.sql.SQLException
@@ -100,7 +102,7 @@ class DatabaseTest {
             execute("INSERT INTO test VALUES (6, 'test6')")
         }
 
-        val results = connection.prepare<TestModel>("SELECT * FROM test")
+        val results = connection.prepareMapped<TestModel>("SELECT * FROM test")
         results.all().forEachIndexed { index, result ->
             assertEquals(index + 1, result.id)
             assertEquals("test${index + 1}", result.name)
@@ -119,7 +121,7 @@ class DatabaseTest {
             execute("INSERT INTO test VALUES (6, 'test6')")
         }
 
-        val result = connection.prepare<TestModel>("SELECT * FROM test").getNext()
+        val result = connection.prepareMapped<TestModel>("SELECT * FROM test").getNext()
         assertEquals(1, result?.id)
         assertEquals("test1", result?.name)
     }
@@ -131,7 +133,7 @@ class DatabaseTest {
         val user = connection.transaction {
             execute("CREATE TABLE users (id INTEGER PRIMARY KEY)")
 
-            prepare<User>("INSERT INTO users VALUES (1) RETURNING *;")
+            prepareMapped<User>("INSERT INTO users VALUES (1) RETURNING *;")
                 .single()
         }
 
@@ -145,7 +147,7 @@ class DatabaseTest {
         try {
             connection.execute("CREATE TABLE users (id INTEGER PRIMARY KEY)")
 
-            connection.prepare<User>("INSERT INTO users VALUES (1), (2) RETURNING *;")
+            connection.prepareMapped<User>("INSERT INTO users VALUES (1), (2) RETURNING *;")
                 .single()
         } catch (ex: Exception) {
             assert(ex is IllegalStateException)
@@ -170,7 +172,7 @@ class DatabaseTest {
         val res = ironSerializationInstance.transaction {
             execute("CREATE TABLE example(id INTEGER PRIMARY KEY, test JSONB)")
             execute("INSERT INTO example(test) VALUES ('{\"test\": \"hello\"}')")
-            query<ExampleResponse>("SELECT * FROM example LIMIT 1;")
+            queryMapped<ExampleResponse>("SELECT * FROM example LIMIT 1;")
                 .singleNullable()
         }
 
@@ -197,7 +199,7 @@ class DatabaseTest {
         val res = ironSerializationInstance.transaction {
             execute("CREATE TABLE example(id INTEGER PRIMARY KEY, test JSONB)")
             execute("INSERT INTO example(test) VALUES ('{\"test\": \"hello\"}')")
-            query<ExampleResponse>("SELECT * FROM example LIMIT 1;")
+            queryMapped<ExampleResponse>("SELECT * FROM example LIMIT 1;")
                 .singleNullable()
         }
 

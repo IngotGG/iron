@@ -5,6 +5,8 @@ import gg.ingot.iron.pool.MultiConnectionPool
 import gg.ingot.iron.pool.SingleConnectionPool
 import gg.ingot.iron.representation.DBMS
 import gg.ingot.iron.sql.MappedResultSet
+import gg.ingot.iron.sql.controller.Controller
+import gg.ingot.iron.sql.controller.ControllerImpl
 import gg.ingot.iron.transformer.ResultTransformer
 import gg.ingot.iron.transformer.ValueTransformer
 import kotlinx.coroutines.*
@@ -27,17 +29,14 @@ class Iron(
 ) {
     private val logger = LoggerFactory.getLogger(Iron::class.java)
 
+    /** The connection pool used to manage connections to the database. */
     private var pool: ConnectionPool? = null
 
-    /**
-     * The value transformer used to transform values from the result set into their corresponding types.
-     */
-    internal val valueTransformer = ValueTransformer(settings.serialization)
+    /** The value transformer used to transform values from the result set into their corresponding types. */
+    private val valueTransformer = ValueTransformer(settings.serialization)
 
-    /**
-     * The result transformer used to transform the result set into a model.
-     */
-    internal val resultTransformer = ResultTransformer(valueTransformer)
+    /** The result transformer used to transform the result set into a model. */
+    private val resultTransformer = ResultTransformer(valueTransformer)
 
     /**
      * Establishes a connection to the database using the provided connection string.
@@ -77,34 +76,38 @@ class Iron(
      * @param block The closure to execute with the connection.
      * @since 1.0
      */
-    suspend fun <T: Any?> use(block: suspend (Connection) -> T): T {
+    suspend fun <T : Any?> use(block: suspend (Connection) -> T): T {
         val connection = pool?.connection()
             ?: error("Connection is not open, call connect() before using the connection.")
 
-        return block(connection).also { pool?.release(connection) }
+        return block(connection)
+            .also { pool?.release(connection) }
+    }
+
+    private suspend fun <T : Any?> withController(block: suspend (Controller) -> T): T {
+        val connection = pool?.connection()
+            ?: error(UNOPENED_CONNECTION_MESSAGE)
+
+        return block(ControllerImpl(connection, resultTransformer))
+            .also { pool?.release(connection) }
+    }
+
+    /**
+     * Closes the connection to the database.
+     * @since 1.0
+     */
+    fun close() {
+        pool?.close()
     }
 
     /**
      * Starts a transaction on the connection.
      * @since 1.0
      */
-    suspend fun <T: Any?> transaction(block: suspend Iron.() -> T): T {
-        val connection = pool?.connection()
-            ?: error("Connection is not open, call connect() before using the connection.")
-
-        try {
-            connection.autoCommit = false
-            val result = block()
-            connection.commit()
-
-            return result
-        } catch (e: Exception) {
-            connection.rollback()
-            throw e
-        } finally {
-            connection.autoCommit = true
-            pool?.release(connection)
-        }
+    suspend fun <T : Any?> transaction(block: Controller.() -> T): T {
+        return withContext(dispatcher) { withController { controller ->
+            controller.transaction(block)
+        } }
     }
 
     /**
@@ -115,13 +118,10 @@ class Iron(
      * @return The result set from the query.
      * @since 1.0
      */
-    suspend fun query(@Language("SQL") query: String): ResultSet {
-        val connection = pool?.connection()
-            ?: error("Connection is not open, call connect() before using the connection.")
-
-        return withContext(dispatcher) {
-            connection.createStatement().executeQuery(query)
-        }.also { pool?.release(connection) }
+    suspend fun query(@Language("SQL") statement: String): ResultSet {
+        return withContext(dispatcher) { withController { controller ->
+            controller.query(statement)
+        } }
     }
 
     /**
@@ -133,9 +133,10 @@ class Iron(
      * @return A result set mapped to the model.
      * @since 1.0
      */
-    suspend fun <T: Any> query(@Language("SQL") query: String, clazz: KClass<T>): MappedResultSet<T> {
-        val resultSet = query(query)
-        return MappedResultSet(resultSet, clazz, resultTransformer)
+    suspend fun <T : Any> queryMapped(@Language("SQL") statement: String, clazz: KClass<T>): MappedResultSet<T> {
+        return withContext(dispatcher) { withController { controller ->
+            controller.query(statement, clazz)
+        } }
     }
 
     /**
@@ -143,10 +144,7 @@ class Iron(
      * @see query
      * @since 1.0
      */
-    @JvmName("queryInline")
-    suspend inline fun <reified T: Any> query(@Language("SQL") query: String): MappedResultSet<T> {
-        return query(query, T::class)
-    }
+    suspend inline fun <reified T : Any> queryMapped(@Language("SQL") statement: String): MappedResultSet<T> = queryMapped(statement, T::class)
 
     /**
      * Executes a raw statement on the database.
@@ -156,13 +154,10 @@ class Iron(
      * @return If the first result is a ResultSet object; false if it is an update count or there are no results
      * @since 1.0
      */
-    suspend fun execute(@Language("SQL") statement: String): Boolean {
-        val connection = pool?.connection()
-            ?: error("Connection is not open, call connect() before using the connection.")
-
-        return withContext(dispatcher) {
-            connection.createStatement().execute(statement)
-        }.also { pool?.release(connection) }
+    suspend fun execute(statement: String): Boolean {
+        return withContext(dispatcher) { withController { controller ->
+            controller.execute(statement)
+        } }
     }
 
     /**
@@ -174,23 +169,11 @@ class Iron(
      * @since 1.0
      */
     suspend fun prepare(@Language("SQL") statement: String, vararg values: Any): ResultSet? {
-        val connection = pool?.connection()
-            ?: error("Connection is not open, call connect() before using the connection.")
-
-        return withContext(dispatcher) {
-            val preparedStatement = connection.prepareStatement(statement)
-
-            for ((index, value) in values.withIndex()) {
-                preparedStatement.setObject(index + 1, value)
-            }
-
-            if (preparedStatement.execute()) {
-                preparedStatement.resultSet
-            } else {
-                null
-            }
-        }.also { pool?.release(connection) }
+        return withContext(dispatcher) { withController { controller ->
+            controller.prepare(statement, *values)
+        } }
     }
+
     /**
      * Prepares a statement on the database and maps the result set to a model. This method should be preferred over
      * [execute] for security reasons.
@@ -200,11 +183,10 @@ class Iron(
      * @param values The values to bind to the statement.
      * @return A result set mapped to the model.
      */
-    suspend fun <T: Any> prepare(@Language("SQL") statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T> {
-        val resultSet = prepare(statement, *values)
-            ?: error("No result set was returned from the prepared statement.")
-
-        return MappedResultSet(resultSet, clazz, resultTransformer)
+    suspend fun <T : Any> prepareMapped(@Language("SQL") statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T> {
+        return withContext(dispatcher) { withController { controller ->
+            controller.prepare(statement, clazz, *values)
+        } }
     }
 
     /**
@@ -212,16 +194,10 @@ class Iron(
      * @see prepare
      * @since 1.0
      */
-    @JvmName("prepareInline")
-    suspend inline fun <reified T: Any> prepare(@Language("SQL") statement: String, vararg values: Any): MappedResultSet<T> {
-        return prepare(statement, T::class, *values)
-    }
+    suspend inline fun <reified T : Any> prepareMapped(@Language("SQL") statement: String, vararg values: Any) = prepareMapped(statement, T::class, *values)
 
-    /**
-     * Closes the connection to the database.
-     * @since 1.0
-     */
-    fun close() {
-        pool?.close()
+    internal companion object {
+        /** Error message to send when a connection is requested but [Iron.connect] has not been called. */
+        private const val UNOPENED_CONNECTION_MESSAGE = "Connection is not open, call connect() before using the connection."
     }
 }
