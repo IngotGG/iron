@@ -1,4 +1,4 @@
-package gg.ingot.iron.sql.executor
+package gg.ingot.iron.sql.controller
 
 import gg.ingot.iron.sql.MappedResultSet
 import gg.ingot.iron.transformer.ResultTransformer
@@ -6,45 +6,40 @@ import java.sql.Connection
 import java.sql.ResultSet
 import kotlin.reflect.KClass
 
-/**
- * Executes statements on the database.
- * @author DebitCardz
- * @since 1.3
- */
-internal class ConnectionStatementExecution(
-    private val conn: Connection,
+internal class ControllerImpl(
+    private val connection: Connection,
     private val resultTransformer: ResultTransformer
-) : StatementExecutor {
-    override fun <T> transaction(block: StatementExecutor.() -> T): T {
+) : Controller {
+    override fun <T : Any?> transaction(block: Controller.() -> T): T {
         try {
-            conn.autoCommit = false
+            connection.autoCommit = false
             val result = block()
-            conn.commit()
+            connection.commit()
             return result
         } catch (e: Exception) {
-            conn.rollback()
+            connection.rollback()
             throw e
         } finally {
-            conn.autoCommit = true
+            connection.autoCommit = true
         }
     }
 
-    override fun execute(statement: String): Boolean {
-        return conn.createStatement()
-            .execute(statement)
-    }
-
     override fun query(query: String): ResultSet {
-        return conn.createStatement()
+        return connection.createStatement()
             .executeQuery(query)
     }
 
-    override fun <T : Any> queryMapped(query: String, clazz: KClass<T>): MappedResultSet<T> {
+    override fun <T : Any> query(query: String, clazz: KClass<T>): MappedResultSet<T> {
         return MappedResultSet(query(query), clazz, resultTransformer)
     }
 
+    override fun execute(statement: String): Boolean {
+        return connection.createStatement()
+            .execute(statement)
+    }
+
     override fun prepare(statement: String, vararg values: Any): ResultSet? {
-        val preparedStatement = conn.prepareStatement(statement)
+        val preparedStatement = connection.prepareStatement(statement)
 
         for ((index, value) in values.withIndex()) {
             preparedStatement.setObject(index + 1, value)
@@ -57,7 +52,7 @@ internal class ConnectionStatementExecution(
         }
     }
 
-    override fun <T : Any> prepareMapped(statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T> {
+    override fun <T : Any> prepare(statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T> {
         val resultSet = prepare(statement, *values)
             ?: error("No result set was returned from the prepared statement.")
 

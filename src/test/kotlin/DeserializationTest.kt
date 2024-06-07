@@ -4,7 +4,7 @@ import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.SerializationAdapter
-import gg.ingot.iron.sql.executor.queryMapped
+import gg.ingot.iron.sql.controller.queryMapped
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json

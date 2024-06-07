@@ -5,9 +5,8 @@ import gg.ingot.iron.pool.MultiConnectionPool
 import gg.ingot.iron.pool.SingleConnectionPool
 import gg.ingot.iron.representation.DBMS
 import gg.ingot.iron.sql.MappedResultSet
-import gg.ingot.iron.sql.executor.ConnectionStatementExecution
-import gg.ingot.iron.sql.executor.StatementExecutor
-import gg.ingot.iron.sql.executor.SuspendingStatementExecutor
+import gg.ingot.iron.sql.controller.Controller
+import gg.ingot.iron.sql.controller.ControllerImpl
 import gg.ingot.iron.transformer.ResultTransformer
 import gg.ingot.iron.transformer.ValueTransformer
 import kotlinx.coroutines.*
@@ -26,7 +25,7 @@ class Iron(
     private val connectionString: String,
     private val settings: IronSettings = IronSettings(),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO
-) : SuspendingStatementExecutor {
+) {
     private val logger = LoggerFactory.getLogger(Iron::class.java)
 
     /** The connection pool used to manage connections to the database. */
@@ -84,64 +83,12 @@ class Iron(
             .also { pool?.release(connection) }
     }
 
-    override suspend fun <T> transaction(block: StatementExecutor.() -> T): T {
-        val conn = pool?.connection()
-            ?: error("Connection is not open, call connect() before using the connection.")
+    private suspend fun <T : Any?> withController(block: suspend (Controller) -> T): T {
+        val connection = pool?.connection()
+            ?: error(UNOPENED_CONNECTION_MESSAGE)
 
-        return withContext(dispatcher) {
-            ConnectionStatementExecution(conn, resultTransformer)
-                .transaction(block)
-        }.also { pool?.release(conn) }
-    }
-
-    override suspend fun execute(statement: String): Boolean {
-        val conn = pool?.connection()
-            ?: error("Connection is not open, call connect() before using the connection.")
-
-        return withContext(dispatcher) {
-            ConnectionStatementExecution(conn, resultTransformer)
-                .execute(statement)
-        }.also { pool?.release(conn) }
-    }
-
-    override suspend fun query(query: String): ResultSet {
-        val conn = pool?.connection()
-            ?: error("Connection is not open, call connect() before using the connection.")
-
-        return withContext(dispatcher) {
-            ConnectionStatementExecution(conn, resultTransformer)
-                .query(query)
-        }.also { pool?.release(conn) }
-    }
-
-    override suspend fun <T : Any> queryMapped(query: String, clazz: KClass<T>): MappedResultSet<T> {
-        val conn = pool?.connection()
-            ?: error("Connection is not open, call connect() before using the connection.")
-
-        return withContext(dispatcher) {
-            ConnectionStatementExecution(conn, resultTransformer)
-                .queryMapped(query, clazz)
-        }.also { pool?.release(conn) }
-    }
-
-    override suspend fun prepare(statement: String, vararg values: Any): ResultSet? {
-        val conn = pool?.connection()
-            ?: error("Connection is not open, call connect() before using the connection.")
-
-        return withContext(dispatcher) {
-            ConnectionStatementExecution(conn, resultTransformer)
-                .prepare(statement, *values)
-        }.also { pool?.release(conn) }
-    }
-
-    override suspend fun <T : Any> prepareMapped(statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T> {
-        val conn = pool?.connection()
-            ?: error("Connection is not open, call connect() before using the connection.")
-
-        return withContext(dispatcher) {
-            ConnectionStatementExecution(conn, resultTransformer)
-                .prepareMapped(statement, clazz, *values)
-        }.also { pool?.release(conn) }
+        return block(ControllerImpl(connection, resultTransformer))
+            .also { pool?.release(connection) }
     }
 
     /**
@@ -150,5 +97,50 @@ class Iron(
      */
     fun close() {
         pool?.close()
+    }
+
+    suspend fun <T : Any?> transaction(block: Controller.() -> T): T {
+        return withContext(dispatcher) { withController { controller ->
+            controller.transaction(block)
+        } }
+    }
+
+    suspend fun query(statement: String): ResultSet {
+        return withContext(dispatcher) { withController { controller ->
+            controller.query(statement)
+        } }
+    }
+
+    suspend fun <T : Any> queryMapped(statement: String, clazz: KClass<T>): MappedResultSet<T> {
+        return withContext(dispatcher) { withController { controller ->
+            controller.query(statement, clazz)
+        } }
+    }
+
+    suspend inline fun <reified T : Any> queryMapped(statement: String): MappedResultSet<T> = queryMapped(statement, T::class)
+
+    suspend fun execute(statement: String): Boolean {
+        return withContext(dispatcher) { withController { controller ->
+            controller.execute(statement)
+        } }
+    }
+
+    suspend fun prepare(statement: String, vararg values: Any): ResultSet? {
+        return withContext(dispatcher) { withController { controller ->
+            controller.prepare(statement, *values)
+        } }
+    }
+
+    suspend fun <T : Any> prepareMapped(statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T> {
+        return withContext(dispatcher) { withController { controller ->
+            controller.prepare(statement, clazz, *values)
+        } }
+    }
+
+    suspend inline fun <reified T : Any> prepareMapped(statement: String, vararg values: Any) = prepareMapped(statement, T::class, *values)
+
+    companion object {
+        /** Error message to send when a connection is requested but [Iron.connect] has not been called. */
+        private const val UNOPENED_CONNECTION_MESSAGE = "Connection is not open, call connect() before using the connection."
     }
 }
