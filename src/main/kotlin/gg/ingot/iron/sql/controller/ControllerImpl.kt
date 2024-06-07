@@ -41,6 +41,10 @@ internal class ControllerImpl(
     override fun prepare(statement: String, vararg values: Any): ResultSet? {
         val preparedStatement = connection.prepareStatement(statement)
 
+        require(preparedStatement.parameterMetaData.parameterCount == values.size) {
+            "The number of parameters provided does not match the number of parameters in the prepared statement."
+        }
+
         for ((index, value) in values.withIndex()) {
             preparedStatement.setObject(index + 1, value)
         }

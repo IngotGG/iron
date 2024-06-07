@@ -3,6 +3,7 @@ import com.google.gson.Gson
 import gg.ingot.iron.Iron
 import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
+import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.serialization.SerializationAdapter
 import gg.ingot.iron.sql.allValues
 import gg.ingot.iron.sql.controller.prepareMapped
@@ -261,5 +262,44 @@ class DatabaseTest {
         }
 
         assertEquals("test1", name)
+    }
+
+    @Test
+    fun `exploding model`() = runTest {
+        data class TestModel(
+            val firstName: String = "Ingot",
+            val lastName: String = "Team"
+        ) : ExplodingModel
+
+        val model = TestModel()
+
+        val result = connection.transaction {
+            execute("CREATE TABLE test (id INTEGER PRIMARY KEY, firstName TEXT, lastName TEXT);")
+            prepare("INSERT INTO test(firstName, lastName) VALUES (?, ?);", *model.explode())
+
+            prepareMapped<TestModel>("""
+                SELECT firstName, lastName FROM test 
+                  WHERE firstName = ? AND lastName = ? LIMIT 2;
+            """.trimIndent(), *model.explode())
+                .single()
+        }
+
+        assertEquals("Ingot", result.firstName)
+        assertEquals("Team", result.lastName)
+    }
+
+    @Test
+    fun `improper param size`() = runTest {
+        data class TestModel(val a: String = "", val b: String = "") : ExplodingModel
+        val model = TestModel()
+
+        try {
+            connection.transaction {
+                execute("CREATE TABLE test (id INTEGER PRIMARY KEY, a TEXT);")
+                prepare("INSERT INTO test(a) VALUES (?);", *model.explode())
+            }
+        } catch(ex: Exception) {
+            assert(ex is IllegalArgumentException)
+        }
     }
 }
