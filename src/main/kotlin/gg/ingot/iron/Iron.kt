@@ -140,7 +140,7 @@ class Iron(
 
     suspend inline fun <reified T : Any> prepareMapped(@Language("SQL") statement: String, vararg values: Any) = prepareMapped(statement, T::class, *values)
 
-    companion object {
+    internal companion object {
         /** Error message to send when a connection is requested but [Iron.connect] has not been called. */
         private const val UNOPENED_CONNECTION_MESSAGE = "Connection is not open, call connect() before using the connection."
     }
