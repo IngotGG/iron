@@ -94,6 +94,15 @@ inline fun <reified T> ResultSet.getNullable(column: String): T? {
         return getArray(column)?.array as? T
     }
 
+    // enum checks
+    if(Enum::class.java.isAssignableFrom(T::class.java)) {
+        val value = getString(column)
+            ?: return null
+
+        val clazz = T::class.java as Class<out Enum<*>>
+        return java.lang.Enum.valueOf(clazz, value) as? T
+    }
+
     return when (T::class) {
         Int::class -> getInt(column)
         Double::class -> getDouble(column)

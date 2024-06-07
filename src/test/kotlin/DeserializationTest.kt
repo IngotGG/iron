@@ -3,11 +3,12 @@ import gg.ingot.iron.Iron
 import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.serialization.ColumnDeserializer
-import gg.ingot.iron.serialization.EnumColumnDeserializer
 import gg.ingot.iron.serialization.SerializationAdapter
+import gg.ingot.iron.sql.singleValue
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.junit.jupiter.api.Assertions.assertTrue
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -124,5 +125,20 @@ class DeserializationTest {
         } catch(ex: Exception) {
             assert(ex is IllegalArgumentException)
         }
+    }
+
+    @Test
+    fun `enum deserializer single`() = runTest {
+        val connection = Iron("jdbc:sqlite::memory:").connect()
+
+        val enumValue = connection.transaction {
+            execute("CREATE TABLE example(id INTEGER PRIMARY KEY, example TEXT)")
+            execute("INSERT INTO example(example) VALUES ('EXAMPLE')")
+
+            query("SELECT example FROM example LIMIT 1;")
+                .singleValue<TestEnum>()
+        }
+
+        assertEquals(enumValue, TestEnum.EXAMPLE)
     }
 }
