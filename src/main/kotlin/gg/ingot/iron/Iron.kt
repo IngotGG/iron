@@ -10,6 +10,7 @@ import gg.ingot.iron.sql.controller.ControllerImpl
 import gg.ingot.iron.transformer.ResultTransformer
 import gg.ingot.iron.transformer.ValueTransformer
 import kotlinx.coroutines.*
+import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.sql.ResultSet
@@ -105,19 +106,19 @@ class Iron(
         } }
     }
 
-    suspend fun query(statement: String): ResultSet {
+    suspend fun query(@Language("SQL") statement: String): ResultSet {
         return withContext(dispatcher) { withController { controller ->
             controller.query(statement)
         } }
     }
 
-    suspend fun <T : Any> queryMapped(statement: String, clazz: KClass<T>): MappedResultSet<T> {
+    suspend fun <T : Any> queryMapped(@Language("SQL") statement: String, clazz: KClass<T>): MappedResultSet<T> {
         return withContext(dispatcher) { withController { controller ->
             controller.query(statement, clazz)
         } }
     }
 
-    suspend inline fun <reified T : Any> queryMapped(statement: String): MappedResultSet<T> = queryMapped(statement, T::class)
+    suspend inline fun <reified T : Any> queryMapped(@Language("SQL") statement: String): MappedResultSet<T> = queryMapped(statement, T::class)
 
     suspend fun execute(statement: String): Boolean {
         return withContext(dispatcher) { withController { controller ->
@@ -125,19 +126,19 @@ class Iron(
         } }
     }
 
-    suspend fun prepare(statement: String, vararg values: Any): ResultSet? {
+    suspend fun prepare(@Language("SQL") statement: String, vararg values: Any): ResultSet? {
         return withContext(dispatcher) { withController { controller ->
             controller.prepare(statement, *values)
         } }
     }
 
-    suspend fun <T : Any> prepareMapped(statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T> {
+    suspend fun <T : Any> prepareMapped(@Language("SQL") statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T> {
         return withContext(dispatcher) { withController { controller ->
             controller.prepare(statement, clazz, *values)
         } }
     }
 
-    suspend inline fun <reified T : Any> prepareMapped(statement: String, vararg values: Any) = prepareMapped(statement, T::class, *values)
+    suspend inline fun <reified T : Any> prepareMapped(@Language("SQL") statement: String, vararg values: Any) = prepareMapped(statement, T::class, *values)
 
     companion object {
         /** Error message to send when a connection is requested but [Iron.connect] has not been called. */
