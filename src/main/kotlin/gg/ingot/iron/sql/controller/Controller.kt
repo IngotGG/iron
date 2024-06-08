@@ -15,7 +15,7 @@ sealed interface Controller {
      * Starts a transaction on the connection.
      * @since 1.0
      */
-    fun <T : Any?> transaction(block: Controller.() -> T): T
+    fun <T : Any?> transaction(block: Controller.() -> T): Result<T>
 
     /**
      * Executes a raw query on the database and returns the result set.

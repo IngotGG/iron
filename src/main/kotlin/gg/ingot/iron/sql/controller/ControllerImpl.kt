@@ -15,15 +15,17 @@ internal class ControllerImpl(
     private val connection: Connection,
     private val resultTransformer: ResultTransformer
 ) : Controller {
-    override fun <T : Any?> transaction(block: Controller.() -> T): T {
-        try {
+    override fun <T : Any?> transaction(block: Controller.() -> T): Result<T> {
+        return try {
             connection.autoCommit = false
             val result = block()
             connection.commit()
-            return result
+
+            Result.success(result)
         } catch (e: Exception) {
             connection.rollback()
-            throw e
+
+            Result.failure(e)
         } finally {
             connection.autoCommit = true
         }

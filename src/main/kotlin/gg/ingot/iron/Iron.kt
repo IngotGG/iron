@@ -84,12 +84,19 @@ class Iron(
             .also { pool?.release(connection) }
     }
 
+    /**
+     * Use the controller to perform operations on the database.
+     * Automatically switches coroutine context to [dispatcher].
+     * @param block The closure to execute with the controller.
+     * @since 1.3
+     */
     private suspend fun <T : Any?> withController(block: suspend (Controller) -> T): T {
         val connection = pool?.connection()
             ?: error(UNOPENED_CONNECTION_MESSAGE)
 
-        return block(ControllerImpl(connection, resultTransformer))
-            .also { pool?.release(connection) }
+        return withContext(dispatcher) {
+            block(ControllerImpl(connection, resultTransformer))
+        }.also { pool?.release(connection) }
     }
 
     /**
@@ -104,10 +111,10 @@ class Iron(
      * Starts a transaction on the connection.
      * @since 1.0
      */
-    suspend fun <T : Any?> transaction(block: Controller.() -> T): T {
-        return withContext(dispatcher) { withController { controller ->
-            controller.transaction(block)
-        } }
+    suspend fun <T : Any?> transaction(block: Controller.() -> T): Result<T> {
+        return withController {
+            it.transaction(block)
+        }
     }
 
     /**
@@ -119,9 +126,9 @@ class Iron(
      * @since 1.0
      */
     suspend fun query(@Language("SQL") statement: String): ResultSet {
-        return withContext(dispatcher) { withController { controller ->
-            controller.query(statement)
-        } }
+        return withController {
+            it.query(statement)
+        }
     }
 
     /**
@@ -134,9 +141,9 @@ class Iron(
      * @since 1.0
      */
     suspend fun <T : Any> queryMapped(@Language("SQL") statement: String, clazz: KClass<T>): MappedResultSet<T> {
-        return withContext(dispatcher) { withController { controller ->
-            controller.query(statement, clazz)
-        } }
+        return withController {
+            it.query(statement, clazz)
+        }
     }
 
     /**
@@ -155,9 +162,9 @@ class Iron(
      * @since 1.0
      */
     suspend fun execute(statement: String): Boolean {
-        return withContext(dispatcher) { withController { controller ->
-            controller.execute(statement)
-        } }
+        return withController {
+            it.execute(statement)
+        }
     }
 
     /**
@@ -169,9 +176,9 @@ class Iron(
      * @since 1.0
      */
     suspend fun prepare(@Language("SQL") statement: String, vararg values: Any): ResultSet? {
-        return withContext(dispatcher) { withController { controller ->
-            controller.prepare(statement, *values)
-        } }
+        return withController {
+            it.prepare(statement, *values)
+        }
     }
 
     /**
@@ -184,9 +191,9 @@ class Iron(
      * @return A result set mapped to the model.
      */
     suspend fun <T : Any> prepareMapped(@Language("SQL") statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T> {
-        return withContext(dispatcher) { withController { controller ->
-            controller.prepare(statement, clazz, *values)
-        } }
+        return withController {
+            it.prepare(statement, clazz, *values)
+        }
     }
 
     /**
