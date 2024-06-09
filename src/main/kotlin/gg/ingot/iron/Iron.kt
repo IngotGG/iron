@@ -162,7 +162,7 @@ class Iron(
      * @return If the first result is a ResultSet object; false if it is an update count or there are no results
      * @since 1.0
      */
-    suspend fun execute(statement: String): Boolean {
+    suspend fun execute(@Language("SQL") statement: String): Boolean {
         return withController {
             it.execute(statement)
         }
