@@ -16,5 +16,10 @@ internal data class EntityField(
     val columnName: String,
     val nullable: Boolean,
     val isJson: Boolean,
+
+    val isArray: Boolean,
+    val isCollection: Boolean,
+    val isEnum: Boolean,
+
     val deserializer: ColumnDeserializer<*, *>?
 )

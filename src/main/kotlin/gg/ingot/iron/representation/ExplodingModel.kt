@@ -1,7 +1,7 @@
 package gg.ingot.iron.representation
 
-import java.lang.reflect.Field
 import kotlin.reflect.KClass
+import kotlin.reflect.KProperty
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaField
@@ -18,20 +18,28 @@ interface ExplodingModel {
      * @return An array of the fields of the model.
      */
     fun explode(): Array<Any> {
+        val fields = getFields()
+
+        return Array(fields.size) {
+            fields[it].javaField
+                ?.get(this)
+                ?: error("Field ${fields[it].name} has no backing field.")
+        }
+    }
+
+    private fun getFields(): List<KProperty<*>> {
         val kClass = this::class
 
-        val fields = cachedFields.getOrPut(kClass) {
+        return cachedFields.getOrPut(kClass) {
             kClass.declaredMemberProperties
                 .filterNot { it.javaField?.isSynthetic == true }
                 .onEach { it.isAccessible = true }
-                .map { it.javaField ?: error("${it.name} has no backing field.") }
+                .map { it }
         }
-
-        return Array(fields.size) { fields[it].get(this) }
     }
 
     companion object {
         /** A cache of fields for each model. */
-        internal val cachedFields = HashMap<KClass<*>, List<Field>>()
+        internal val cachedFields = HashMap<KClass<*>, List<KProperty<*>>>()
     }
 }

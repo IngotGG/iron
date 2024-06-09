@@ -2,6 +2,9 @@ package gg.ingot.iron.sql.controller
 
 import gg.ingot.iron.sql.MappedResultSet
 import gg.ingot.iron.transformer.ResultTransformer
+import gg.ingot.iron.transformer.isArray
+import gg.ingot.iron.transformer.isCollection
+import gg.ingot.iron.transformer.isEnum
 import java.sql.Connection
 import java.sql.ResultSet
 import kotlin.reflect.KClass
@@ -53,7 +56,20 @@ internal class ControllerImpl(
         }
 
         for ((index, value) in values.withIndex()) {
-            preparedStatement.setObject(index + 1, value)
+            val kClass = value::class
+            val paramIndex = index + 1
+
+            // parse enum values to db
+            if(isEnum(kClass)) {
+                when {
+                    isArray(kClass) -> preparedStatement.setObject(paramIndex, (value as Array<*>).map { (it as Enum<*>).name }.toTypedArray())
+                    isCollection(kClass) -> preparedStatement.setObject(paramIndex, (value as Collection<*>).map { (it as Enum<*>).name }.toTypedArray())
+                    else -> preparedStatement.setObject(paramIndex, (value as Enum<*>).name)
+                }
+                continue
+            }
+
+            preparedStatement.setObject(paramIndex, value)
         }
 
         return if (preparedStatement.execute()) {

@@ -4,6 +4,7 @@ import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.SerializationAdapter
+import gg.ingot.iron.sql.controller.prepareMapped
 import gg.ingot.iron.sql.singleValue
 import gg.ingot.iron.sql.controller.queryMapped
 import kotlinx.coroutines.test.runTest
@@ -70,7 +71,7 @@ class DeserializationTest {
 
     data class CustomType(val str: String)
     object CustomTypeDeserializer : ColumnDeserializer<String, CustomType> {
-        override fun deserialize(value: String): CustomType = CustomType(value)
+        override fun fromDatabaseValue(value: String): CustomType = CustomType(value)
     }
 
     @Test

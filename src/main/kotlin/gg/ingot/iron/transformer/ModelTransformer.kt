@@ -4,9 +4,8 @@ import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.repository.ModelRepository
 import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.representation.EntityModel
-import gg.ingot.iron.serialization.ColumnDeserializer
+import gg.ingot.iron.serialization.*
 import gg.ingot.iron.serialization.EmptyDeserializer
-import gg.ingot.iron.serialization.EnumColumnDeserializer
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.createInstance
@@ -37,12 +36,15 @@ internal object ModelTransformer {
                 }
 
                 fields.add(EntityField(
-                    field,
-                    field.javaField ?: error("Field ${field.name} has no backing field."),
-                    retrieveName(field, annotation),
-                    field.returnType.isMarkedNullable,
-                    annotation?.json ?: false,
-                    retrieveDeserializer(field, annotation)
+                    field = field,
+                    javaField = field.javaField ?: error("Field ${field.name} has no backing field."),
+                    columnName = retrieveName(field, annotation),
+                    nullable = field.returnType.isMarkedNullable,
+                    isJson = annotation?.json ?: false,
+                    isArray = isArray(field),
+                    isCollection = isCollection(field),
+                    isEnum = isEnum(field),
+                    deserializer = retrieveDeserializer(field, annotation)
                 ))
             }
 
@@ -81,16 +83,11 @@ internal object ModelTransformer {
         field: KProperty<*>,
         annotation: Column?
     ): ColumnDeserializer<*, *>? {
-        if(annotation?.deserializer == EmptyDeserializer::class) {
+        if (annotation == null || annotation.deserializer == EmptyDeserializer::class) {
             return null
         }
 
-        // make an enum deserializer
-        val classifier = field.returnType.classifier
-        if(classifier is KClass<*> && classifier.java.isEnum) {
-            return EnumColumnDeserializer(classifier.java as Class<out Enum<*>>)
-        }
-
-        return annotation?.deserializer?.objectInstance ?: annotation?.deserializer?.createInstance()
+        return annotation.deserializer.objectInstance
+            ?: annotation.deserializer.createInstance()
     }
 }

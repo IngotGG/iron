@@ -1,7 +1,7 @@
 package gg.ingot.iron.serialization
 
 /**
- * Adapt column fields to a provided type.
+ * Adapt column fields to a provided type from the database.
  * @param From The type to adapt from.
  * @param To The type to adapt to.
  * @author DebitCardz
@@ -13,25 +13,10 @@ interface ColumnDeserializer <From, To> {
      * @param value The value to deserialize.
      * @return The deserialized value.
      */
-    fun deserialize(value: From): To
-}
-
-/**
- * Deserialize an enum from a string, will automatically retrieve the
- * enum type from the parameter field.
- * @param clazz The class of the enum to deserialize.
- *  @author DebitCardz
- *  @since 1.0.3
- */
-internal class EnumColumnDeserializer(
-    private val clazz: Class<out Enum<*>>
-) : ColumnDeserializer<String, Enum<*>> {
-    override fun deserialize(value: String): Enum<*> {
-        return java.lang.Enum.valueOf(clazz, value)
-    }
+    fun fromDatabaseValue(value: From): To
 }
 
 // Internally used to denote that a column should not be deserialized.
 internal object EmptyDeserializer : ColumnDeserializer<Nothing, Nothing> {
-    override fun deserialize(value: Nothing): Nothing = error("This deserializer should not be used")
+    override fun fromDatabaseValue(value: Nothing): Nothing = error("This deserializer should not be used")
 }
