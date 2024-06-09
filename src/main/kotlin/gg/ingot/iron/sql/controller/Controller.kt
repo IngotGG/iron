@@ -1,6 +1,7 @@
 package gg.ingot.iron.sql.controller
 
 import gg.ingot.iron.sql.MappedResultSet
+import gg.ingot.iron.sql.SqlParameters
 import org.intellij.lang.annotations.Language
 import java.sql.ResultSet
 import kotlin.reflect.KClass
@@ -49,6 +50,26 @@ sealed interface Controller {
     fun prepare(@Language("SQL") statement: String, vararg values: Any): ResultSet?
 
     /**
+     * Prepares a statement on the database. This method should be preferred over [execute] for security reasons.
+     * @param statement The statement to prepare on the database. This statement should contain named placeholders for
+     * the values, any values passed in through this parameter is not sanitized.
+     * @param values The values to bind to the statement.
+     * @return The prepared statement.
+     * @since 1.3
+     */
+    fun prepare(@Language("SQL") statement: String, values: SqlParameters): ResultSet? {
+        val insertedValues = mutableListOf<Any>()
+
+        val parsedStatement = SQL_PLACEHOLDER_REGEX.replace(statement) { matchResult ->
+            val key = matchResult.groupValues[1]
+            insertedValues.add(values[key] ?: error("No value found for placeholder $key"))
+            "?"
+        }
+
+        return prepare(parsedStatement, *insertedValues.toTypedArray())
+    }
+
+    /**
      * Prepares a statement on the database and maps the result set to a model. This method should be preferred over
      * [execute] for security reasons.
      * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
@@ -60,6 +81,17 @@ sealed interface Controller {
     fun <T : Any> prepare(@Language("SQL") statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T>
 
     /**
+     * Prepares a statement on the database and maps the result set to a model. This method should be preferred over
+     * [execute] for security reasons.
+     * @param statement The statement to prepare on the database. This statement should contain named placeholders for
+     * the values, any values passed in through this parameter is not sanitized.
+     * @param clazz The class to map the result set to.
+     * @param values The values to bind to the statement.
+     * @return A result set mapped to the model.
+     */
+    fun <T : Any> prepare(@Language("SQL") statement: String, clazz: KClass<T>, values: SqlParameters): MappedResultSet<T>
+
+    /**
      * Executes a raw statement on the database.
      *
      * **Note:** This method does no validation on the statement, it is up to the user to ensure the statement is safe.
@@ -68,6 +100,11 @@ sealed interface Controller {
      * @since 1.0
      */
     fun execute(@Language("SQL") statement: String): Boolean
+
+    private companion object {
+        /** The regex for SQL placeholders. */
+        val SQL_PLACEHOLDER_REGEX = """:(\w+)""".toRegex()
+    }
 }
 
 /**

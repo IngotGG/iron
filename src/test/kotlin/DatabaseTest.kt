@@ -10,6 +10,7 @@ import gg.ingot.iron.sql.controller.prepareMapped
 import gg.ingot.iron.sql.controller.queryMapped
 import gg.ingot.iron.sql.get
 import gg.ingot.iron.sql.singleValue
+import gg.ingot.iron.sql.sqlParams
 import java.sql.SQLException
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,6 +18,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class DatabaseTest {
     private val connection = Iron("jdbc:sqlite::memory:")
@@ -300,6 +302,42 @@ class DatabaseTest {
             }
         } catch(ex: Exception) {
             assert(ex is IllegalArgumentException)
+        }
+    }
+
+    @Test
+    fun `named placeholder`() = runTest {
+        val out = connection.transaction {
+            execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT, other_name TEXT);")
+            prepare("INSERT INTO test(name, other_name) VALUES (:name, :name);", sqlParams(
+                "name" to "test",
+            ))
+
+            query("SELECT name, other_name FROM test;")
+        }.getOrThrow()
+        out.next()
+
+        connection.prepare("SELECT name FROM test WHERE name = :name;", sqlParams("name" to "test"))
+            ?.singleValue<String>()
+            ?.let { assertEquals("test", it) }
+
+        assertEquals("test", out.getString("name"))
+        assertEquals("test", out.getString("other_name"))
+    }
+
+    @Test
+    fun `model named placeholder`() = runTest {
+        data class TestModel(val name: String) : ExplodingModel
+        val model = TestModel("test")
+
+        connection.transaction {
+            execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT);")
+            prepare("INSERT INTO test(name) VALUES (:name);", model.toSqlParams())
+
+            query("SELECT name FROM test;")
+        }.getOrThrow().let {
+            it.next()
+            assertEquals("test", it.getString("name"))
         }
     }
 }

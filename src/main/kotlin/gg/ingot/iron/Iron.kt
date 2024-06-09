@@ -5,6 +5,7 @@ import gg.ingot.iron.pool.MultiConnectionPool
 import gg.ingot.iron.pool.SingleConnectionPool
 import gg.ingot.iron.representation.DBMS
 import gg.ingot.iron.sql.MappedResultSet
+import gg.ingot.iron.sql.SqlParameters
 import gg.ingot.iron.sql.controller.Controller
 import gg.ingot.iron.sql.controller.ControllerImpl
 import gg.ingot.iron.transformer.ResultTransformer
@@ -182,6 +183,19 @@ class Iron(
     }
 
     /**
+     * Prepares a statement on the database. This method should be preferred over [execute] for security reasons.
+     * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
+     * the values, any values passed in through this parameter is not sanitized.
+     * @param values The values to bind to the statement.
+     * @return The prepared statement.
+     */
+    suspend fun prepare(@Language("SQL") statement: String, values: SqlParameters): ResultSet? {
+        return withController {
+            it.prepare(statement, values)
+        }
+    }
+
+    /**
      * Prepares a statement on the database and maps the result set to a model. This method should be preferred over
      * [execute] for security reasons.
      * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
@@ -197,11 +211,33 @@ class Iron(
     }
 
     /**
+     * Prepares a statement on the database and maps the result set to a model. This method should be preferred over
+     * [execute] for security reasons.
+     * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
+     * the values, any values passed in through this parameter is not sanitized.
+     * @param clazz The class to map the result set to.
+     * @param values The values to bind to the statement.
+     * @return A result set mapped to the model.
+     */
+    suspend fun <T : Any> prepareMapped(@Language("SQL") statement: String, clazz: KClass<T>, values: SqlParameters): MappedResultSet<T> {
+        return withController {
+            it.prepare(statement, clazz, values)
+        }
+    }
+
+    /**
      * Helper method allowing for inline usage of the prepare method.
      * @see prepare
      * @since 1.0
      */
     suspend inline fun <reified T : Any> prepareMapped(@Language("SQL") statement: String, vararg values: Any) = prepareMapped(statement, T::class, *values)
+
+    /**
+     * Helper method allowing for inline usage of the prepare method.
+     * @see prepare
+     * @since 1.0
+     */
+    suspend inline fun <reified T : Any> prepareMapped(@Language("SQL") statement: String, values: SqlParameters) = prepareMapped(statement, T::class, values)
 
     internal companion object {
         /** Error message to send when a connection is requested but [Iron.connect] has not been called. */

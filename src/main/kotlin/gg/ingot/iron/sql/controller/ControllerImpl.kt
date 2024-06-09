@@ -1,6 +1,7 @@
 package gg.ingot.iron.sql.controller
 
 import gg.ingot.iron.sql.MappedResultSet
+import gg.ingot.iron.sql.SqlParameters
 import gg.ingot.iron.transformer.ResultTransformer
 import gg.ingot.iron.transformer.isArray
 import gg.ingot.iron.transformer.isCollection
@@ -81,6 +82,13 @@ internal class ControllerImpl(
 
     override fun <T : Any> prepare(statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T> {
         val resultSet = prepare(statement, *values)
+            ?: error("No result set was returned from the prepared statement.")
+
+        return MappedResultSet(resultSet, clazz, resultTransformer)
+    }
+
+    override fun <T : Any> prepare(statement: String, clazz: KClass<T>, values: SqlParameters): MappedResultSet<T> {
+        val resultSet = prepare(statement, values)
             ?: error("No result set was returned from the prepared statement.")
 
         return MappedResultSet(resultSet, clazz, resultTransformer)

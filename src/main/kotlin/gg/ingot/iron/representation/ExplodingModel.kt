@@ -1,5 +1,6 @@
 package gg.ingot.iron.representation
 
+import gg.ingot.iron.sql.SqlParameters
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.declaredMemberProperties
@@ -24,6 +25,19 @@ interface ExplodingModel {
             fields[it].javaField
                 ?.get(this)
                 ?: error("Field ${fields[it].name} has no backing field.")
+        }
+    }
+
+    /**
+     * Converts the model into a map of its fields.
+     * @return A map of the fields of the model.
+     */
+    fun toSqlParams(): SqlParameters {
+        val fields = getFields()
+
+        return fields.associate {
+            it.name to (it.javaField?.get(this)
+                ?: error("Field ${it.name} has no backing field."))
         }
     }
 
