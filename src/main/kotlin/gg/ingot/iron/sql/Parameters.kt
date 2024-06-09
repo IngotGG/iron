@@ -3,6 +3,16 @@ package gg.ingot.iron.sql
 import gg.ingot.iron.representation.ExplodingModel
 
 /**
+ * Creates an array of parameters for a SQL query.
+ * Helper function to make more concise prepared statements.
+ * @param values The values to include in the array.
+ * @return The array of parameters.
+ */
+fun sqlParams(vararg values: Any): Array<out Any> {
+    return values
+}
+
+/**
  * Creates a map of parameters for a SQL query.
  * @param params The parameters to include in the map.
  * @return The map of parameters.
