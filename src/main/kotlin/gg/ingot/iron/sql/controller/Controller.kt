@@ -103,7 +103,7 @@ sealed interface Controller {
 
     private companion object {
         /** The regex for SQL placeholders. */
-        val SQL_PLACEHOLDER_REGEX = """:(\w+)""".toRegex()
+        val SQL_PLACEHOLDER_REGEX = """:(\w+)(?=(?:[^'"]|'[^']*'|"[^"]*")*$)""".toRegex()
     }
 }
 
