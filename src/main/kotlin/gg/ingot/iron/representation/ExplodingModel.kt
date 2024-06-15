@@ -1,6 +1,7 @@
 package gg.ingot.iron.representation
 
 import gg.ingot.iron.annotations.Column
+import gg.ingot.iron.annotations.retrieveSerializer
 import gg.ingot.iron.serialization.EmptySerializer
 import gg.ingot.iron.sql.SqlParameters
 import gg.ingot.iron.sql.jsonField
@@ -53,9 +54,13 @@ interface ExplodingModel {
             ?: error("Field ${field.name} has no backing field.")
 
         if(annotation != null) {
-            when {
-                annotation.serializer != EmptySerializer::class -> return serializedField(value, annotation.serializer)
-                annotation.json -> return jsonField(value)
+            val serializer = annotation.retrieveSerializer()
+            if(serializer != null) {
+                return serializedField(value, annotation.serializer)
+            }
+
+            if(annotation.json) {
+                return jsonField(value)
             }
         }
 

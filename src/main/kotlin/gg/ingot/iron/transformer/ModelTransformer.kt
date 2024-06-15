@@ -1,6 +1,7 @@
 package gg.ingot.iron.transformer
 
 import gg.ingot.iron.annotations.Column
+import gg.ingot.iron.annotations.retrieveDeserializer
 import gg.ingot.iron.repository.ModelRepository
 import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.representation.EntityModel
@@ -83,11 +84,6 @@ internal object ModelTransformer {
         field: KProperty<*>,
         annotation: Column?
     ): ColumnDeserializer<*, *>? {
-        if (annotation == null || annotation.deserializer == EmptyDeserializer::class) {
-            return null
-        }
-
-        return annotation.deserializer.objectInstance
-            ?: annotation.deserializer.createInstance()
+        return annotation?.retrieveDeserializer()
     }
 }
