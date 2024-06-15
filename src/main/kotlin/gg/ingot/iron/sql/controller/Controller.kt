@@ -62,8 +62,15 @@ sealed interface Controller {
 
         val parsedStatement = SQL_PLACEHOLDER_REGEX.replace(statement) { matchResult ->
             val key = matchResult.groupValues[1]
-            insertedValues.add(values[key] ?: error("No value found for placeholder $key"))
-            "?"
+
+            val grouped = matchResult.groupValues[0]
+            // most likely cast statement, let's ignore.
+            if(grouped.startsWith("::")) {
+                grouped
+            } else {
+                insertedValues.add(values[key] ?: error("No value found for placeholder $key"))
+                "?"
+            }
         }
 
         return prepare(parsedStatement, *insertedValues.toTypedArray())
@@ -103,7 +110,7 @@ sealed interface Controller {
 
     private companion object {
         /** The regex for SQL placeholders. */
-        val SQL_PLACEHOLDER_REGEX = """:(\w+)(?=(?:[^'"]|'[^']*'|"[^"]*")*$)""".toRegex()
+        val SQL_PLACEHOLDER_REGEX = """::?(\w+)(?=(?:[^'"]|'[^']*'|"[^"]*")*${'$'})""".toRegex()
     }
 }
 
