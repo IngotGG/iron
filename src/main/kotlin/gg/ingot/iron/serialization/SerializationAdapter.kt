@@ -27,7 +27,7 @@ interface SerializationAdapter {
     class Kotlinx(private val json: kotlinx.serialization.json.Json) : SerializationAdapter {
         override fun deserialize(obj: Any, clazz: Class<*>): Any {
             val serializer = json.serializersModule.serializerOrNull(clazz)
-                ?: error("No se rializer found for type: ${clazz.simpleName}")
+                ?: error("No serializer found for type: ${clazz.simpleName}")
             return json.decodeFromString(serializer, obj.toString())
         }
 
