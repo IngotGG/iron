@@ -55,7 +55,7 @@ internal class ControllerImpl(
             .execute(statement)
     }
 
-    override fun prepare(statement: String, vararg values: Any): ResultSet? {
+    override fun prepare(statement: String, vararg values: Any?): ResultSet? {
         val preparedStatement = connection.prepareStatement(statement)
 
         require(preparedStatement.parameterMetaData.parameterCount == values.size) {
@@ -63,20 +63,38 @@ internal class ControllerImpl(
         }
 
         for ((index, value) in values.withIndex()) {
-            val kClass = value::class
             val paramIndex = index + 1
 
+            if(value == null) {
+                preparedStatement.setObject(paramIndex,null)
+                continue
+            }
+
+            val kClass = value::class
+
             if(value is ColumnSerializedField) {
+                val innerValue = value.value
+                if(innerValue == null) {
+                    preparedStatement.setObject(paramIndex, null)
+                    continue
+                }
+
                 val serializer = value.serializer.objectInstance
                     ?: value.serializer.createInstance()
                 serializer as ColumnSerializer<Any, *>
 
-                preparedStatement.setObject(paramIndex, serializer.toDatabaseValue(value.value))
+                preparedStatement.setObject(paramIndex, serializer.toDatabaseValue(innerValue))
                 continue
             } else if (value is ColumnJsonField) {
                 requireNotNull(serializationAdapter) { "A serialization adapter must be provided to serialize JSON values." }
 
-                preparedStatement.setObject(paramIndex, serializationAdapter.serialize(value.value, value.value::class.java))
+                val innerJson = value.value
+                if(innerJson == null) {
+                    preparedStatement.setObject(paramIndex, null)
+                    continue
+                }
+
+                preparedStatement.setObject(paramIndex, serializationAdapter.serialize(innerJson, value.value::class.java))
                 continue
             }
 
@@ -100,7 +118,7 @@ internal class ControllerImpl(
         }
     }
 
-    override fun <T : Any> prepare(statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T> {
+    override fun <T : Any> prepare(statement: String, clazz: KClass<T>, vararg values: Any?): MappedResultSet<T> {
         val resultSet = prepare(statement, *values)
             ?: error("No result set was returned from the prepared statement.")
 

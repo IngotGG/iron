@@ -47,7 +47,7 @@ sealed interface Controller {
      * @return The prepared statement.
      * @since 1.0
      */
-    fun prepare(@Language("SQL") statement: String, vararg values: Any): ResultSet?
+    fun prepare(@Language("SQL") statement: String, vararg values: Any?): ResultSet?
 
     /**
      * Prepares a statement on the database. This method should be preferred over [execute] for security reasons.
@@ -78,7 +78,7 @@ sealed interface Controller {
      * @param values The values to bind to the statement.
      * @return A result set mapped to the model.
      */
-    fun <T : Any> prepare(@Language("SQL") statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T>
+    fun <T : Any> prepare(@Language("SQL") statement: String, clazz: KClass<T>, vararg values: Any?): MappedResultSet<T>
 
     /**
      * Prepares a statement on the database and maps the result set to a model. This method should be preferred over
