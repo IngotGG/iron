@@ -50,10 +50,6 @@ internal class ResultTransformer(
                 value
             }
 
-            println(fields.toTypedArray().contentDeepToString())
-
-
-
             return fullConstructor.call(*fields.toTypedArray())
         } else {
             error("No empty or full constructor found for model: $clazz")
