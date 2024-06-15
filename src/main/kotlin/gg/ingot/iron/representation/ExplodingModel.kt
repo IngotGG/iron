@@ -2,7 +2,6 @@ package gg.ingot.iron.representation
 
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.annotations.retrieveSerializer
-import gg.ingot.iron.serialization.EmptySerializer
 import gg.ingot.iron.sql.SqlParameters
 import gg.ingot.iron.sql.jsonField
 import gg.ingot.iron.sql.serializedField
@@ -10,6 +9,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaField
 
@@ -26,6 +26,10 @@ interface ExplodingModel {
      */
     fun explode(): Array<Any> {
         val fields = getFields()
+
+        fields.forEach {
+            println(it.name)
+        }
 
         return Array(fields.size) { getFieldValue(fields[it]) }
     }
@@ -75,9 +79,14 @@ interface ExplodingModel {
         val kClass = this::class
 
         return cachedFields.getOrPut(kClass) {
+            val params = kClass.primaryConstructor
+                ?.parameters
+                ?: error("Model ${kClass.simpleName} has no primary constructor.")
+
             kClass.declaredMemberProperties
                 .filterNot { it.javaField?.isSynthetic == true }
                 .onEach { it.isAccessible = true }
+                .sortedBy { params.indexOfFirst { param -> param.name == it.name } }
                 .map { it }
         }
     }
