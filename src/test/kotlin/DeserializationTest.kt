@@ -3,17 +3,14 @@ import gg.ingot.iron.Iron
 import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.annotations.Model
-import gg.ingot.iron.annotations.Variable
 import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.SerializationAdapter
-import gg.ingot.iron.sql.controller.prepareMapped
 import gg.ingot.iron.sql.singleValue
 import gg.ingot.iron.sql.controller.queryMapped
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.junit.jupiter.api.Assertions.assertTrue
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -159,7 +156,7 @@ class DeserializationTest {
         @Model
         data class FakeModel(
             val id: Int,
-            @Column(json = true) @Variable(json = true)
+            @Column(json = true)
             val json: JsonObj
         ) : ExplodingModel
 

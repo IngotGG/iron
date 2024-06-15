@@ -1,15 +1,12 @@
 package gg.ingot.iron.representation
 
-import gg.ingot.iron.annotations.Variable
-import gg.ingot.iron.serialization.ColumnSerializer
+import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.serialization.EmptySerializer
 import gg.ingot.iron.sql.SqlParameters
 import gg.ingot.iron.sql.jsonField
 import gg.ingot.iron.sql.serializedField
-import sun.reflect.misc.FieldUtil.getFields
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
-import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.jvm.isAccessible
@@ -51,7 +48,7 @@ interface ExplodingModel {
      * @throws IllegalArgumentException If the field has no backing field.
      */
     private fun getFieldValue(field: KProperty<*>): Any {
-        val annotation = field.findAnnotation<Variable>()
+        val annotation = field.findAnnotation<Column>()
         val value = field.javaField?.get(this)
             ?: error("Field ${field.name} has no backing field.")
 
