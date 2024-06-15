@@ -13,6 +13,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.declaredMemberProperties
+import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.javaField
 
 /**
@@ -35,7 +36,12 @@ internal class ModelTransformer(
 
             val modelAnnotation = clazz.annotations.find { it is Model } as Model?
 
-            for (field in clazz.declaredMemberProperties) {
+            val params = clazz.primaryConstructor
+                ?.parameters
+                ?: error("Model ${clazz.simpleName} has no primary constructor.")
+            val sortedProperties = clazz.declaredMemberProperties.sortedBy { params.indexOfFirst { param -> param.name == it.name } }
+
+            for(field in sortedProperties) {
                 val annotation = field.annotations.find { it is Column } as Column?
 
                 if (annotation != null && annotation.ignore || field.javaField?.isSynthetic == true) {

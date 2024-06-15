@@ -3,6 +3,7 @@ package gg.ingot.iron.transformer
 import gg.ingot.iron.Iron
 import java.sql.ResultSet
 import kotlin.reflect.KClass
+import kotlin.reflect.full.callSuspendBy
 import kotlin.reflect.jvm.isAccessible
 
 /**
@@ -48,6 +49,10 @@ internal class ResultTransformer(
 
                 value
             }
+
+            println(fields.toTypedArray().contentDeepToString())
+
+
 
             return fullConstructor.call(*fields.toTypedArray())
         } else {
