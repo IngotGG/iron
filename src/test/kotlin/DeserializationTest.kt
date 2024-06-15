@@ -172,7 +172,6 @@ class DeserializationTest {
         val res = connection.query("SELECT * FROM test;")
         assertNotNull(res)
         res.next()
-        println(res.getObject(2))
 
         val mapped = connection.queryMapped<FakeModel>("SELECT * FROM test LIMIT 1;")
             .single()
