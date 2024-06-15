@@ -27,10 +27,6 @@ interface ExplodingModel {
     fun explode(): Array<Any> {
         val fields = getFields()
 
-        fields.forEach {
-            println(it.name)
-        }
-
         return Array(fields.size) { getFieldValue(fields[it]) }
     }
 
