@@ -1,5 +1,11 @@
 package gg.ingot.iron.sql.controller
 
+import gg.ingot.iron.annotations.Variable
+import gg.ingot.iron.serialization.ColumnSerializer
+import gg.ingot.iron.serialization.EmptySerializer
+import gg.ingot.iron.serialization.SerializationAdapter
+import gg.ingot.iron.sql.ColumnJsonField
+import gg.ingot.iron.sql.ColumnSerializedField
 import gg.ingot.iron.sql.MappedResultSet
 import gg.ingot.iron.sql.SqlParameters
 import gg.ingot.iron.transformer.ResultTransformer
@@ -9,6 +15,8 @@ import gg.ingot.iron.transformer.isEnum
 import java.sql.Connection
 import java.sql.ResultSet
 import kotlin.reflect.KClass
+import kotlin.reflect.full.createInstance
+import kotlin.reflect.full.findAnnotation
 
 /**
  * Controller implementation for handling database transactions and queries.
@@ -17,7 +25,8 @@ import kotlin.reflect.KClass
  */
 internal class ControllerImpl(
     private val connection: Connection,
-    private val resultTransformer: ResultTransformer
+    private val resultTransformer: ResultTransformer,
+    private val serializationAdapter: SerializationAdapter? = null
 ) : Controller {
     override fun <T : Any?> transaction(block: Controller.() -> T): Result<T> {
         return try {
@@ -59,6 +68,20 @@ internal class ControllerImpl(
         for ((index, value) in values.withIndex()) {
             val kClass = value::class
             val paramIndex = index + 1
+
+            if(value is ColumnSerializedField) {
+                val serializer = value.serializer.objectInstance
+                    ?: value.serializer.createInstance()
+                serializer as ColumnSerializer<Any, *>
+
+                preparedStatement.setObject(paramIndex, serializer.toDatabaseValue(value.value))
+                continue
+            } else if (value is ColumnJsonField) {
+                requireNotNull(serializationAdapter) { "A serialization adapter must be provided to serialize JSON values." }
+
+                preparedStatement.setObject(paramIndex, serializationAdapter.serialize(value.value, value.value::class.java))
+                continue
+            }
 
             // parse enum values to db
             if(isEnum(kClass)) {

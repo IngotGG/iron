@@ -1,6 +1,8 @@
 package gg.ingot.iron.sql
 
 import gg.ingot.iron.representation.ExplodingModel
+import gg.ingot.iron.serialization.ColumnSerializer
+import kotlin.reflect.KClass
 
 /**
  * Creates an array of parameters for a SQL query.
@@ -31,6 +33,26 @@ fun sqlParams(vararg params: Pair<String, Any>): SqlParameters {
  */
 fun sqlParams(model: ExplodingModel): SqlParameters =
     model.toSqlParams()
+
+/**
+ * Creates a serialized field for a SQL query, this will automatically
+ * be serialized by the provided [gg.ingot.iron.serialization.ColumnSerializer].
+ * @param value The value to include in the serialized field.
+ * @param serializer The serializer to use for the value.
+ */
+fun serializedField(value: Any, serializer: KClass<out ColumnSerializer<*, *>>) =
+    ColumnSerializedField(value, serializer)
+
+data class ColumnSerializedField(val value: Any, val serializer: KClass<out ColumnSerializer<*, *>>)
+
+/**
+ * Creates a JSON field for a SQL query, this will automatically
+ * be serialized into a JSON object by the provided [gg.ingot.iron.serialization.SerializationAdapter].
+ * @param value The value to include in the JSON field.
+ */
+fun jsonField(value: Any) = ColumnJsonField(value)
+
+data class ColumnJsonField(val value: Any)
 
 /**
  * A map of parameters for a SQL query.

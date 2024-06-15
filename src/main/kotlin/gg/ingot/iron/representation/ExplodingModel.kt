@@ -1,9 +1,17 @@
 package gg.ingot.iron.representation
 
+import gg.ingot.iron.annotations.Variable
+import gg.ingot.iron.serialization.ColumnSerializer
+import gg.ingot.iron.serialization.EmptySerializer
 import gg.ingot.iron.sql.SqlParameters
+import gg.ingot.iron.sql.jsonField
+import gg.ingot.iron.sql.serializedField
+import sun.reflect.misc.FieldUtil.getFields
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
+import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.declaredMemberProperties
+import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaField
 
@@ -21,11 +29,7 @@ interface ExplodingModel {
     fun explode(): Array<Any> {
         val fields = getFields()
 
-        return Array(fields.size) {
-            fields[it].javaField
-                ?.get(this)
-                ?: error("Field ${fields[it].name} has no backing field.")
-        }
+        return Array(fields.size) { getFieldValue(fields[it]) }
     }
 
     /**
@@ -36,11 +40,35 @@ interface ExplodingModel {
         val fields = getFields()
 
         return fields.associate {
-            it.name to (it.javaField?.get(this)
-                ?: error("Field ${it.name} has no backing field."))
+            it.name to getFieldValue(it)
         }
     }
 
+    /**
+     * Retrieve the value of a field.
+     * @param field The field to retrieve the value of.
+     * @return The value of the field.
+     * @throws IllegalArgumentException If the field has no backing field.
+     */
+    private fun getFieldValue(field: KProperty<*>): Any {
+        val annotation = field.findAnnotation<Variable>()
+        val value = field.javaField?.get(this)
+            ?: error("Field ${field.name} has no backing field.")
+
+        if(annotation != null) {
+            when {
+                annotation.serializer != EmptySerializer::class -> return serializedField(value, annotation.serializer)
+                annotation.json -> return jsonField(value)
+            }
+        }
+
+        return value
+    }
+
+    /**
+     * Retrieve the fields of the model.
+     * @return The fields of the model.
+     */
     private fun getFields(): List<KProperty<*>> {
         val kClass = this::class
 

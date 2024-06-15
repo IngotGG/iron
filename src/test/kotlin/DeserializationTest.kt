@@ -2,6 +2,9 @@ import com.google.gson.Gson
 import gg.ingot.iron.Iron
 import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
+import gg.ingot.iron.annotations.Model
+import gg.ingot.iron.annotations.Variable
+import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.SerializationAdapter
 import gg.ingot.iron.sql.controller.prepareMapped
@@ -143,4 +146,38 @@ class DeserializationTest {
 
         assertEquals(enumValue, TestEnum.EXAMPLE)
     }
+
+    @Test
+    fun `serialize kotlinx`() = runTest {
+        val connection = Iron("jdbc:sqlite::memory:", IronSettings(
+            serialization = SerializationAdapter.Kotlinx(Json)
+        )).connect()
+
+        @Serializable
+        data class JsonObj(val example: String)
+
+        @Model
+        data class FakeModel(
+            val id: Int,
+            @Column(json = true) @Variable(json = true)
+            val json: JsonObj
+        ) : ExplodingModel
+
+        connection.execute("CREATE TABLE test(id INTEGER PRIMARY KEY, json TEXT);")
+        connection.prepare("INSERT INTO test(id, json) VALUES (?, ?);", *FakeModel(
+            1,
+            JsonObj("hello")
+        ).explode())
+
+        val res = connection.query("SELECT * FROM test;")
+        assertNotNull(res)
+        res.next()
+        println(res.getObject(2))
+
+        val mapped = connection.queryMapped<FakeModel>("SELECT * FROM test LIMIT 1;")
+            .single()
+
+        assertEquals("hello", mapped.json.example)
+    }
+
 }

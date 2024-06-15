@@ -96,7 +96,7 @@ class Iron(
             ?: error(UNOPENED_CONNECTION_MESSAGE)
 
         return withContext(dispatcher) {
-            block(ControllerImpl(connection, resultTransformer))
+            block(ControllerImpl(connection, resultTransformer, settings.serialization))
         }.also { pool?.release(connection) }
     }
 
