@@ -8,6 +8,7 @@ import gg.ingot.iron.sql.MappedResultSet
 import gg.ingot.iron.sql.SqlParameters
 import gg.ingot.iron.sql.controller.Controller
 import gg.ingot.iron.sql.controller.ControllerImpl
+import gg.ingot.iron.transformer.ModelTransformer
 import gg.ingot.iron.transformer.ResultTransformer
 import gg.ingot.iron.transformer.ValueTransformer
 import kotlinx.coroutines.*
@@ -33,11 +34,14 @@ class Iron(
     /** The connection pool used to manage connections to the database. */
     private var pool: ConnectionPool? = null
 
+    /** The model transformer used to transform models into their corresponding entity representation. */
+    private val modelTransformer = ModelTransformer(settings.namingStrategy)
+
     /** The value transformer used to transform values from the result set into their corresponding types. */
     private val valueTransformer = ValueTransformer(settings.serialization)
 
     /** The result transformer used to transform the result set into a model. */
-    private val resultTransformer = ResultTransformer(valueTransformer)
+    private val resultTransformer = ResultTransformer(modelTransformer, valueTransformer)
 
     /**
      * Establishes a connection to the database using the provided connection string.

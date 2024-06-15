@@ -13,10 +13,11 @@ import kotlin.reflect.jvm.isAccessible
  * @since 1.0
  */
 internal class ResultTransformer(
+    private val modelTransformer: ModelTransformer,
     private val valueTransformer: ValueTransformer
 ) {
     fun <T: Any> read(result: ResultSet, clazz: KClass<T>): T {
-        val entity = ModelTransformer.transform(clazz)
+        val entity = modelTransformer.transform(clazz)
 
         val emptyConstructor = clazz.constructors.firstOrNull { it.parameters.isEmpty() }
         val fullConstructor = clazz.constructors.firstOrNull { it.parameters.size == entity.fields.size }
@@ -26,7 +27,7 @@ internal class ResultTransformer(
             val model = emptyConstructor.call()
 
             for (field in entity.fields) {
-                val value = valueTransformer.convert(result, field)
+                val value = valueTransformer.convert(result, field, entity.namingStrategy)
                 if (value == null && !field.nullable) {
                     error("Field '${field.field.name}' is not nullable but the associated column '${field.columnName}' was null for model: $clazz")
                 }
@@ -40,7 +41,7 @@ internal class ResultTransformer(
             fullConstructor.isAccessible = true
 
             val fields = entity.fields.map { field ->
-                val value = valueTransformer.convert(result, field)
+                val value = valueTransformer.convert(result, field, entity.namingStrategy)
                 if (value == null && !field.nullable) {
                     error("Field '${field.field.name}' is not nullable but the associated column '${field.columnName}' was null for model: $clazz")
                 }

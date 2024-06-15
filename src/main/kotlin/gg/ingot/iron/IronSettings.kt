@@ -2,6 +2,7 @@ package gg.ingot.iron
 
 import gg.ingot.iron.representation.DatabaseDriver
 import gg.ingot.iron.serialization.SerializationAdapter
+import gg.ingot.iron.strategies.NamingStrategy
 import java.util.Properties
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -24,7 +25,9 @@ data class IronSettings(
     /** The serialization adapter to use for models. */
     val serialization: SerializationAdapter? = null,
     /** Additional properties to pass into the [java.sql.DriverManager] */
-    val driverProperties: Properties? = null
+    val driverProperties: Properties? = null,
+    /** Naming Strategy to use when handling column names. */
+    val namingStrategy: NamingStrategy = NamingStrategy.SNAKE_CASE,
 ) {
     /** Whether the connection pool is a multi connection pool. */
     val isMultiConnectionPool: Boolean

@@ -11,6 +11,7 @@ import gg.ingot.iron.sql.controller.queryMapped
 import gg.ingot.iron.sql.get
 import gg.ingot.iron.sql.singleValue
 import gg.ingot.iron.sql.sqlParams
+import gg.ingot.iron.strategies.NamingStrategy
 import java.sql.SQLException
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -21,8 +22,9 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class DatabaseTest {
-    private val connection = Iron("jdbc:sqlite::memory:")
-        .connect()
+    private val connection = Iron("jdbc:sqlite::memory:", IronSettings(
+        namingStrategy = NamingStrategy.CAMEL_CASE
+    )).connect()
 
     @Test
     fun testIronUse() = runTest {

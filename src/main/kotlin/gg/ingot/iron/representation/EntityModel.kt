@@ -1,5 +1,6 @@
 package gg.ingot.iron.representation
 
+import gg.ingot.iron.strategies.NamingStrategy
 import kotlin.reflect.KClass
 
 /**
@@ -11,5 +12,6 @@ import kotlin.reflect.KClass
  */
 internal data class EntityModel(
     val clazz: KClass<*>,
-    val fields: List<EntityField>
+    val fields: List<EntityField>,
+    val namingStrategy: NamingStrategy
 )

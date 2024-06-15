@@ -21,7 +21,9 @@ class ModelTest {
 
     @Test
     fun testGenerateEntityModel() {
-        val entity = ModelTransformer.transform(User::class)
+        val modelTransformer = ModelTransformer(NamingStrategy.SNAKE_CASE)
+
+        val entity = modelTransformer.transform(User::class)
         assertEquals(User::class, entity.clazz)
         assertEquals(4, entity.fields.size)
     }

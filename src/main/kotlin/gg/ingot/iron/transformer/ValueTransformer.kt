@@ -2,6 +2,7 @@ package gg.ingot.iron.transformer
 
 import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.serialization.*
+import gg.ingot.iron.strategies.NamingStrategy
 import java.sql.ResultSet
 import kotlin.reflect.KClass
 
@@ -25,12 +26,16 @@ internal class ValueTransformer(
      * @param field The field to retrieve the value for.
      * @return The value from the result set.
      */
-    fun convert(resultSet: ResultSet, field: EntityField): Any? {
-        return if(field.deserializer != null) toCustomDeserializedObj(resultSet, field)
-        else if(field.isJson) toJsonObject(resultSet, field)
-        else if(field.isArray) toArray(resultSet, field)
-        else if(field.isCollection) toCollection(resultSet, field)
-        else toObject(resultSet, field)
+    fun convert(
+        resultSet: ResultSet,
+        field: EntityField,
+        namingStrategy: NamingStrategy
+    ): Any? {
+        return if(field.deserializer != null) toCustomDeserializedObj(resultSet, field, namingStrategy)
+        else if(field.isJson) toJsonObject(resultSet, field, namingStrategy)
+        else if(field.isArray) toArray(resultSet, field, namingStrategy)
+        else if(field.isCollection) toCollection(resultSet, field, namingStrategy)
+        else toObject(resultSet, field, namingStrategy)
     }
 
     /**
@@ -38,8 +43,8 @@ internal class ValueTransformer(
      * @param resultSet The result set to retrieve the value from.
      * @param columnName The column name to retrieve the value for.
      */
-    private fun toArray(resultSet: ResultSet, field: EntityField): Any? {
-        val arr = resultSet.getArray(field.columnName)
+    private fun toArray(resultSet: ResultSet, field: EntityField, namingStrategy: NamingStrategy): Any? {
+        val arr = resultSet.getArray(field.convertedName(namingStrategy))
             ?.array
 
         if(
@@ -62,8 +67,8 @@ internal class ValueTransformer(
      * @param columnName The column name to retrieve the value for.
      * @param type The type of the collection.
      */
-    private fun toCollection(resultSet: ResultSet, field: EntityField): Collection<*> {
-        val arr = toArray(resultSet, field) as Array<*>
+    private fun toCollection(resultSet: ResultSet, field: EntityField, namingStrategy: NamingStrategy): Collection<*> {
+        val arr = toArray(resultSet, field, namingStrategy) as Array<*>
 
         val transformation = arrayTransformations.entries
             // retrieve the first transformation that matches the type
@@ -80,8 +85,8 @@ internal class ValueTransformer(
      * @param columnName The column name to retrieve the value for.
      * @return The value from the result set.
      */
-    private fun toObject(resultSet: ResultSet, field: EntityField): Any? {
-        val value = resultSet.getObject(field.columnName)
+    private fun toObject(resultSet: ResultSet, field: EntityField, namingStrategy: NamingStrategy): Any? {
+        val value = resultSet.getObject(field.convertedName(namingStrategy))
 
         // Automatically map the enum to the enum type
         if(field.isEnum && field.deserializer == null) {
@@ -97,12 +102,12 @@ internal class ValueTransformer(
      * @param field The field to retrieve the value for.
      * @return The value from the result set.
      */
-    private fun toJsonObject(resultSet: ResultSet, field: EntityField): Any? {
+    private fun toJsonObject(resultSet: ResultSet, field: EntityField, namingStrategy: NamingStrategy): Any? {
         checkNotNull(serializationAdapter) {
             "A serializer adapter has not been passed through IronSettings, you will not be able to automatically deserialize JSON."
         }
 
-        val obj = toObject(resultSet, field)
+        val obj = toObject(resultSet, field, namingStrategy)
             ?: return null
 
         return serializationAdapter.deserialize(obj, field.javaField.type)
@@ -115,8 +120,8 @@ internal class ValueTransformer(
      * @param field The field to retrieve the value for.
      * @return The value from the result set.
      */
-    private fun toCustomDeserializedObj(resultSet: ResultSet, field: EntityField): Any? {
-        val obj = toObject(resultSet, field)
+    private fun toCustomDeserializedObj(resultSet: ResultSet, field: EntityField, namingStrategy: NamingStrategy): Any? {
+        val obj = toObject(resultSet, field, namingStrategy)
             ?: return null
 
         val deserializer = field.deserializer as? ColumnDeserializer<Any, *>

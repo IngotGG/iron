@@ -85,7 +85,7 @@ internal class ControllerImpl(
 
                 preparedStatement.setObject(paramIndex, serializer.toDatabaseValue(innerValue))
                 continue
-            } else if (value is ColumnJsonField) {
+            } else if(value is ColumnJsonField) {
                 requireNotNull(serializationAdapter) { "A serialization adapter must be provided to serialize JSON values." }
 
                 val innerJson = value.value

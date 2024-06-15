@@ -1,12 +1,14 @@
 package gg.ingot.iron.transformer
 
 import gg.ingot.iron.annotations.Column
+import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.annotations.retrieveDeserializer
 import gg.ingot.iron.repository.ModelRepository
 import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.representation.EntityModel
 import gg.ingot.iron.serialization.*
 import gg.ingot.iron.serialization.EmptyDeserializer
+import gg.ingot.iron.strategies.NamingStrategy
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.createInstance
@@ -19,7 +21,9 @@ import kotlin.reflect.jvm.javaField
  * @author Santio
  * @since 1.0
  */
-internal object ModelTransformer {
+internal class ModelTransformer(
+    private val namingStrategy: NamingStrategy
+) {
     /**
      * Transforms a class into an entity model, which holds information about the class model.
      * @param clazz The class to transform into an entity model.
@@ -28,6 +32,8 @@ internal object ModelTransformer {
     fun transform(clazz: KClass<*>): EntityModel {
         return ModelRepository.models.getOrPut(clazz) {
             val fields = mutableListOf<EntityField>()
+
+            val modelAnnotation = clazz.annotations.find { it is Model } as Model?
 
             for (field in clazz.declaredMemberProperties) {
                 val annotation = field.annotations.find { it is Column } as Column?
@@ -49,7 +55,15 @@ internal object ModelTransformer {
                 ))
             }
 
-            EntityModel(clazz, fields)
+            val strategy = modelAnnotation?.namingStrategy
+                .takeIf { it != NamingStrategy.NONE }
+                ?: namingStrategy
+
+            EntityModel(
+                clazz,
+                fields,
+                strategy
+            )
         }
     }
 

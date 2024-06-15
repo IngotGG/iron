@@ -1,6 +1,7 @@
 package gg.ingot.iron.representation
 
 import gg.ingot.iron.serialization.ColumnDeserializer
+import gg.ingot.iron.strategies.NamingStrategy
 import java.lang.reflect.Field
 import kotlin.reflect.KProperty
 
@@ -21,5 +22,8 @@ internal data class EntityField(
     val isCollection: Boolean,
     val isEnum: Boolean,
 
-    val deserializer: ColumnDeserializer<*, *>?
-)
+    val deserializer: ColumnDeserializer<*, *>?,
+) {
+    /** Transforms the name of the column using the naming strategy. */
+    fun convertedName(namingStrategy: NamingStrategy): String = namingStrategy.transform(columnName)
+}
