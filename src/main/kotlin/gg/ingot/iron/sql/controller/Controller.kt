@@ -61,14 +61,20 @@ sealed interface Controller {
         val insertedValues = mutableListOf<Any>()
 
         val parsedStatement = SQL_PLACEHOLDER_REGEX.replace(statement) { matchResult ->
-            val key = matchResult.groupValues[1]
+            val group = matchResult.groupValues[0]
 
-            val grouped = matchResult.groupValues[0]
-            // most likely cast statement, let's ignore.
-            if(grouped.startsWith("::")) {
-                grouped
+            if(
+                (group.startsWith("'")
+                && group.endsWith("'"))
+                || group.startsWith("::")
+            ) {
+                group
             } else {
-                insertedValues.add(values[key] ?: error("No value found for placeholder $key"))
+                insertedValues.add(
+                    values[matchResult.groupValues[1]]
+                        ?: error("No value found for placeholder ${matchResult.groupValues[1]}")
+                )
+
                 "?"
             }
         }
@@ -110,7 +116,7 @@ sealed interface Controller {
 
     private companion object {
         /** The regex for SQL placeholders. */
-        val SQL_PLACEHOLDER_REGEX = """::?(\w+)(?=(?:[^'"]|'[^']*'|"[^"]*")*${'$'})""".toRegex()
+        val SQL_PLACEHOLDER_REGEX = "'(?:\\\\'|[^'])*'|::?(\\w+)".toRegex()
     }
 }
 
@@ -123,7 +129,6 @@ sealed interface Controller {
 inline fun <reified T : Any> Controller.queryMapped(@Language("SQL") query: String) =
     query(query, T::class)
 
-
 /**
  * Helper method allowing for inline usage of the prepare method.
  * @see [Controller.prepareMapped]
@@ -132,3 +137,7 @@ inline fun <reified T : Any> Controller.queryMapped(@Language("SQL") query: Stri
 @JvmName("prepareMappedInline")
 inline fun <reified T : Any> Controller.prepareMapped(@Language("SQL") statement: String, vararg values: Any) =
     prepare(statement, T::class, *values)
+
+@JvmName("prepareMappedInline")
+inline fun <reified T : Any> Controller.prepareMapped(@Language("SQL") statement: String, params: SqlParameters) =
+    prepare(statement, T::class, params)
