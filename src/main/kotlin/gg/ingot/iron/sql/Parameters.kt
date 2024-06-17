@@ -40,10 +40,10 @@ fun sqlParams(model: ExplodingModel): SqlParameters =
  * @param value The value to include in the serialized field.
  * @param serializer The serializer to use for the value.
  */
-fun serializedField(value: Any?, serializer: KClass<out ColumnSerializer<*, *>>) =
+fun serializedField(value: Any?, serializer: ColumnSerializer<*, *>) =
     ColumnSerializedField(value, serializer)
 
-data class ColumnSerializedField(val value: Any?, val serializer: KClass<out ColumnSerializer<*, *>>)
+data class ColumnSerializedField(val value: Any?, val serializer: ColumnSerializer<*, *>)
 
 /**
  * Creates a JSON field for a SQL query, this will automatically

@@ -78,12 +78,9 @@ internal class ControllerImpl(
                     preparedStatement.setObject(paramIndex, null)
                     continue
                 }
+                value.serializer as ColumnSerializer<Any, *>
 
-                val serializer = value.serializer.objectInstance
-                    ?: value.serializer.createInstance()
-                serializer as ColumnSerializer<Any, *>
-
-                preparedStatement.setObject(paramIndex, serializer.toDatabaseValue(innerValue))
+                preparedStatement.setObject(paramIndex, value.serializer.toDatabaseValue(innerValue))
                 continue
             } else if(value is ColumnJsonField) {
                 requireNotNull(serializationAdapter) { "A serialization adapter must be provided to serialize JSON values." }

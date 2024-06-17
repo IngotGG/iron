@@ -33,6 +33,10 @@ internal fun Column.retrieveDeserializer(): ColumnDeserializer<*, *>? {
 }
 
 internal fun Column.retrieveSerializer(): ColumnSerializer<*, *>? {
+    println("$this")
+    println("TRANSFORMER = ${transformer}")
+    println("SERIALIZER = $serializer")
+
     if(transformer != EmptyTransformer::class) {
         return transformer.objectInstance
             ?: transformer.createInstance()

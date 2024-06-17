@@ -56,7 +56,7 @@ interface ExplodingModel {
         if(annotation != null) {
             val serializer = annotation.retrieveSerializer()
             if(serializer != null) {
-                return serializedField(value, annotation.serializer)
+                return serializedField(value, serializer)
             }
 
             if(annotation.json) {
