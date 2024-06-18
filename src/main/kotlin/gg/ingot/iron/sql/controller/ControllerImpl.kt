@@ -10,6 +10,7 @@ import gg.ingot.iron.transformer.ResultTransformer
 import gg.ingot.iron.transformer.isArray
 import gg.ingot.iron.transformer.isCollection
 import gg.ingot.iron.transformer.isEnum
+import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.sql.ResultSet
 import kotlin.reflect.KClass
@@ -25,6 +26,8 @@ internal class ControllerImpl(
     private val resultTransformer: ResultTransformer,
     private val serializationAdapter: SerializationAdapter? = null
 ) : Controller {
+    private val logger = LoggerFactory.getLogger(ControllerImpl::class.java)
+
     override fun <T : Any?> transaction(block: Controller.() -> T): Result<T> {
         return try {
             connection.autoCommit = false
@@ -42,6 +45,8 @@ internal class ControllerImpl(
     }
 
     override fun query(query: String): ResultSet {
+        logger.trace("Executing Query\n{}", query)
+
         return connection.createStatement()
             .executeQuery(query)
     }
@@ -51,6 +56,8 @@ internal class ControllerImpl(
     }
 
     override fun execute(statement: String): Boolean {
+        logger.trace("Executing Statement\n{}", statement)
+
         return connection.createStatement()
             .execute(statement)
     }
@@ -62,10 +69,13 @@ internal class ControllerImpl(
             "The number of parameters provided does not match the number of parameters in the prepared statement."
         }
 
+        logger.trace("Preparing Statement\n{}", statement)
+
         for ((index, value) in values.withIndex()) {
             val paramIndex = index + 1
 
             if(value == null) {
+                logger.trace("Setting parameter {} to null.", paramIndex)
                 preparedStatement.setObject(paramIndex,null)
                 continue
             }
@@ -73,6 +83,8 @@ internal class ControllerImpl(
             val kClass = value::class
 
             if(value is ColumnSerializedField) {
+                logger.trace("Deserializing parameter {} as a serialized field {}.", paramIndex, value.serializer::class.simpleName)
+
                 val innerValue = value.value
                 if(innerValue == null) {
                     preparedStatement.setObject(paramIndex, null)
@@ -84,6 +96,8 @@ internal class ControllerImpl(
                 continue
             } else if(value is ColumnJsonField) {
                 requireNotNull(serializationAdapter) { "A serialization adapter must be provided to serialize JSON values." }
+
+                logger.trace("Deserializing parameter {} as a JSON field.", paramIndex)
 
                 val innerJson = value.value
                 if(innerJson == null) {
@@ -97,6 +111,8 @@ internal class ControllerImpl(
 
             // parse enum values to db
             if(isEnum(kClass)) {
+                logger.trace("Deserializing parameter {} as an enum.", paramIndex)
+
                 when {
                     isArray(kClass) -> preparedStatement.setObject(paramIndex, (value as Array<*>).map { (it as Enum<*>).name }.toTypedArray())
                     isCollection(kClass) -> preparedStatement.setObject(paramIndex, (value as Collection<*>).map { (it as Enum<*>).name }.toTypedArray())
@@ -105,6 +121,7 @@ internal class ControllerImpl(
                 continue
             }
 
+            logger.trace("Setting parameter {} to value {}", paramIndex, value)
             preparedStatement.setObject(paramIndex, value)
         }
 
