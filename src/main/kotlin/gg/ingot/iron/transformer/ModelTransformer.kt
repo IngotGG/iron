@@ -1,13 +1,11 @@
 package gg.ingot.iron.transformer
 
-import gg.ingot.iron.annotations.Column
-import gg.ingot.iron.annotations.Model
+import gg.ingot.iron.annotations.*
 import gg.ingot.iron.annotations.retrieveDeserializer
 import gg.ingot.iron.repository.ModelRepository
 import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.representation.EntityModel
 import gg.ingot.iron.serialization.*
-import gg.ingot.iron.serialization.EmptyDeserializer
 import gg.ingot.iron.strategies.NamingStrategy
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
@@ -35,6 +33,7 @@ internal class ModelTransformer(
             val fields = mutableListOf<EntityField>()
 
             val modelAnnotation = clazz.annotations.find { it is Model } as Model?
+            val useDeserializersAnnotation = clazz.annotations.find { it is UseModelDeserializers } as UseModelDeserializers?
 
             val params = clazz.primaryConstructor
                 ?.parameters
@@ -57,7 +56,7 @@ internal class ModelTransformer(
                     isArray = isArray(field),
                     isCollection = isCollection(field),
                     isEnum = isEnum(field),
-                    deserializer = retrieveDeserializer(field, annotation)
+                    deserializer = retrieveDeserializer(field, useDeserializersAnnotation, annotation)
                 ))
             }
 
@@ -102,8 +101,12 @@ internal class ModelTransformer(
     @Suppress("UNCHECKED_CAST")
     private fun retrieveDeserializer(
         field: KProperty<*>,
+        useDeserializersAnnotation: UseModelDeserializers?,
         annotation: Column?
     ): ColumnDeserializer<*, *>? {
+        val kClass = field.returnType.classifier as KClass<*>
+
         return annotation?.retrieveDeserializer()
+            ?: useDeserializersAnnotation?.retrieveMatchingDeserializer(kClass)
     }
 }

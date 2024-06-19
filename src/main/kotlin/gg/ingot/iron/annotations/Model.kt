@@ -51,3 +51,20 @@ fun UseModelSerializers.retrieveMatchingSerializer(type: KClass<*>): ColumnSeria
     }
     return null
 }
+
+fun UseModelDeserializers.retrieveMatchingDeserializer(type: KClass<*>): ColumnDeserializer<*, *>? {
+    for(deserializer in deserializers) {
+        val columnDeserializer = deserializer.supertypes.firstOrNull {
+            it.isSubtypeOf(ColumnDeserializer::class.starProjectedType)
+        }
+
+        val fromType = columnDeserializer?.arguments?.getOrNull(0)?.type?.classifier as? KClass<*>
+            ?: continue
+
+        if(fromType == type) {
+            return deserializer.objectInstance
+                ?: deserializer.createInstance()
+        }
+    }
+    return null
+}
