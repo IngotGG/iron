@@ -76,7 +76,6 @@ inline fun <reified T> ResultSet?.singleValueDeserializedNullable(deserializer: 
     }
 
     check(metaData.columnCount == 1) { "Result set must have exactly one column" }
-    check(next()) { "No results in result set" }
 
     val value = getDeserializedNullable<T>(1, deserializer)
 
