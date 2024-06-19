@@ -26,7 +26,7 @@ inline fun <reified T> ResultSet?.singleValueNullable(): T? {
     check(metaData.columnCount == 1) { "Result set must have exactly one column" }
     check(next()) { "No results in result set" }
 
-    val value = get<T>(1)
+    val value = getNullable<T>(1)
 
     check(!next()) { "More than one result in result set" }
 
