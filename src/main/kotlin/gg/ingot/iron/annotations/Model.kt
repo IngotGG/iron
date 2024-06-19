@@ -1,7 +1,53 @@
 package gg.ingot.iron.annotations
 
+import gg.ingot.iron.serialization.ColumnDeserializer
+import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.strategies.NamingStrategy
+import org.slf4j.LoggerFactory
+import kotlin.reflect.KClass
+import kotlin.reflect.full.createInstance
+import kotlin.reflect.full.isSubtypeOf
+import kotlin.reflect.full.starProjectedType
 
+/**
+ * Represents a class that is a model for a database entity.
+ * @param namingStrategy The naming strategy to use for all columns in the model.
+ */
 annotation class Model(
-    val namingStrategy: NamingStrategy = NamingStrategy.NONE
+    val namingStrategy: NamingStrategy = NamingStrategy.NONE,
 )
+
+/**
+ * Represents serializers to use for all types a part of a model
+ * that match the un-serialized type of the serializer.
+ */
+@Target(AnnotationTarget.CLASS)
+annotation class UseModelSerializers(
+    vararg val serializers: KClass<out ColumnSerializer<*, *>>
+)
+
+/**
+ * Represents deserializers to use for all types a part of a model
+ * that match the un-serialized type of the deserializer.
+ */
+@Target(AnnotationTarget.CLASS)
+annotation class UseModelDeserializers(
+    vararg val deserializers: KClass<out ColumnDeserializer<*, *>>
+)
+
+fun UseModelSerializers.retrieveMatchingSerializer(type: KClass<*>): ColumnSerializer<*, *>? {
+    for(serializer in serializers) {
+        val columnSerializer = serializer.supertypes.firstOrNull {
+            it.isSubtypeOf(ColumnSerializer::class.starProjectedType)
+        }
+
+        val fromType = columnSerializer?.arguments?.getOrNull(0)?.type?.classifier as? KClass<*>
+            ?: continue
+
+        if(fromType == type) {
+            return serializer.objectInstance
+                ?: serializer.createInstance()
+        }
+    }
+    return null
+}
