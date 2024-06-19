@@ -58,10 +58,10 @@ fun UseModelDeserializers.retrieveMatchingDeserializer(type: KClass<*>): ColumnD
             it.isSubtypeOf(ColumnDeserializer::class.starProjectedType)
         }
 
-        val fromType = columnDeserializer?.arguments?.getOrNull(0)?.type?.classifier as? KClass<*>
+        val toType = columnDeserializer?.arguments?.getOrNull(1)?.type?.classifier as? KClass<*>
             ?: continue
 
-        if(fromType == type) {
+        if(toType == type) {
             return deserializer.objectInstance
                 ?: deserializer.createInstance()
         }
