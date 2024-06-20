@@ -150,7 +150,7 @@ inline fun <reified T> ResultSet?.getMappedNullable(column: String, deserializer
     if(this == null) return null
     deserializer as ColumnDeserializer<Any, T>
 
-    val value = getNullable<T>(column) ?: return null
+    val value = getNullable<Any>(column) ?: return null
     return deserializer.fromDatabaseValue(value)
 }
 
