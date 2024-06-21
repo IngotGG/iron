@@ -117,9 +117,7 @@ class Iron(
      * @since 1.0
      */
     suspend fun <T : Any?> transaction(block: Controller.() -> T): Result<T> {
-        return withController {
-            it.transaction(block)
-        }
+        return withController { it.transaction(block) }
     }
 
     /**
@@ -131,9 +129,7 @@ class Iron(
      * @since 1.0
      */
     suspend fun query(@Language("SQL") statement: String): ResultSet {
-        return withController {
-            it.query(statement)
-        }
+        return withController { it.query(statement) }
     }
 
     /**
@@ -146,9 +142,7 @@ class Iron(
      * @since 1.0
      */
     suspend fun <T : Any> queryMapped(@Language("SQL") statement: String, clazz: KClass<T>): MappedResultSet<T> {
-        return withController {
-            it.query(statement, clazz)
-        }
+        return withController { it.query(statement, clazz) }
     }
 
     /**
@@ -167,9 +161,7 @@ class Iron(
      * @since 1.0
      */
     suspend fun execute(@Language("SQL") statement: String): Boolean {
-        return withController {
-            it.execute(statement)
-        }
+        return withController { it.execute(statement) }
     }
 
     /**
@@ -181,9 +173,7 @@ class Iron(
      * @since 1.0
      */
     suspend fun prepare(@Language("SQL") statement: String, vararg values: Any): ResultSet? {
-        return withController {
-            it.prepare(statement, *values)
-        }
+        return withController { it.prepare(statement, *values) }
     }
 
     /**
@@ -194,9 +184,7 @@ class Iron(
      * @return The prepared statement.
      */
     suspend fun prepare(@Language("SQL") statement: String, values: SqlParameters): ResultSet? {
-        return withController {
-            it.prepare(statement, values)
-        }
+        return withController { it.prepare(statement, values) }
     }
 
     /**
@@ -209,9 +197,7 @@ class Iron(
      * @return A result set mapped to the model.
      */
     suspend fun <T : Any> prepareMapped(@Language("SQL") statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T> {
-        return withController {
-            it.prepare(statement, clazz, *values)
-        }
+        return withController { it.prepare(statement, clazz, *values) }
     }
 
     /**
@@ -224,9 +210,7 @@ class Iron(
      * @return A result set mapped to the model.
      */
     suspend fun <T : Any> prepareMapped(@Language("SQL") statement: String, clazz: KClass<T>, values: SqlParameters): MappedResultSet<T> {
-        return withController {
-            it.prepare(statement, clazz, values)
-        }
+        return withController { it.prepare(statement, clazz, values) }
     }
 
     /**
