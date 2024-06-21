@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.sql.ResultSet
 import kotlin.reflect.KClass
-import kotlin.reflect.full.createInstance
 
 /**
  * Controller implementation for handling database transactions and queries.

@@ -2,7 +2,6 @@ package gg.ingot.iron.sql
 
 import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.serialization.ColumnSerializer
-import kotlin.reflect.KClass
 
 /**
  * Creates an array of parameters for a SQL query.

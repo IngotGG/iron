@@ -3,7 +3,6 @@ package gg.ingot.iron.transformer
 import gg.ingot.iron.Iron
 import java.sql.ResultSet
 import kotlin.reflect.KClass
-import kotlin.reflect.full.callSuspendBy
 import kotlin.reflect.jvm.isAccessible
 
 /**

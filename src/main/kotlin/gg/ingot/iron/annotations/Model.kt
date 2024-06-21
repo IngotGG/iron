@@ -3,7 +3,6 @@ package gg.ingot.iron.annotations
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.strategies.NamingStrategy
-import org.slf4j.LoggerFactory
 import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.isSubtypeOf

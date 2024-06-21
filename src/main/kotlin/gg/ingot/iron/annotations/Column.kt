@@ -1,8 +1,6 @@
 package gg.ingot.iron.annotations
 
 import gg.ingot.iron.serialization.*
-import gg.ingot.iron.serialization.EmptyDeserializer
-import gg.ingot.iron.serialization.EmptySerializer
 import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance
 
