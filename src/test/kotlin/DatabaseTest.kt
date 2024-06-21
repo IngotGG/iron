@@ -19,7 +19,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 
 class DatabaseTest {
     private val connection = Iron("jdbc:sqlite::memory:", IronSettings(

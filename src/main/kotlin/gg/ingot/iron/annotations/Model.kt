@@ -34,7 +34,12 @@ annotation class UseModelDeserializers(
     vararg val deserializers: KClass<out ColumnDeserializer<*, *>>
 )
 
-fun UseModelSerializers.retrieveMatchingSerializer(type: KClass<*>): ColumnSerializer<*, *>? {
+/**
+ * Retrieves the name of the column from the annotation or the field name.
+ * @param type The type of the field.
+ * @return The potential column serializer.
+ */
+internal fun UseModelSerializers.retrieveMatchingSerializer(type: KClass<*>): ColumnSerializer<*, *>? {
     for(serializer in serializers) {
         val columnSerializer = serializer.supertypes.firstOrNull {
             it.isSubtypeOf(ColumnSerializer::class.starProjectedType)
@@ -51,7 +56,12 @@ fun UseModelSerializers.retrieveMatchingSerializer(type: KClass<*>): ColumnSeria
     return null
 }
 
-fun UseModelDeserializers.retrieveMatchingDeserializer(type: KClass<*>): ColumnDeserializer<*, *>? {
+/**
+ * Retrieves the name of the column from the annotation or the field name.
+ * @param type The type of the field.
+ * @return The potential column deserializer.
+ */
+internal fun UseModelDeserializers.retrieveMatchingDeserializer(type: KClass<*>): ColumnDeserializer<*, *>? {
     for(deserializer in deserializers) {
         val columnDeserializer = deserializer.supertypes.firstOrNull {
             it.isSubtypeOf(ColumnDeserializer::class.starProjectedType)
