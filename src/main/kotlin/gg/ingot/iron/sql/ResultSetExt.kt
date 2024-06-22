@@ -189,7 +189,7 @@ inline fun <reified T> ResultSet?.singleValueMappedNullable(deserializer: Column
     if(this == null) return null
 
     check(metaData?.columnCount == 1) { "ResultSet must have exactly one column" }
-    check(next()) { "No results in ResultSet" }
+    if(!next()) return null
 
     val value = getMappedNullable<T>(1, deserializer)
     check(!next()) { "ResultSet has more than one row" }
