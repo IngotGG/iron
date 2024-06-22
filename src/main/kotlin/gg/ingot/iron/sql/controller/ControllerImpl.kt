@@ -20,24 +20,30 @@ import kotlin.reflect.KClass
  * @author DebitCardz
  * @since 1.3
  */
-internal class ControllerImpl(
+internal open class ControllerImpl(
     private val connection: Connection,
     private val resultTransformer: ResultTransformer,
     private val serializationAdapter: SerializationAdapter? = null
 ) : Controller {
     private val logger = LoggerFactory.getLogger(ControllerImpl::class.java)
 
-    override fun <T : Any?> transaction(block: Controller.() -> T): Result<T> {
+    override fun <T> transaction(block: TransactionController.() -> T): T {
+        val transactionController = TransactionControllerImpl(this)
+
         return try {
             connection.autoCommit = false
-            val result = block()
+
+            val result = block(transactionController)
+
             connection.commit()
+            transactionController.commit()
 
-            Result.success(result)
-        } catch (e: Exception) {
+            result
+        } catch(ex: Exception) {
             connection.rollback()
+            transactionController.rollback()
 
-            Result.failure(e)
+            throw ex
         } finally {
             connection.autoCommit = true
         }
@@ -112,11 +118,7 @@ internal class ControllerImpl(
             if(isEnum(kClass)) {
                 logger.trace("Deserializing parameter {} as an enum.", paramIndex)
 
-                when {
-                    isArray(kClass) -> preparedStatement.setObject(paramIndex, (value as Array<*>).map { (it as Enum<*>).name }.toTypedArray())
-                    isCollection(kClass) -> preparedStatement.setObject(paramIndex, (value as Collection<*>).map { (it as Enum<*>).name }.toTypedArray())
-                    else -> preparedStatement.setObject(paramIndex, (value as Enum<*>).name)
-                }
+                preparedStatement.setObject(paramIndex, (value as Enum<*>).name)
                 continue
             }
 

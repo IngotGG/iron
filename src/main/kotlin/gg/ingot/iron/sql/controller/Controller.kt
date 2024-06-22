@@ -14,9 +14,10 @@ import kotlin.reflect.KClass
 sealed interface Controller {
     /**
      * Starts a transaction on the connection.
+     * @throws Exception If an error occurs during the transaction.
      * @since 1.0
      */
-    fun <T : Any?> transaction(block: Controller.() -> T): Result<T>
+    fun <T : Any?> transaction(block: TransactionController.() -> T): T
 
     /**
      * Executes a raw query on the database and returns the result set.
@@ -135,7 +136,7 @@ inline fun <reified T : Any> Controller.queryMapped(@Language("SQL") query: Stri
  * @since 1.0
  */
 @JvmName("prepareMappedInline")
-inline fun <reified T : Any> Controller.prepareMapped(@Language("SQL") statement: String, vararg values: Any) =
+inline fun <reified T : Any> Controller.prepareMapped(@Language("SQL") statement: String, vararg values: Any?) =
     prepare(statement, T::class, *values)
 
 @JvmName("prepareMappedInline")

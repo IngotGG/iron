@@ -8,6 +8,7 @@ import gg.ingot.iron.sql.MappedResultSet
 import gg.ingot.iron.sql.SqlParameters
 import gg.ingot.iron.sql.controller.Controller
 import gg.ingot.iron.sql.controller.ControllerImpl
+import gg.ingot.iron.sql.controller.TransactionController
 import gg.ingot.iron.transformer.ModelTransformer
 import gg.ingot.iron.transformer.ResultTransformer
 import gg.ingot.iron.transformer.ValueTransformer
@@ -116,7 +117,7 @@ class Iron(
      * Starts a transaction on the connection.
      * @since 1.0
      */
-    suspend fun <T : Any?> transaction(block: Controller.() -> T): Result<T> {
+    suspend fun <T : Any?> transaction(block: TransactionController.() -> T): T {
         return withController { it.transaction(block) }
     }
 

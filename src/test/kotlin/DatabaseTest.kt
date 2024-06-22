@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class DatabaseTest {
     private val connection = Iron("jdbc:sqlite::memory:", IronSettings(
@@ -82,7 +83,7 @@ class DatabaseTest {
             )
 
             prepare("SELECT * FROM test")
-        }.getOrThrow()
+        }
 
         assertEquals(1, result?.getInt(1))
         assertEquals("test", result?.getString(2))
@@ -139,7 +140,7 @@ class DatabaseTest {
 
             prepareMapped<User>("INSERT INTO users VALUES (1) RETURNING *;")
                 .single()
-        }.getOrThrow()
+        }
 
         assertEquals(1, user.id)
     }
@@ -178,7 +179,7 @@ class DatabaseTest {
             execute("INSERT INTO example(test) VALUES ('{\"test\": \"hello\"}')")
             queryMapped<ExampleResponse>("SELECT * FROM example LIMIT 1;")
                 .singleNullable()
-        }.getOrThrow()
+        }
 
         assertNotNull(res)
         assertEquals("hello", res.test.test)
@@ -205,7 +206,7 @@ class DatabaseTest {
             execute("INSERT INTO example(test) VALUES ('{\"test\": \"hello\"}')")
             queryMapped<ExampleResponse>("SELECT * FROM example LIMIT 1;")
                 .singleNullable()
-        }.getOrThrow()
+        }
 
         assertNotNull(res)
         assertEquals("hello", res.test.test)
@@ -219,7 +220,7 @@ class DatabaseTest {
 
             query("SELECT name FROM test LIMIT 1;")
                 .singleValue<String>()
-        }.getOrThrow()
+        }
 
         assertEquals("test1", name)
     }
@@ -234,7 +235,7 @@ class DatabaseTest {
 
             query("SELECT name FROM test;")
                 .allValues<String>()
-        }.getOrThrow()
+        }
 
         assertEquals(5, names.size)
     }
@@ -262,7 +263,7 @@ class DatabaseTest {
 
             query("SELECT name FROM test LIMIT 1;")
                 .get<String>("name")
-        }.getOrThrow()
+        }
 
         assertEquals("test1", name)
     }
@@ -285,7 +286,7 @@ class DatabaseTest {
                   WHERE firstName = ? AND lastName = ? LIMIT 2;
             """.trimIndent(), *model.explode())
                 .single()
-        }.getOrThrow()
+        }
 
         assertEquals("Ingot", result.firstName)
         assertEquals("Team", result.lastName)
@@ -315,7 +316,7 @@ class DatabaseTest {
             ))
 
             query("SELECT name, other_name FROM test;")
-        }.getOrThrow()
+        }
         out.next()
 
         connection.prepare("SELECT name FROM test WHERE name = :name;", sqlParams("name" to "test"))
@@ -331,14 +332,33 @@ class DatabaseTest {
         data class TestModel(val name: String) : ExplodingModel
         val model = TestModel("test")
 
-        connection.transaction {
+        val res = connection.transaction {
             execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT);")
             prepare("INSERT INTO test(name) VALUES (:name);", model.toSqlParams())
 
             query("SELECT name FROM test;")
-        }.getOrThrow().let {
-            it.next()
-            assertEquals("test", it.getString("name"))
         }
+
+        res.next()
+        assertEquals("test", res.getString("name"))
+    }
+
+    @Test
+    fun `rollback test`() = runTest {
+        var rolledBack = false
+
+        try {
+            connection.transaction {
+                afterRollback {
+                    rolledBack = true
+                }
+
+                execute("SELECT * FROM fake_table;")
+            }
+        } catch(ex: Exception) {
+            assert(ex is SQLException)
+        }
+
+        assertTrue(rolledBack)
     }
 }

@@ -88,13 +88,8 @@ interface ExplodingModel {
             sortedFields.map {
                 val columnAnnotation = it.findAnnotation<Column>()
 
-                val serializer = if(columnAnnotation != null) {
-                    columnAnnotation.retrieveSerializer()
-                } else if(useSerializersAnnotation != null) {
-                    useSerializersAnnotation.retrieveMatchingSerializer(it.returnType.classifier as KClass<*>)
-                } else {
-                    null
-                }
+                val serializer = columnAnnotation?.retrieveSerializer()
+                    ?: useSerializersAnnotation?.retrieveMatchingSerializer(it.returnType.classifier as KClass<*>)
 
                 if(serializer != null) {
                     logger.debug("Using serializer ${serializer::class.simpleName} for field ${it.name}, this was cached.")

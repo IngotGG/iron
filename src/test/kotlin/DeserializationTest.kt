@@ -36,7 +36,7 @@ class DeserializationTest {
             execute("INSERT INTO example(test) VALUES ('{\"test\": \"hello\"}')")
             queryMapped<ExampleResponse>("SELECT * FROM example LIMIT 1;")
                 .singleNullable()
-        }.getOrThrow()
+        }
 
         assertNotNull(res)
         assertEquals("hello", res.test.test)
@@ -63,7 +63,7 @@ class DeserializationTest {
             execute("INSERT INTO example(test) VALUES ('{\"test\": \"hello\"}')")
             queryMapped<ExampleResponse>("SELECT * FROM example LIMIT 1;")
                 .singleNullable()
-        }.getOrThrow()
+        }
 
         assertNotNull(res)
         assertEquals("hello", res.test.test)
@@ -88,7 +88,7 @@ class DeserializationTest {
             execute("INSERT INTO example(example) VALUES ('hello')")
             queryMapped<Response>("SELECT * FROM example LIMIT 1;")
                 .singleNullable()
-        }.getOrThrow()
+        }
 
         assertNotNull(res)
         assertEquals("hello", res.example.str)
@@ -106,7 +106,7 @@ class DeserializationTest {
             execute("INSERT INTO example(example) VALUES ('EXAMPLE')")
             queryMapped<Response>("SELECT * FROM example LIMIT 1;")
                 .singleNullable()
-        }.getOrThrow()
+        }
 
         assertNotNull(res)
         assertEquals(res.example, TestEnum.EXAMPLE)
@@ -139,7 +139,7 @@ class DeserializationTest {
 
             query("SELECT example FROM example LIMIT 1;")
                 .singleValue<TestEnum>()
-        }.getOrThrow()
+        }
 
         assertEquals(enumValue, TestEnum.EXAMPLE)
     }
