@@ -172,7 +172,7 @@ class Iron(
      * @return The prepared statement.
      * @since 1.0
      */
-    suspend fun prepare(@Language("SQL") statement: String, vararg values: Any): ResultSet? {
+    suspend fun prepare(@Language("SQL") statement: String, vararg values: Any?): ResultSet? {
         return withController { it.prepare(statement, *values) }
     }
 
@@ -196,7 +196,7 @@ class Iron(
      * @param values The values to bind to the statement.
      * @return A result set mapped to the model.
      */
-    suspend fun <T : Any> prepareMapped(@Language("SQL") statement: String, clazz: KClass<T>, vararg values: Any): MappedResultSet<T> {
+    suspend fun <T : Any> prepareMapped(@Language("SQL") statement: String, clazz: KClass<T>, vararg values: Any?): MappedResultSet<T> {
         return withController { it.prepare(statement, clazz, *values) }
     }
 
@@ -218,7 +218,7 @@ class Iron(
      * @see prepare
      * @since 1.0
      */
-    suspend inline fun <reified T : Any> prepareMapped(@Language("SQL") statement: String, vararg values: Any) = prepareMapped(statement, T::class, *values)
+    suspend inline fun <reified T : Any> prepareMapped(@Language("SQL") statement: String, vararg values: Any?) = prepareMapped(statement, T::class, *values)
 
     /**
      * Helper method allowing for inline usage of the prepare method.
