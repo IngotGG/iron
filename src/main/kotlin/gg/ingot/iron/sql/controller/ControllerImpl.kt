@@ -75,7 +75,7 @@ internal class ControllerImpl(
 
             if(value == null) {
                 logger.trace("Setting parameter {} to null.", paramIndex)
-                preparedStatement.setObject(paramIndex,null)
+                preparedStatement.setObject(paramIndex, null)
                 continue
             }
 
