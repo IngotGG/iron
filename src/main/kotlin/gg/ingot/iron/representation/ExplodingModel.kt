@@ -28,7 +28,7 @@ interface ExplodingModel {
      * Explodes the model into an array of its fields.
      * @return An array of the fields of the model.
      */
-    fun explode(): Array<Any> {
+    fun explode(): Array<Any?> {
         val fields = getFields()
 
         return Array(fields.size) { getFieldValue(fields[it]) }
@@ -52,9 +52,9 @@ interface ExplodingModel {
      * @return The value of the field.
      * @throws IllegalArgumentException If the field has no backing field.
      */
-    private fun getFieldValue(field: Field): Any {
+    private fun getFieldValue(field: Field): Any? {
         val value = field.kProperty.javaField?.get(this)
-            ?: error("Field ${field.kProperty.name} has no backing field.")
+            ?: return null
 
         return if(field.serializer != null) {
             serializedField(value, field.serializer)
