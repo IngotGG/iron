@@ -34,10 +34,10 @@ class Iron(
     private var pool: ConnectionPool? = null
 
     /** The model transformer used to transform models into their corresponding entity representation. */
-    internal val modelTransformer = ModelTransformer(settings.namingStrategy)
+    private val modelTransformer = ModelTransformer(settings.namingStrategy)
 
     /** The value transformer used to transform values from the result set into their corresponding types. */
-    internal val valueTransformer = ValueTransformer(settings.serialization)
+    private val valueTransformer = ValueTransformer(settings.serialization)
 
     /** The result transformer used to transform the result set into a model. */
     internal val resultTransformer = ResultTransformer(modelTransformer, valueTransformer)

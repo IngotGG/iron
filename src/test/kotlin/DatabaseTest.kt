@@ -92,7 +92,7 @@ class DatabaseTest {
 
     @Test
     fun testMapperAll() = runTest {
-        connection.transaction {
+        val results = connection.transaction {
             execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)")
             execute("INSERT INTO test VALUES (1, 'test1')")
             execute("INSERT INTO test VALUES (2, 'test2')")
@@ -100,10 +100,12 @@ class DatabaseTest {
             execute("INSERT INTO test VALUES (4, 'test4')")
             execute("INSERT INTO test VALUES (5, 'test5')")
             execute("INSERT INTO test VALUES (6, 'test6')")
+
+            prepare("SELECT * FROM test")
+                .all<TestModel>()
         }
 
-        val results = connection.prepare("SELECT * FROM test")
-        results.all<TestModel>().forEachIndexed { index, result ->
+        results.forEachIndexed { index, result ->
             assertEquals(index + 1, result.id)
             assertEquals("test${index + 1}", result.name)
         }

@@ -177,7 +177,7 @@ class IronResultSet internal constructor(
         val value = if (deserializer != null) {
             getNullable<Any>(1)?.let { deserializer.fromDatabaseValue(it) }
         } else {
-            get<T>(1)
+            getNullable<T>(1)
         }
 
         check(!this.next()) { "ResultSet has more than one row" }
@@ -226,7 +226,7 @@ class IronResultSet internal constructor(
             val value = if (deserializer != null) {
                 getNullable<Any>(1)?.let { deserializer.fromDatabaseValue(it) }
             } else {
-                get<T>(1)
+                getNullable<T>(1)
             }
 
             l.add(value)
