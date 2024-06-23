@@ -2,13 +2,13 @@ package gg.ingot.iron.serialization
 
 /**
  * Adapt column fields to a provided type for the database.
- * @param T first type to adapt for.
- * @param R second type to adapt for.
+ * @param Serialized first type to adapt for.
+ * @param Deserialized second type to adapt for.
  * @author DebitCardz
  * @since 1.3
  */
-interface ColumnTransformer <T: Any, R: Any>
-    : ColumnSerializer<R, T>, ColumnDeserializer<T, R>
+interface ColumnTransformer <Serialized: Any, Deserialized: Any>
+    : ColumnSerializer<Deserialized, Serialized>, ColumnDeserializer<Serialized, Deserialized>
 
 // Internally used to denote that a column should not be transformed.
 internal object EmptyTransformer : ColumnTransformer<Nothing, Nothing> {

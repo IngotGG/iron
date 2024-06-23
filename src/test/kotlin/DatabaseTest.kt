@@ -4,6 +4,7 @@ import gg.ingot.iron.Iron
 import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.representation.ExplodingModel
+import gg.ingot.iron.serialization.ColumnTransformer
 import gg.ingot.iron.serialization.SerializationAdapter
 import gg.ingot.iron.sql.sqlParams
 import gg.ingot.iron.strategies.NamingStrategy
@@ -11,6 +12,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.sql.SQLException
+import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -358,4 +360,31 @@ class DatabaseTest {
 
         assertTrue(rolledBack)
     }
+
+    object UUIDTransformer: ColumnTransformer<String, UUID> {
+        override fun fromDatabaseValue(value: String): UUID {
+            return UUID.fromString(value)
+        }
+
+        override fun toDatabaseValue(value: UUID): String {
+            return value.toString()
+        }
+    }
+
+    @Test
+    fun `test transformer`() = runTest {
+        val values = connection.transaction {
+            execute("CREATE TABLE uuids(uuid TEXT PRIMARY KEY)")
+            prepare("INSERT INTO uuids VALUES (?)", UUID.randomUUID())
+            prepare("INSERT INTO uuids VALUES (?)", UUID.randomUUID())
+            prepare("INSERT INTO uuids VALUES (?)", UUID.randomUUID())
+            prepare("INSERT INTO uuids VALUES (?)", UUID.randomUUID())
+
+            prepare("SELECT * FROM uuids")
+                .columnAll<UUID>(UUIDTransformer)
+        }
+
+        assertEquals(4, values.size)
+    }
+
 }
