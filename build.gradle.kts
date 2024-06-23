@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "gg.ingot"
-version = "1.0.3"
+version = "1.1.0"
 
 repositories {
     mavenCentral()
@@ -15,7 +15,7 @@ repositories {
 dependencies {
     // kotlin
     implementation(kotlin("reflect"))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0-RC")
+    compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0-RC")
 
     // serialization
     compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.0-RC")

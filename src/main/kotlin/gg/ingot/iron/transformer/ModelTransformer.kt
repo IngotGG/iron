@@ -1,16 +1,15 @@
 package gg.ingot.iron.transformer
 
-import gg.ingot.iron.annotations.Column
+import gg.ingot.iron.annotations.*
 import gg.ingot.iron.repository.ModelRepository
 import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.representation.EntityModel
 import gg.ingot.iron.serialization.ColumnDeserializer
-import gg.ingot.iron.serialization.EmptyDeserializer
-import gg.ingot.iron.serialization.EnumColumnDeserializer
+import gg.ingot.iron.strategies.NamingStrategy
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
-import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.declaredMemberProperties
+import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.javaField
 
 /**
@@ -19,7 +18,9 @@ import kotlin.reflect.jvm.javaField
  * @author Santio
  * @since 1.0
  */
-internal object ModelTransformer {
+internal class ModelTransformer(
+    private val namingStrategy: NamingStrategy
+) {
     /**
      * Transforms a class into an entity model, which holds information about the class model.
      * @param clazz The class to transform into an entity model.
@@ -29,7 +30,15 @@ internal object ModelTransformer {
         return ModelRepository.models.getOrPut(clazz) {
             val fields = mutableListOf<EntityField>()
 
-            for (field in clazz.declaredMemberProperties) {
+            val modelAnnotation = clazz.annotations.find { it is Model } as Model?
+            val useDeserializersAnnotation = clazz.annotations.find { it is UseModelDeserializers } as UseModelDeserializers?
+
+            val params = clazz.primaryConstructor
+                ?.parameters
+                ?: error("Model ${clazz.simpleName} has no primary constructor.")
+            val sortedProperties = clazz.declaredMemberProperties.sortedBy { params.indexOfFirst { param -> param.name == it.name } }
+
+            for(field in sortedProperties) {
                 val annotation = field.annotations.find { it is Column } as Column?
 
                 if (annotation != null && annotation.ignore || field.javaField?.isSynthetic == true) {
@@ -37,16 +46,24 @@ internal object ModelTransformer {
                 }
 
                 fields.add(EntityField(
-                    field,
-                    field.javaField ?: error("Field ${field.name} has no backing field."),
-                    retrieveName(field, annotation),
-                    field.returnType.isMarkedNullable,
-                    annotation?.json ?: false,
-                    retrieveDeserializer(field, annotation)
+                    field = field,
+                    javaField = field.javaField ?: error("Field ${field.name} has no backing field."),
+                    columnName = retrieveName(field, annotation),
+                    nullable = field.returnType.isMarkedNullable,
+                    isJson = annotation?.json ?: false,
+                    deserializer = retrieveDeserializer(field, useDeserializersAnnotation, annotation)
                 ))
             }
 
-            EntityModel(clazz, fields)
+            val strategy = modelAnnotation?.namingStrategy
+                .takeIf { it != NamingStrategy.NONE }
+                ?: namingStrategy
+
+            EntityModel(
+                clazz,
+                fields,
+                strategy
+            )
         }
     }
 
@@ -79,18 +96,12 @@ internal object ModelTransformer {
     @Suppress("UNCHECKED_CAST")
     private fun retrieveDeserializer(
         field: KProperty<*>,
+        useDeserializersAnnotation: UseModelDeserializers?,
         annotation: Column?
     ): ColumnDeserializer<*, *>? {
-        if(annotation?.deserializer == EmptyDeserializer::class) {
-            return null
-        }
+        val kClass = field.returnType.classifier as KClass<*>
 
-        // make an enum deserializer
-        val classifier = field.returnType.classifier
-        if(classifier is KClass<*> && classifier.java.isEnum) {
-            return EnumColumnDeserializer(classifier.java as Class<out Enum<*>>)
-        }
-
-        return annotation?.deserializer?.objectInstance ?: annotation?.deserializer?.createInstance()
+        return annotation?.retrieveDeserializer()
+            ?: useDeserializersAnnotation?.retrieveMatchingDeserializer(kClass)
     }
 }

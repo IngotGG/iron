@@ -5,11 +5,13 @@ import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.serialization.SerializationAdapter
-import gg.ingot.iron.sql.allValues
+import gg.ingot.iron.sql.allSingleColumn
 import gg.ingot.iron.sql.controller.prepareMapped
 import gg.ingot.iron.sql.controller.queryMapped
 import gg.ingot.iron.sql.get
-import gg.ingot.iron.sql.singleValue
+import gg.ingot.iron.sql.singleColumn
+import gg.ingot.iron.sql.sqlParams
+import gg.ingot.iron.strategies.NamingStrategy
 import java.sql.SQLException
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,10 +19,12 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class DatabaseTest {
-    private val connection = Iron("jdbc:sqlite::memory:")
-        .connect()
+    private val connection = Iron("jdbc:sqlite::memory:", IronSettings(
+        namingStrategy = NamingStrategy.CAMEL_CASE
+    )).connect()
 
     @Test
     fun testIronUse() = runTest {
@@ -215,7 +219,7 @@ class DatabaseTest {
             execute("INSERT INTO test(name) VALUES ('test1')")
 
             query("SELECT name FROM test LIMIT 1;")
-                .singleValue<String>()
+                .singleColumn<String>()
         }
 
         assertEquals("test1", name)
@@ -230,7 +234,7 @@ class DatabaseTest {
             }
 
             query("SELECT name FROM test;")
-                .allValues<String>()
+                .allSingleColumn<String>()
         }
 
         assertEquals(5, names.size)
@@ -244,7 +248,7 @@ class DatabaseTest {
                 execute("INSERT INTO test(name) VALUES ('test1')")
 
                 query("SELECT * FROM test LIMIT 1;")
-                    .singleValue<String>()
+                    .singleColumn<String>()
            }
         } catch(ex: Exception) {
             assert(ex is IllegalStateException)
@@ -301,5 +305,60 @@ class DatabaseTest {
         } catch(ex: Exception) {
             assert(ex is IllegalArgumentException)
         }
+    }
+
+    @Test
+    fun `named placeholder`() = runTest {
+        val out = connection.transaction {
+            execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT, other_name TEXT);")
+            prepare("INSERT INTO test(name, other_name) VALUES (:name, :name);", sqlParams(
+                "name" to "test",
+            ))
+
+            query("SELECT name, other_name FROM test;")
+        }
+        out.next()
+
+        connection.prepare("SELECT name FROM test WHERE name = :name;", sqlParams("name" to "test"))
+            ?.singleColumn<String>()
+            ?.let { assertEquals("test", it) }
+
+        assertEquals("test", out.getString("name"))
+        assertEquals("test", out.getString("other_name"))
+    }
+
+    @Test
+    fun `model named placeholder`() = runTest {
+        data class TestModel(val name: String) : ExplodingModel
+        val model = TestModel("test")
+
+        val res = connection.transaction {
+            execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT);")
+            prepare("INSERT INTO test(name) VALUES (:name);", model.toSqlParams())
+
+            query("SELECT name FROM test;")
+        }
+
+        res.next()
+        assertEquals("test", res.getString("name"))
+    }
+
+    @Test
+    fun `rollback test`() = runTest {
+        var rolledBack = false
+
+        try {
+            connection.transaction {
+                afterRollback {
+                    rolledBack = true
+                }
+
+                execute("SELECT * FROM fake_table;")
+            }
+        } catch(ex: Exception) {
+            assert(ex is SQLException)
+        }
+
+        assertTrue(rolledBack)
     }
 }

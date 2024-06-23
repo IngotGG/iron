@@ -8,6 +8,9 @@ package gg.ingot.iron.strategies
  */
 @Suppress("unused")
 enum class NamingStrategy {
+    NONE {
+        override fun transform(name: String): String = name
+    },
     SNAKE_CASE {
         override fun transform(name: String): String {
             return buildString {
