@@ -63,8 +63,8 @@ inline fun <reified T> ResultSet?.getNullable(column: Int): T? {
  * @throws IllegalStateException If there are no results in the ResultSet.
  * @throws IllegalStateException If there are more than one result in the ResultSet.
  */
-inline fun <reified T> ResultSet?.singleValue(): T {
-    return singleValueNullable<T>() ?: error("No results in ResultSet")
+inline fun <reified T> ResultSet?.singleColumn(): T {
+    return singleColumnNullable<T>() ?: error("No results in ResultSet")
 }
 
 /**
@@ -72,7 +72,7 @@ inline fun <reified T> ResultSet?.singleValue(): T {
  * @return The single value from the ResultSet or null if there are no results.
  * @throws IllegalStateException If there are more than one result in the ResultSet.
  */
-inline fun <reified T> ResultSet?.singleValueNullable(): T? {
+inline fun <reified T> ResultSet?.singleColumnNullable(): T? {
     if(this == null) return null
 
     check(metaData?.columnCount == 1) { "ResultSet must have exactly one column" }
@@ -90,8 +90,8 @@ inline fun <reified T> ResultSet?.singleValueNullable(): T? {
  * @throws IllegalStateException If any value is null.
  * @throws IllegalStateException If there are more than one column in the ResultSet.
  */
-inline fun <reified T> ResultSet?.allValues(): List<T> {
-    val values = allValuesNullable<T>()
+inline fun <reified T> ResultSet?.allSingleColumn(): List<T> {
+    val values = allSingleColumnNullable<T>()
     check(!values.any { it == null }) { "ResultSet contains null values" }
 
     // we've already checked there are no null values
@@ -104,7 +104,7 @@ inline fun <reified T> ResultSet?.allValues(): List<T> {
  * @return A list of all values from the ResultSet or null if the ResultSet is null.
  * @throws IllegalStateException If there are more than one column in the ResultSet.
  */
-inline fun <reified T> ResultSet?.allValuesNullable(): List<T?> {
+inline fun <reified T> ResultSet?.allSingleColumnNullable(): List<T?> {
     if(this == null) return emptyList()
 
     check(metaData.columnCount == 1) { "ResultSet must have exactly one column" }
@@ -122,8 +122,8 @@ inline fun <reified T> ResultSet?.allValuesNullable(): List<T?> {
  * @throws IllegalStateException If the value is null.
  * @throws IllegalStateException If the value cannot be mapped.
  */
-inline fun <reified T> ResultSet?.getMapped(column: String, deserializer: ColumnDeserializer<*, T>): T {
-    return getMappedNullable(column, deserializer) ?: error("Value is null")
+inline fun <reified T> ResultSet?.mapped(column: String, deserializer: ColumnDeserializer<*, T>): T {
+    return mappedNullable(column, deserializer) ?: error("Value is null")
 }
 
 /**
@@ -134,8 +134,8 @@ inline fun <reified T> ResultSet?.getMapped(column: String, deserializer: Column
  * @throws IllegalStateException If the value is null.
  * @throws IllegalStateException If the value cannot be mapped.
  */
-inline fun <reified T> ResultSet?.getMapped(column: Int, deserializer: ColumnDeserializer<*, T>): T {
-    return getMappedNullable(column, deserializer) ?: error("Value is null")
+inline fun <reified T> ResultSet?.mapped(column: Int, deserializer: ColumnDeserializer<*, T>): T {
+    return mappedNullable(column, deserializer) ?: error("Value is null")
 }
 
 /**
@@ -146,7 +146,7 @@ inline fun <reified T> ResultSet?.getMapped(column: Int, deserializer: ColumnDes
  * @throws IllegalStateException If the value cannot be mapped.
  * @throws IllegalStateException If the value is null.
  */
-inline fun <reified T> ResultSet?.getMappedNullable(column: String, deserializer: ColumnDeserializer<*, T>): T? {
+inline fun <reified T> ResultSet?.mappedNullable(column: String, deserializer: ColumnDeserializer<*, T>): T? {
     if(this == null) return null
     deserializer as ColumnDeserializer<Any, T>
 
@@ -161,9 +161,9 @@ inline fun <reified T> ResultSet?.getMappedNullable(column: String, deserializer
  * @return The mapped value at the column or null if the value is null.
  * @throws IllegalStateException If the value cannot be mapped.
  */
-inline fun <reified T> ResultSet?.getMappedNullable(column: Int, deserializer: ColumnDeserializer<*, T>): T? {
+inline fun <reified T> ResultSet?.mappedNullable(column: Int, deserializer: ColumnDeserializer<*, T>): T? {
     if(this == null) return null
-    return getMappedNullable(metaData.getColumnName(column), deserializer)
+    return mappedNullable(metaData.getColumnName(column), deserializer)
 }
 
 /**
@@ -174,8 +174,8 @@ inline fun <reified T> ResultSet?.getMappedNullable(column: Int, deserializer: C
  * @throws IllegalStateException If there are more than one result in the ResultSet.
  * @throws IllegalStateException If the value cannot be mapped.
  */
-inline fun <reified T> ResultSet?.singleValueMapped(deserializer: ColumnDeserializer<*, T>): T {
-    return singleValueMappedNullable(deserializer) ?: error("No results in ResultSet")
+inline fun <reified T> ResultSet?.singleColumnMapped(deserializer: ColumnDeserializer<*, T>): T {
+    return singleColumnMappedNullable(deserializer) ?: error("No results in ResultSet")
 }
 
 /**
@@ -185,13 +185,13 @@ inline fun <reified T> ResultSet?.singleValueMapped(deserializer: ColumnDeserial
  * @throws IllegalStateException If there are more than one result in the ResultSet.
  * @throws IllegalStateException If the value cannot be mapped.
  */
-inline fun <reified T> ResultSet?.singleValueMappedNullable(deserializer: ColumnDeserializer<*, T>): T? {
+inline fun <reified T> ResultSet?.singleColumnMappedNullable(deserializer: ColumnDeserializer<*, T>): T? {
     if(this == null) return null
 
     check(metaData?.columnCount == 1) { "ResultSet must have exactly one column" }
     if(!next()) return null
 
-    val value = getMappedNullable<T>(1, deserializer)
+    val value = mappedNullable<T>(1, deserializer)
     check(!next()) { "ResultSet has more than one row" }
 
     return value
@@ -204,8 +204,8 @@ inline fun <reified T> ResultSet?.singleValueMappedNullable(deserializer: Column
  * @throws IllegalStateException If any value is null.
  * @throws IllegalStateException If there are more than one column in the ResultSet.
  */
-inline fun <reified T> ResultSet?.allValuesMapped(deserializer: ColumnDeserializer<*, T>): List<T> {
-    val values = allValuesMappedNullable(deserializer)
+inline fun <reified T> ResultSet?.allSingleColumnMapped(deserializer: ColumnDeserializer<*, T>): List<T> {
+    val values = allSingleColumnMappedNullable(deserializer)
     check(!values.any { it == null }) { "ResultSet contains null values" }
 
     // we've already checked there are no null values
@@ -220,12 +220,12 @@ inline fun <reified T> ResultSet?.allValuesMapped(deserializer: ColumnDeserializ
  * @throws IllegalStateException If there are more than one column in the ResultSet.
  * @throws IllegalStateException If the value cannot be mapped.
  */
-inline fun <reified T> ResultSet?.allValuesMappedNullable(deserializer: ColumnDeserializer<*, T>): List<T?> {
+inline fun <reified T> ResultSet?.allSingleColumnMappedNullable(deserializer: ColumnDeserializer<*, T>): List<T?> {
     if(this == null) return emptyList()
 
     check(metaData.columnCount == 1) { "ResultSet must have exactly one column" }
     val l = mutableListOf<T?>()
     while(next())
-        l.add(getMappedNullable(1, deserializer))
+        l.add(mappedNullable(1, deserializer))
     return l
 }

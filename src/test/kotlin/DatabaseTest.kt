@@ -5,11 +5,11 @@ import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.serialization.SerializationAdapter
-import gg.ingot.iron.sql.allValues
+import gg.ingot.iron.sql.allSingleColumn
 import gg.ingot.iron.sql.controller.prepareMapped
 import gg.ingot.iron.sql.controller.queryMapped
 import gg.ingot.iron.sql.get
-import gg.ingot.iron.sql.singleValue
+import gg.ingot.iron.sql.singleColumn
 import gg.ingot.iron.sql.sqlParams
 import gg.ingot.iron.strategies.NamingStrategy
 import java.sql.SQLException
@@ -219,7 +219,7 @@ class DatabaseTest {
             execute("INSERT INTO test(name) VALUES ('test1')")
 
             query("SELECT name FROM test LIMIT 1;")
-                .singleValue<String>()
+                .singleColumn<String>()
         }
 
         assertEquals("test1", name)
@@ -234,7 +234,7 @@ class DatabaseTest {
             }
 
             query("SELECT name FROM test;")
-                .allValues<String>()
+                .allSingleColumn<String>()
         }
 
         assertEquals(5, names.size)
@@ -248,7 +248,7 @@ class DatabaseTest {
                 execute("INSERT INTO test(name) VALUES ('test1')")
 
                 query("SELECT * FROM test LIMIT 1;")
-                    .singleValue<String>()
+                    .singleColumn<String>()
            }
         } catch(ex: Exception) {
             assert(ex is IllegalStateException)
@@ -320,7 +320,7 @@ class DatabaseTest {
         out.next()
 
         connection.prepare("SELECT name FROM test WHERE name = :name;", sqlParams("name" to "test"))
-            ?.singleValue<String>()
+            ?.singleColumn<String>()
             ?.let { assertEquals("test", it) }
 
         assertEquals("test", out.getString("name"))

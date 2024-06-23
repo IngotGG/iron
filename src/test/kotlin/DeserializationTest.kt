@@ -6,7 +6,7 @@ import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.SerializationAdapter
-import gg.ingot.iron.sql.singleValue
+import gg.ingot.iron.sql.singleColumn
 import gg.ingot.iron.sql.controller.queryMapped
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
@@ -138,7 +138,7 @@ class DeserializationTest {
             execute("INSERT INTO example(example) VALUES ('EXAMPLE')")
 
             query("SELECT example FROM example LIMIT 1;")
-                .singleValue<TestEnum>()
+                .singleColumn<TestEnum>()
         }
 
         assertEquals(enumValue, TestEnum.EXAMPLE)
