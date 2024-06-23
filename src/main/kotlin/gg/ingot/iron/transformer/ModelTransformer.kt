@@ -51,9 +51,6 @@ internal class ModelTransformer(
                     columnName = retrieveName(field, annotation),
                     nullable = field.returnType.isMarkedNullable,
                     isJson = annotation?.json ?: false,
-                    isArray = isArray(field),
-                    isCollection = isCollection(field),
-                    isEnum = isEnum(field),
                     deserializer = retrieveDeserializer(field, useDeserializersAnnotation, annotation)
                 ))
             }

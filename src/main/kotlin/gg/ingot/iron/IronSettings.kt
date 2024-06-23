@@ -26,7 +26,7 @@ data class IronSettings(
     /** Additional properties to pass into the [java.sql.DriverManager] */
     val driverProperties: Properties? = null,
     /** Naming Strategy to use when handling column names. */
-    val namingStrategy: NamingStrategy = NamingStrategy.SNAKE_CASE,
+    val namingStrategy: NamingStrategy = NamingStrategy.NONE,
 ) {
     /** Whether the connection pool is a multi connection pool. */
     val isMultiConnectionPool: Boolean
