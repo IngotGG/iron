@@ -44,7 +44,6 @@ dependencies {
     <artifactId>iron</artifactId>
     <version>TAG</version>
 </dependency>
-
 ```
 
 ## Features
@@ -66,8 +65,8 @@ suspend fun main() {
         execute("CREATE TABLE users (id INTEGER PRIMARY KEY, firstName TEXT NOT NULL, lastName TEXT NOT NULL)")
         execute("INSERT INTO users (firstName, lastName) VALUES ('Ingot', 'Team')")
         
-        query<User>("SELECT * FROM users LIMIT 1;")
-            .single()
+        query("SELECT * FROM users LIMIT 1;")
+            .single<User>()
     }
 
     println(user)
@@ -75,6 +74,7 @@ suspend fun main() {
 ```
 
 ### Pooled Connection
+
 ```kotlin
 suspend fun main() {
     val connection = Iron(
@@ -89,9 +89,10 @@ suspend fun main() {
     // Pooled connections are identical to single connections
     // in terms of how you interact with them, but more connections
     // allow for more throughput in your application.
-    val added = connection.query("SELECT 1+1;")
-        .singleValue<Int>()
-    println(added)
+    val sum = connection.query("SELECT 1+1;")
+        .columnSingle<Int>() // Gets the only value from the only column, throws if there's more than 1 value or column
+
+    println(sum)
 }
 ```
 
@@ -103,9 +104,15 @@ suspend fun main() {
     val connection = Iron("jdbc:sqlite:memory:").connect()
 
     // we can easily map data from our queries to a model.
-    val user = connection.query<PartialUser>("SELECT firstName, lastName FROM users LIMIT 1;")
-        .single()
+    val user = connection.query("SELECT firstName, lastName FROM users LIMIT 1;")
+        .single<PartialUser>() // Enforces a row check, throws if more or less than 1 is returned
+    
+    // Or get all the users in the query
+    val users = connection.prepare("SELECT firstName, lastName FROM users WHERE age > ?", 18)
+        .all<PartialUser>()
+    
     println(user)
+    println(users.size)
 }
 ```
 

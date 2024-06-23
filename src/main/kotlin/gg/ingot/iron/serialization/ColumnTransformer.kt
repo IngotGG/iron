@@ -7,7 +7,7 @@ package gg.ingot.iron.serialization
  * @author DebitCardz
  * @since 1.3
  */
-interface ColumnTransformer <T, R>
+interface ColumnTransformer <T: Any, R>
     : ColumnSerializer<R, T>, ColumnDeserializer<T, R>
 
 // Internally used to denote that a column should not be transformed.

@@ -4,16 +4,11 @@ import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.serialization.SerializationAdapter
 import gg.ingot.iron.sql.ColumnJsonField
 import gg.ingot.iron.sql.ColumnSerializedField
-import gg.ingot.iron.sql.MappedResultSet
-import gg.ingot.iron.sql.SqlParameters
+import gg.ingot.iron.sql.IronResultSet
 import gg.ingot.iron.transformer.ResultTransformer
-import gg.ingot.iron.transformer.isArray
-import gg.ingot.iron.transformer.isCollection
 import gg.ingot.iron.transformer.isEnum
 import org.slf4j.LoggerFactory
 import java.sql.Connection
-import java.sql.ResultSet
-import kotlin.reflect.KClass
 
 /**
  * Controller implementation for handling database transactions and queries.
@@ -49,15 +44,13 @@ internal open class ControllerImpl(
         }
     }
 
-    override fun query(query: String): ResultSet {
+    override fun query(query: String): IronResultSet {
         logger.trace("Executing Query\n{}", query)
 
-        return connection.createStatement()
+        val resultSet = connection.createStatement()
             .executeQuery(query)
-    }
 
-    override fun <T : Any> query(query: String, clazz: KClass<T>): MappedResultSet<T> {
-        return MappedResultSet(query(query), clazz, resultTransformer)
+        return IronResultSet(resultSet, resultTransformer)
     }
 
     override fun execute(statement: String): Boolean {
@@ -67,7 +60,8 @@ internal open class ControllerImpl(
             .execute(statement)
     }
 
-    override fun prepare(statement: String, vararg values: Any?): ResultSet? {
+    @Suppress("UNCHECKED_CAST")
+    override fun prepare(statement: String, vararg values: Any?): IronResultSet {
         val preparedStatement = connection.prepareStatement(statement)
 
         require(preparedStatement.parameterMetaData.parameterCount == values.size) {
@@ -126,24 +120,13 @@ internal open class ControllerImpl(
             preparedStatement.setObject(paramIndex, value)
         }
 
-        return if (preparedStatement.execute()) {
+        val resultSet = if (preparedStatement.execute()) {
             preparedStatement.resultSet
         } else {
             null
         }
+
+        return IronResultSet(resultSet, resultTransformer)
     }
 
-    override fun <T : Any> prepare(statement: String, clazz: KClass<T>, vararg values: Any?): MappedResultSet<T> {
-        val resultSet = prepare(statement, *values)
-            ?: error("No result set was returned from the prepared statement.")
-
-        return MappedResultSet(resultSet, clazz, resultTransformer)
-    }
-
-    override fun <T : Any> prepare(statement: String, clazz: KClass<T>, values: SqlParameters): MappedResultSet<T> {
-        val resultSet = prepare(statement, values)
-            ?: error("No result set was returned from the prepared statement.")
-
-        return MappedResultSet(resultSet, clazz, resultTransformer)
-    }
 }

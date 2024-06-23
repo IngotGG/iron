@@ -7,7 +7,7 @@ package gg.ingot.iron.serialization
  * @author DebitCardz
  * @since 1.3
  */
-interface ColumnDeserializer <From, To> {
+interface ColumnDeserializer <From: Any, To> {
     /**
      * Deserialize the given value into the provided type.
      * @param value The value to deserialize.

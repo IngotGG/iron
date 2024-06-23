@@ -4,7 +4,7 @@ import gg.ingot.iron.pool.ConnectionPool
 import gg.ingot.iron.pool.MultiConnectionPool
 import gg.ingot.iron.pool.SingleConnectionPool
 import gg.ingot.iron.representation.DBMS
-import gg.ingot.iron.sql.MappedResultSet
+import gg.ingot.iron.sql.IronResultSet
 import gg.ingot.iron.sql.SqlParameters
 import gg.ingot.iron.sql.controller.Controller
 import gg.ingot.iron.sql.controller.ControllerImpl
@@ -16,8 +16,6 @@ import kotlinx.coroutines.*
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.sql.Connection
-import java.sql.ResultSet
-import kotlin.reflect.KClass
 
 /**
  * The entry point for the Iron database library, which allows for easy database connections and queries.
@@ -36,13 +34,13 @@ class Iron(
     private var pool: ConnectionPool? = null
 
     /** The model transformer used to transform models into their corresponding entity representation. */
-    private val modelTransformer = ModelTransformer(settings.namingStrategy)
+    internal val modelTransformer = ModelTransformer(settings.namingStrategy)
 
     /** The value transformer used to transform values from the result set into their corresponding types. */
-    private val valueTransformer = ValueTransformer(settings.serialization)
+    internal val valueTransformer = ValueTransformer(settings.serialization)
 
     /** The result transformer used to transform the result set into a model. */
-    private val resultTransformer = ResultTransformer(modelTransformer, valueTransformer)
+    internal val resultTransformer = ResultTransformer(modelTransformer, valueTransformer)
 
     /**
      * Establishes a connection to the database using the provided connection string.
@@ -129,29 +127,9 @@ class Iron(
      * @return The result set from the query.
      * @since 1.0
      */
-    suspend fun query(@Language("SQL") statement: String): ResultSet {
+    suspend fun query(@Language("SQL") statement: String): IronResultSet {
         return withController { it.query(statement) }
     }
-
-    /**
-     * Executes a raw query on the database and maps the result set to a model.
-     *
-     * **Note:** This method does no validation on the query, it is up to the user to ensure the query is safe.
-     * @param query The query to execute on the database.
-     * @param clazz The class to map the result set to.
-     * @return A result set mapped to the model.
-     * @since 1.0
-     */
-    suspend fun <T : Any> queryMapped(@Language("SQL") statement: String, clazz: KClass<T>): MappedResultSet<T> {
-        return withController { it.query(statement, clazz) }
-    }
-
-    /**
-     * Helper method allowing for inline usage of the query method.
-     * @see query
-     * @since 1.0
-     */
-    suspend inline fun <reified T : Any> queryMapped(@Language("SQL") statement: String): MappedResultSet<T> = queryMapped(statement, T::class)
 
     /**
      * Executes a raw statement on the database.
@@ -173,7 +151,7 @@ class Iron(
      * @return The prepared statement.
      * @since 1.0
      */
-    suspend fun prepare(@Language("SQL") statement: String, vararg values: Any?): ResultSet? {
+    suspend fun prepare(@Language("SQL") statement: String, vararg values: Any?): IronResultSet {
         return withController { it.prepare(statement, *values) }
     }
 
@@ -184,49 +162,9 @@ class Iron(
      * @param values The values to bind to the statement.
      * @return The prepared statement.
      */
-    suspend fun prepare(@Language("SQL") statement: String, values: SqlParameters): ResultSet? {
+    suspend fun prepare(@Language("SQL") statement: String, values: SqlParameters): IronResultSet {
         return withController { it.prepare(statement, values) }
     }
-
-    /**
-     * Prepares a statement on the database and maps the result set to a model. This method should be preferred over
-     * [execute] for security reasons.
-     * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
-     * the values, any values passed in through this parameter is not sanitized.
-     * @param clazz The class to map the result set to.
-     * @param values The values to bind to the statement.
-     * @return A result set mapped to the model.
-     */
-    suspend fun <T : Any> prepareMapped(@Language("SQL") statement: String, clazz: KClass<T>, vararg values: Any?): MappedResultSet<T> {
-        return withController { it.prepare(statement, clazz, *values) }
-    }
-
-    /**
-     * Prepares a statement on the database and maps the result set to a model. This method should be preferred over
-     * [execute] for security reasons.
-     * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
-     * the values, any values passed in through this parameter is not sanitized.
-     * @param clazz The class to map the result set to.
-     * @param values The values to bind to the statement.
-     * @return A result set mapped to the model.
-     */
-    suspend fun <T : Any> prepareMapped(@Language("SQL") statement: String, clazz: KClass<T>, values: SqlParameters): MappedResultSet<T> {
-        return withController { it.prepare(statement, clazz, values) }
-    }
-
-    /**
-     * Helper method allowing for inline usage of the prepare method.
-     * @see prepare
-     * @since 1.0
-     */
-    suspend inline fun <reified T : Any> prepareMapped(@Language("SQL") statement: String, vararg values: Any?) = prepareMapped(statement, T::class, *values)
-
-    /**
-     * Helper method allowing for inline usage of the prepare method.
-     * @see prepare
-     * @since 1.0
-     */
-    suspend inline fun <reified T : Any> prepareMapped(@Language("SQL") statement: String, values: SqlParameters) = prepareMapped(statement, T::class, values)
 
     internal companion object {
         /** Error message to send when a connection is requested but [Iron.connect] has not been called. */

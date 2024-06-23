@@ -1,9 +1,6 @@
 package gg.ingot.iron.sql.controller
 
-import gg.ingot.iron.sql.MappedResultSet
-import gg.ingot.iron.sql.SqlParameters
-import java.sql.ResultSet
-import kotlin.reflect.KClass
+import gg.ingot.iron.sql.IronResultSet
 
 sealed interface TransactionController : Controller {
     fun afterCommit(block: TransactionAction)
@@ -34,15 +31,9 @@ internal class TransactionControllerImpl(
 
     override fun <T> transaction(block: TransactionController.() -> T): T = error("Embedded transactions are not supported.")
 
-    override fun query(query: String): ResultSet = controller.query(query)
+    override fun query(query: String): IronResultSet = controller.query(query)
 
-    override fun <T : Any> query(query: String, clazz: KClass<T>): MappedResultSet<T> = controller.query(query, clazz)
-
-    override fun prepare(statement: String, vararg values: Any?): ResultSet? = controller.prepare(statement, *values)
-
-    override fun <T : Any> prepare(statement: String, clazz: KClass<T>, vararg values: Any?): MappedResultSet<T> = controller.prepare(statement, clazz, *values)
-
-    override fun <T : Any> prepare(statement: String, clazz: KClass<T>, values: SqlParameters): MappedResultSet<T> = controller.prepare(statement, clazz, values)
+    override fun prepare(statement: String, vararg values: Any?): IronResultSet = controller.prepare(statement, *values)
 
     override fun execute(statement: String): Boolean = controller.execute(statement)
 }

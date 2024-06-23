@@ -6,8 +6,6 @@ import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.SerializationAdapter
-import gg.ingot.iron.sql.singleColumn
-import gg.ingot.iron.sql.controller.queryMapped
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -34,8 +32,8 @@ class DeserializationTest {
         val res = ironSerializationInstance.transaction {
             execute("CREATE TABLE example(id INTEGER PRIMARY KEY, test JSONB)")
             execute("INSERT INTO example(test) VALUES ('{\"test\": \"hello\"}')")
-            queryMapped<ExampleResponse>("SELECT * FROM example LIMIT 1;")
-                .singleNullable()
+            query("SELECT * FROM example LIMIT 1;")
+                .singleNullable<ExampleResponse>()
         }
 
         assertNotNull(res)
@@ -61,8 +59,8 @@ class DeserializationTest {
         val res = ironSerializationInstance.transaction {
             execute("CREATE TABLE example(id INTEGER PRIMARY KEY, test JSONB)")
             execute("INSERT INTO example(test) VALUES ('{\"test\": \"hello\"}')")
-            queryMapped<ExampleResponse>("SELECT * FROM example LIMIT 1;")
-                .singleNullable()
+            query("SELECT * FROM example LIMIT 1;")
+                .singleNullable<ExampleResponse>()
         }
 
         assertNotNull(res)
@@ -86,8 +84,8 @@ class DeserializationTest {
         val res = connection.transaction {
             execute("CREATE TABLE example(id INTEGER PRIMARY KEY, example TEXT)")
             execute("INSERT INTO example(example) VALUES ('hello')")
-            queryMapped<Response>("SELECT * FROM example LIMIT 1;")
-                .singleNullable()
+            query("SELECT * FROM example LIMIT 1;")
+                .singleNullable<Response>()
         }
 
         assertNotNull(res)
@@ -104,8 +102,8 @@ class DeserializationTest {
         val res = connection.transaction {
             execute("CREATE TABLE example(id INTEGER PRIMARY KEY, example TEXT)")
             execute("INSERT INTO example(example) VALUES ('EXAMPLE')")
-            queryMapped<Response>("SELECT * FROM example LIMIT 1;")
-                .singleNullable()
+            query("SELECT * FROM example LIMIT 1;")
+                .singleNullable<Response>()
         }
 
         assertNotNull(res)
@@ -121,8 +119,8 @@ class DeserializationTest {
             connection.transaction {
                 execute("CREATE TABLE example(id INTEGER PRIMARY KEY, example TEXT)")
                 execute("INSERT INTO example(example) VALUES ('INVALID')")
-                queryMapped<Response>("SELECT * FROM example LIMIT 1;")
-                    .singleNullable()
+                query("SELECT * FROM example LIMIT 1;")
+                    .singleNullable<Response>()
             }
         } catch(ex: Exception) {
             assert(ex is IllegalArgumentException)
@@ -138,7 +136,7 @@ class DeserializationTest {
             execute("INSERT INTO example(example) VALUES ('EXAMPLE')")
 
             query("SELECT example FROM example LIMIT 1;")
-                .singleColumn<TestEnum>()
+                .columnSingle<TestEnum>()
         }
 
         assertEquals(enumValue, TestEnum.EXAMPLE)
@@ -170,8 +168,8 @@ class DeserializationTest {
         assertNotNull(res)
         res.next()
 
-        val mapped = connection.queryMapped<FakeModel>("SELECT * FROM test LIMIT 1;")
-            .single()
+        val mapped = connection.query("SELECT * FROM test LIMIT 1;")
+            .single<FakeModel>()
 
         assertEquals("hello", mapped.json.example)
     }

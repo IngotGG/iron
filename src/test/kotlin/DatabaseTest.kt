@@ -5,19 +5,14 @@ import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.serialization.SerializationAdapter
-import gg.ingot.iron.sql.allSingleColumn
-import gg.ingot.iron.sql.controller.prepareMapped
-import gg.ingot.iron.sql.controller.queryMapped
-import gg.ingot.iron.sql.get
-import gg.ingot.iron.sql.singleColumn
 import gg.ingot.iron.sql.sqlParams
 import gg.ingot.iron.strategies.NamingStrategy
-import java.sql.SQLException
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.sql.SQLException
+import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -37,7 +32,7 @@ class DatabaseTest {
 
     @Test
     fun testIronQuery() = runTest {
-        val result = connection.query("SELECT 1 + 1").getInt(1)
+        val result = connection.query("SELECT 1 + 1").get<Int>(1)
         assertEquals(2, result)
     }
 
@@ -48,7 +43,7 @@ class DatabaseTest {
             execute("INSERT INTO test VALUES (1)")
         }
 
-        val result = connection.query("SELECT * FROM test").getInt(1)
+        val result = connection.query("SELECT * FROM test").get<Int>(1)
         assertEquals(1, result)
     }
 
@@ -85,8 +80,8 @@ class DatabaseTest {
             prepare("SELECT * FROM test")
         }
 
-        assertEquals(1, result?.getInt(1))
-        assertEquals("test", result?.getString(2))
+        assertEquals(1, result.get<Int>(1))
+        assertEquals("test", result.get<String>(2))
     }
 
     private data class TestModel(val id: Int, val name: String)
@@ -107,8 +102,8 @@ class DatabaseTest {
             execute("INSERT INTO test VALUES (6, 'test6')")
         }
 
-        val results = connection.prepareMapped<TestModel>("SELECT * FROM test")
-        results.all().forEachIndexed { index, result ->
+        val results = connection.prepare("SELECT * FROM test")
+        results.all<TestModel>().forEachIndexed { index, result ->
             assertEquals(index + 1, result.id)
             assertEquals("test${index + 1}", result.name)
         }
@@ -126,7 +121,7 @@ class DatabaseTest {
             execute("INSERT INTO test VALUES (6, 'test6')")
         }
 
-        val result = connection.prepareMapped<TestModel>("SELECT * FROM test").getNext()
+        val result = connection.prepare("SELECT * FROM test").getNext<TestModel>()
         assertEquals(1, result?.id)
         assertEquals("test1", result?.name)
     }
@@ -138,8 +133,8 @@ class DatabaseTest {
         val user = connection.transaction {
             execute("CREATE TABLE users (id INTEGER PRIMARY KEY)")
 
-            prepareMapped<User>("INSERT INTO users VALUES (1) RETURNING *;")
-                .single()
+            prepare("INSERT INTO users VALUES (1) RETURNING *;")
+                .single<User>()
         }
 
         assertEquals(1, user.id)
@@ -152,8 +147,8 @@ class DatabaseTest {
         try {
             connection.execute("CREATE TABLE users (id INTEGER PRIMARY KEY)")
 
-            connection.prepareMapped<User>("INSERT INTO users VALUES (1), (2) RETURNING *;")
-                .single()
+            connection.prepare("INSERT INTO users VALUES (1), (2) RETURNING *;")
+                .single<User>()
         } catch (ex: Exception) {
             assert(ex is IllegalStateException)
         }
@@ -177,8 +172,8 @@ class DatabaseTest {
         val res = ironSerializationInstance.transaction {
             execute("CREATE TABLE example(id INTEGER PRIMARY KEY, test JSONB)")
             execute("INSERT INTO example(test) VALUES ('{\"test\": \"hello\"}')")
-            queryMapped<ExampleResponse>("SELECT * FROM example LIMIT 1;")
-                .singleNullable()
+            query("SELECT * FROM example LIMIT 1;")
+                .singleNullable<ExampleResponse>()
         }
 
         assertNotNull(res)
@@ -204,8 +199,8 @@ class DatabaseTest {
         val res = ironSerializationInstance.transaction {
             execute("CREATE TABLE example(id INTEGER PRIMARY KEY, test JSONB)")
             execute("INSERT INTO example(test) VALUES ('{\"test\": \"hello\"}')")
-            queryMapped<ExampleResponse>("SELECT * FROM example LIMIT 1;")
-                .singleNullable()
+            query("SELECT * FROM example LIMIT 1;")
+                .singleNullable<ExampleResponse>()
         }
 
         assertNotNull(res)
@@ -219,7 +214,7 @@ class DatabaseTest {
             execute("INSERT INTO test(name) VALUES ('test1')")
 
             query("SELECT name FROM test LIMIT 1;")
-                .singleColumn<String>()
+                .columnSingle<String>()
         }
 
         assertEquals("test1", name)
@@ -234,7 +229,7 @@ class DatabaseTest {
             }
 
             query("SELECT name FROM test;")
-                .allSingleColumn<String>()
+                .columnAll<String>()
         }
 
         assertEquals(5, names.size)
@@ -248,7 +243,7 @@ class DatabaseTest {
                 execute("INSERT INTO test(name) VALUES ('test1')")
 
                 query("SELECT * FROM test LIMIT 1;")
-                    .singleColumn<String>()
+                    .columnSingle<String>()
            }
         } catch(ex: Exception) {
             assert(ex is IllegalStateException)
@@ -281,11 +276,11 @@ class DatabaseTest {
             execute("CREATE TABLE test (id INTEGER PRIMARY KEY, firstName TEXT, lastName TEXT);")
             prepare("INSERT INTO test(firstName, lastName) VALUES (?, ?);", *model.explode())
 
-            prepareMapped<TestModel>("""
+            prepare("""
                 SELECT firstName, lastName FROM test 
                   WHERE firstName = ? AND lastName = ? LIMIT 2;
             """.trimIndent(), *model.explode())
-                .single()
+                .single<TestModel>()
         }
 
         assertEquals("Ingot", result.firstName)
@@ -320,11 +315,11 @@ class DatabaseTest {
         out.next()
 
         connection.prepare("SELECT name FROM test WHERE name = :name;", sqlParams("name" to "test"))
-            ?.singleColumn<String>()
-            ?.let { assertEquals("test", it) }
+            .columnSingle<String>()
+            .let { assertEquals("test", it) }
 
-        assertEquals("test", out.getString("name"))
-        assertEquals("test", out.getString("other_name"))
+        assertEquals("test", out.get<String>("name"))
+        assertEquals("test", out.get<String>("other_name"))
     }
 
     @Test
@@ -340,7 +335,7 @@ class DatabaseTest {
         }
 
         res.next()
-        assertEquals("test", res.getString("name"))
+        assertEquals("test", res.get<String>("name"))
     }
 
     @Test
