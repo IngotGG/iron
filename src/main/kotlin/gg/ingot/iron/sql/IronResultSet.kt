@@ -168,7 +168,7 @@ class IronResultSet internal constructor(
      * @return The single value from the ResultSet or null if there are no results.
      * @throws IllegalStateException If there are more than one result in the ResultSet.
      */
-    inline fun <reified T> columnSingleNullable(deserializer: ColumnDeserializer<Any, T>? = null): T? {
+    inline fun <reified T: Any> columnSingleNullable(deserializer: ColumnDeserializer<Any, T>? = null): T? {
         requireNotNull(resultSet) { "The prepared statement did not return a result" }
 
         check(resultSet.metaData?.columnCount == 1) { "ResultSet must have exactly one column" }
@@ -191,7 +191,7 @@ class IronResultSet internal constructor(
      * @throws IllegalStateException If there are no results in the ResultSet.
      * @throws IllegalStateException If there are more than one result in the ResultSet.
      */
-    inline fun <reified T> columnSingle(deserializer: ColumnDeserializer<Any, T>? = null): T {
+    inline fun <reified T: Any> columnSingle(deserializer: ColumnDeserializer<Any, T>? = null): T {
         return columnSingleNullable<T>(deserializer) ?: error("No results in ResultSet")
     }
 
@@ -203,7 +203,7 @@ class IronResultSet internal constructor(
      * @throws IllegalStateException If there are more than one column in the ResultSet.
      */
     @Suppress("UNCHECKED_CAST")
-    inline fun <reified T> columnAll(deserializer: ColumnDeserializer<Any, T>? = null): List<T> {
+    inline fun <reified T: Any> columnAll(deserializer: ColumnDeserializer<Any, T>? = null): List<T> {
         val values = columnsAllNullable<T>(deserializer)
         check(!values.any { it == null }) { "ResultSet contains null values" }
 
@@ -216,7 +216,7 @@ class IronResultSet internal constructor(
      * @return A list of all values from the ResultSet or null if the ResultSet is null.
      * @throws IllegalStateException If there are more than one column in the ResultSet.
      */
-    inline fun <reified T> columnsAllNullable(deserializer: ColumnDeserializer<Any, T>? = null): List<T?> {
+    inline fun <reified T: Any> columnsAllNullable(deserializer: ColumnDeserializer<Any, T>? = null): List<T?> {
         requireNotNull(resultSet) { "The prepared statement did not return a result" }
 
         check(resultSet.metaData.columnCount == 1) { "ResultSet must have exactly one column" }
