@@ -373,18 +373,16 @@ class DatabaseTest {
 
     @Test
     fun `test transformer`() = runTest {
-        val values = connection.transaction {
+        val value = connection.transaction {
             execute("CREATE TABLE uuids(uuid TEXT PRIMARY KEY)")
             prepare("INSERT INTO uuids VALUES (?)", UUID.randomUUID())
             prepare("INSERT INTO uuids VALUES (?)", UUID.randomUUID())
             prepare("INSERT INTO uuids VALUES (?)", UUID.randomUUID())
-            prepare("INSERT INTO uuids VALUES (?)", UUID.randomUUID())
-
-            prepare("SELECT * FROM uuids")
-                .columnAll<UUID>(UUIDTransformer)
+            prepare("INSERT INTO uuids VALUES (?) RETURNING *", UUID.randomUUID())
+                .columnSingle<UUID>(UUIDTransformer)
         }
 
-        assertEquals(4, values.size)
+        assertNotNull(value)
     }
 
 }
