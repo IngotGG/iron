@@ -62,20 +62,19 @@ sealed interface Controller {
         val insertedValues = mutableListOf<Any>()
 
         val parsedStatement = SQL_PLACEHOLDER_REGEX.replace(statement) { matchResult ->
-            val group = matchResult.groupValues[0]
+            val group = matchResult.groupValues.first()
 
-            if(
-                (group.startsWith("'")
-                && group.endsWith("'"))
-                || group.startsWith("::")
-            ) {
+            // cast
+            if(group.startsWith("::")) {
+                group
+            // wrapped in text or something
+            } else if(SURROUNDING_QUOTES.any { it == group.first() && it == group.last() }) {
                 group
             } else {
+                val name = matchResult.groupValues[1]
                 insertedValues.add(
-                    values[matchResult.groupValues[1]]
-                        ?: error("No value found for placeholder ${matchResult.groupValues[1]}")
+                    values[name] ?: error("no value found for placeholder $name")
                 )
-
                 "?"
             }
         }
@@ -117,7 +116,9 @@ sealed interface Controller {
 
     private companion object {
         /** The regex for SQL placeholders. */
-        val SQL_PLACEHOLDER_REGEX = "'(?:\\\\'|[^'])*'|::?(\\w+)".toRegex()
+        val SQL_PLACEHOLDER_REGEX = "'(?:\\\\'|[^'])*'|\"(?:\\\\\"|[^\"])*\"|`(?:\\\\`|[^`])*`|::?\\w+".toRegex()
+
+        val SURROUNDING_QUOTES = arrayOf('`', '\'', '"')
     }
 }
 
