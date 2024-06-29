@@ -16,7 +16,6 @@ class IronResultSet internal constructor(
     val resultSet: ResultSet?,
     private val transformer: ResultTransformer
 ) {
-
     /**
      * Moves the cursor forward one row from its current position. A ResultSet cursor is initially positioned before
      * the first row; the first call to the method next makes the first row the current row; the second call makes the
@@ -38,7 +37,7 @@ class IronResultSet internal constructor(
     fun <T: Any> get(clazz: KClass<T>): T {
         requireNotNull(resultSet) { "The prepared statement did not return a result" }
 
-        return this.transformer.read(resultSet, clazz);
+        return this.transformer.read(resultSet, clazz)
     }
 
     /**
@@ -206,7 +205,7 @@ class IronResultSet internal constructor(
      */
     @Suppress("UNCHECKED_CAST")
     inline fun <reified T: Any> columnAll(deserializer: ColumnDeserializer<*, T>? = null): List<T> {
-        val values = columnsAllNullable<T>(deserializer)
+        val values = columnAllNullable<T>(deserializer)
         check(!values.any { it == null }) { "ResultSet contains null values" }
 
         return values as List<T>
@@ -219,7 +218,7 @@ class IronResultSet internal constructor(
      * @throws IllegalStateException If there are more than one column in the ResultSet.
      */
     @Suppress("UNCHECKED_CAST")
-    inline fun <reified T: Any> columnsAllNullable(deserializer: ColumnDeserializer<*, T>? = null): List<T?> {
+    inline fun <reified T: Any> columnAllNullable(deserializer: ColumnDeserializer<*, T>? = null): List<T?> {
         requireNotNull(resultSet) { "The prepared statement did not return a result" }
 
         check(resultSet.metaData.columnCount == 1) { "ResultSet must have exactly one column" }
@@ -246,5 +245,4 @@ class IronResultSet internal constructor(
     fun close() {
         resultSet?.close()
     }
-
 }
