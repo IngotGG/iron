@@ -278,12 +278,12 @@ class DatabaseTest {
 
         val result = connection.transaction {
             execute("CREATE TABLE test (id INTEGER PRIMARY KEY, firstName TEXT, lastName TEXT);")
-            prepare("INSERT INTO test(firstName, lastName) VALUES (?, ?);", *model.explode())
+            prepare("INSERT INTO test(firstName, lastName) VALUES (?, ?);", model)
 
             prepare("""
                 SELECT firstName, lastName FROM test 
                   WHERE firstName = ? AND lastName = ? LIMIT 2;
-            """.trimIndent(), *model.explode())
+            """.trimIndent(), model)
                 .single<TestModel>()
         }
 
@@ -299,7 +299,7 @@ class DatabaseTest {
         try {
             connection.transaction {
                 execute("CREATE TABLE test (id INTEGER PRIMARY KEY, a TEXT);")
-                prepare("INSERT INTO test(a) VALUES (?);", *model.explode())
+                prepare("INSERT INTO test(a) VALUES (?);", model)
             }
         } catch(ex: Exception) {
             assert(ex is IllegalArgumentException)
@@ -333,7 +333,7 @@ class DatabaseTest {
 
         val res = connection.transaction {
             execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT);")
-            prepare("INSERT INTO test(name) VALUES (:name);", model.toSqlParams())
+            prepare("INSERT INTO test(name) VALUES (?);", model)
 
             query("SELECT name FROM test;")
         }

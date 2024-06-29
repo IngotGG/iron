@@ -4,6 +4,7 @@ import gg.ingot.iron.pool.ConnectionPool
 import gg.ingot.iron.pool.MultiConnectionPool
 import gg.ingot.iron.pool.SingleConnectionPool
 import gg.ingot.iron.representation.DBMS
+import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.sql.IronResultSet
 import gg.ingot.iron.sql.SqlParameters
 import gg.ingot.iron.sql.controller.Controller
@@ -12,7 +13,9 @@ import gg.ingot.iron.sql.controller.TransactionController
 import gg.ingot.iron.transformer.ModelTransformer
 import gg.ingot.iron.transformer.ResultTransformer
 import gg.ingot.iron.transformer.ValueTransformer
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.sql.Connection
@@ -99,7 +102,7 @@ class Iron(
             ?: error(UNOPENED_CONNECTION_MESSAGE)
 
         return withContext(dispatcher) {
-            block(ControllerImpl(connection, resultTransformer, settings.serialization))
+            block(ControllerImpl(connection, modelTransformer, resultTransformer, settings.serialization))
         }.also { pool?.release(connection) }
     }
 
@@ -123,7 +126,7 @@ class Iron(
      * Executes a raw query on the database and returns the result set.
      *
      * **Note:** This method does no validation on the query, it is up to the user to ensure the query is safe.
-     * @param query The query to execute on the database.
+     * @param statement The query to execute on the database.
      * @return The result set from the query.
      * @since 1.0
      */
@@ -153,6 +156,19 @@ class Iron(
      */
     suspend fun prepare(@Language("SQL") statement: String, vararg values: Any?): IronResultSet {
         return withController { it.prepare(statement, *values) }
+    }
+
+    /**
+     * Prepares a statement on the database. This method should be preferred over [execute] for security reasons. This
+     * will take an [ExplodingModel] and extract the values from it and put them in the query for you.
+     * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
+     * the values, any values passed in through this parameter is not sanitized.
+     * @param model The model to get the data from
+     * @return The prepared statement.
+     * @since 1.0
+     */
+    suspend fun prepare(@Language("SQL") statement: String, model: ExplodingModel): IronResultSet {
+        return withController { it.prepare(statement, model) }
     }
 
     /**

@@ -1,10 +1,13 @@
 package gg.ingot.iron.sql.controller
 
+import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.serialization.SerializationAdapter
-import gg.ingot.iron.sql.ColumnJsonField
-import gg.ingot.iron.sql.ColumnSerializedField
 import gg.ingot.iron.sql.IronResultSet
+import gg.ingot.iron.sql.params.ColumnJsonField
+import gg.ingot.iron.sql.params.ColumnSerializedField
+import gg.ingot.iron.sql.params.SqlParams
+import gg.ingot.iron.transformer.ModelTransformer
 import gg.ingot.iron.transformer.ResultTransformer
 import gg.ingot.iron.transformer.isEnum
 import org.slf4j.LoggerFactory
@@ -17,6 +20,7 @@ import java.sql.Connection
  */
 internal open class ControllerImpl(
     private val connection: Connection,
+    private val modelTransformer: ModelTransformer,
     private val resultTransformer: ResultTransformer,
     private val serializationAdapter: SerializationAdapter? = null
 ) : Controller {
@@ -129,4 +133,18 @@ internal open class ControllerImpl(
         return IronResultSet(resultSet, resultTransformer)
     }
 
+    override fun prepare(statement: String, model: ExplodingModel): IronResultSet {
+        val entity = modelTransformer.transform(model::class)
+        return this.prepare(statement, *entity.fields.map {
+            modelTransformer.getModelValue(model, it)
+        }.toTypedArray())
+    }
+
+    override fun prepare(statement: String, model: SqlParams): IronResultSet {
+        return this.prepare(statement, *model.build(this.modelTransformer))
+    }
+
+    private companion object {
+        val VARIABLE_REGEX = Regex(""":(\w+)""")
+    }
 }

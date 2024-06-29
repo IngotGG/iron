@@ -159,10 +159,10 @@ class DeserializationTest {
         ) : ExplodingModel
 
         connection.execute("CREATE TABLE test(id INTEGER PRIMARY KEY, json TEXT);")
-        connection.prepare("INSERT INTO test(id, json) VALUES (?, ?);", *FakeModel(
+        connection.prepare("INSERT INTO test(id, json) VALUES (?, ?);", FakeModel(
             1,
             JsonObj("hello")
-        ).explode())
+        ))
 
         val res = connection.query("SELECT * FROM test;")
         assertNotNull(res)

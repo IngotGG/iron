@@ -10,7 +10,7 @@ import kotlin.reflect.KClass
  * @since 1.0
  * @see gg.ingot.iron.transformer.ModelTransformer
  */
-internal data class EntityModel(
+data class EntityModel(
     val clazz: KClass<*>,
     val fields: List<EntityField>,
     val namingStrategy: NamingStrategy

@@ -1,5 +1,6 @@
 package gg.ingot.iron.sql.controller
 
+import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.sql.IronResultSet
 
 sealed interface TransactionController : Controller {
@@ -34,6 +35,8 @@ internal class TransactionControllerImpl(
     override fun query(query: String): IronResultSet = controller.query(query)
 
     override fun prepare(statement: String, vararg values: Any?): IronResultSet = controller.prepare(statement, *values)
+
+    override fun prepare(statement: String, model: ExplodingModel): IronResultSet = controller.prepare(statement, model)
 
     override fun execute(statement: String): Boolean = controller.execute(statement)
 }

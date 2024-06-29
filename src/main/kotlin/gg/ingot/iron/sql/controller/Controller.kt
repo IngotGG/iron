@@ -1,7 +1,9 @@
 package gg.ingot.iron.sql.controller
 
+import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.sql.IronResultSet
 import gg.ingot.iron.sql.SqlParameters
+import gg.ingot.iron.sql.params.SqlParams
 import org.intellij.lang.annotations.Language
 
 /**
@@ -36,6 +38,29 @@ sealed interface Controller {
      * @since 1.0
      */
     fun prepare(@Language("SQL") statement: String, vararg values: Any?): IronResultSet
+
+    /**
+     * Prepares a statement on the database. This method should be preferred over [execute] for security reasons. This
+     * will take an [ExplodingModel] and extract the values from it and put them in the query for you.
+     * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
+     * the values, any values passed in through this parameter is not sanitized.
+     * @param model The model to get the data from
+     * @return The prepared statement.
+     * @since 1.0
+     */
+    fun prepare(@Language("SQL") statement: String, model: ExplodingModel): IronResultSet
+
+    /**
+     * Prepares a statement on the database. This method should be preferred over [execute] for security reasons. This
+     * will take in manually specified values and replace any named variables with the value specified. The format for
+     * the named variables are as such: `:<name>`, an example might be as follows: `:id`.
+     * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
+     * the values, any values passed in through this parameter is not sanitized.
+     * @param values The named values to pass in to the query
+     * @return The prepared statement.
+     * @since 1.0
+     */
+    fun prepare(@Language("SQL") statement: String, model: SqlParams): IronResultSet
 
     /**
      * Prepares a statement on the database. This method should be preferred over [execute] for security reasons.

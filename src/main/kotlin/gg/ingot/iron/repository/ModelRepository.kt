@@ -1,6 +1,7 @@
 package gg.ingot.iron.repository
 
 import gg.ingot.iron.representation.EntityModel
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
 
 /**
@@ -10,6 +11,6 @@ import kotlin.reflect.KClass
  */
 internal object ModelRepository {
 
-    val models = HashMap<KClass<*>, EntityModel>()
+    val models = ConcurrentHashMap<KClass<*>, EntityModel>()
 
 }
