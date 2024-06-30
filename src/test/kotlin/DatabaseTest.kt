@@ -3,6 +3,7 @@ import com.google.gson.Gson
 import gg.ingot.iron.Iron
 import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
+import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.serialization.ColumnAdapter
 import gg.ingot.iron.serialization.SerializationAdapter
@@ -86,6 +87,7 @@ class DatabaseTest {
         assertEquals("test", result.get<String>(2))
     }
 
+    @Model
     private data class TestModel(val id: Int, val name: String)
     private class TestModel2 {
         var id: Int = 0
@@ -132,6 +134,7 @@ class DatabaseTest {
 
     @Test
     fun `get single`() = runTest {
+        @Model
         data class User(val id: Int)
 
         val user = connection.transaction {
@@ -168,6 +171,7 @@ class DatabaseTest {
         ).connect()
 
         data class EmbeddedJson(val test: String)
+        @Model
         data class ExampleResponse(
             @Column(json = true)
             val test: EmbeddedJson
@@ -195,6 +199,7 @@ class DatabaseTest {
 
         @Serializable
         data class EmbeddedJson(val test: String)
+        @Model
         data class ExampleResponse(
             @Column(json = true)
             val test: EmbeddedJson
@@ -218,7 +223,7 @@ class DatabaseTest {
             execute("INSERT INTO test(name) VALUES ('test1')")
 
             query("SELECT name FROM test LIMIT 1;")
-                .columnSingle<String>()
+                .single<String>()
         }
 
         assertEquals("test1", name)
@@ -233,7 +238,7 @@ class DatabaseTest {
             }
 
             query("SELECT name FROM test;")
-                .columnAll<String>()
+                .all<String>()
         }
 
         assertEquals(5, names.size)
@@ -247,10 +252,10 @@ class DatabaseTest {
                 execute("INSERT INTO test(name) VALUES ('test1')")
 
                 query("SELECT * FROM test LIMIT 1;")
-                    .columnSingle<String>()
+                    .single<String>()
            }
         } catch(ex: Exception) {
-            assert(ex is IllegalStateException)
+            assert(ex is ClassCastException)
         }
     }
 
@@ -269,6 +274,7 @@ class DatabaseTest {
 
     @Test
     fun `exploding model`() = runTest {
+        @Model
         data class TestModel(
             val firstName: String = "Ingot",
             val lastName: String = "Team"
@@ -319,7 +325,7 @@ class DatabaseTest {
         out.next()
 
         connection.prepare("SELECT name FROM test WHERE name = :name;", sqlParams("name" to "test"))
-            .columnSingle<String>()
+            .single<String>()
             .let { assertEquals("test", it) }
 
         assertEquals("test", out.get<String>("name"))
@@ -379,7 +385,7 @@ class DatabaseTest {
             prepare("INSERT INTO uuids VALUES (?)", UUID.randomUUID())
             prepare("INSERT INTO uuids VALUES (?)", UUID.randomUUID())
             prepare("INSERT INTO uuids VALUES (?) RETURNING *", UUID.randomUUID())
-                .columnSingle<UUID>(UUIDTransformer)
+                .single<UUID>(UUIDTransformer)
         }
 
         assertNotNull(value)

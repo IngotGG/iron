@@ -1,7 +1,7 @@
 package gg.ingot.iron.transformer
 
+import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.*
-import gg.ingot.iron.repository.ModelRepository
 import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.representation.EntityModel
 import gg.ingot.iron.representation.ExplodingModel
@@ -10,6 +10,7 @@ import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.sql.params.ColumnJsonField
 import gg.ingot.iron.sql.params.ColumnSerializedField
 import gg.ingot.iron.strategies.NamingStrategy
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.declaredMemberProperties
@@ -24,7 +25,8 @@ import kotlin.reflect.jvm.javaField
  * @since 1.0
  */
 internal class ModelTransformer(
-    private val namingStrategy: NamingStrategy
+    private val namingStrategy: NamingStrategy,
+    private val adapters: IronSettings.Adapters? = null
 ) {
     /**
      * Transforms a class into an entity model, which holds information about the class model.
@@ -32,13 +34,10 @@ internal class ModelTransformer(
      * @return The entity model representation of the class.
      */
     fun transform(clazz: KClass<*>): EntityModel {
-        return ModelRepository.models.getOrPut(clazz) {
+        return models.getOrPut(clazz) {
             val fields = mutableListOf<EntityField>()
             val modelAnnotation = clazz.annotations.find { it is Model } as Model?
             var properties = clazz.declaredMemberProperties
-
-            val serializerAnnotation = clazz.annotations.find { it is UseModelSerializers } as UseModelSerializers?
-            val deserializerAnnotation = clazz.annotations.find { it is UseModelDeserializers } as UseModelDeserializers?
 
             if (clazz.primaryConstructor != null) {
                 val constructor = clazz.primaryConstructor!!
@@ -57,12 +56,12 @@ internal class ModelTransformer(
 
                 fields.add(EntityField(
                     field = field,
-                    javaField = field.javaField ?: error("Field ${field.name} has no backing field."),
+                    javaField = field.javaField ?: error("Field ${field.name} (${field}) has no backing field."),
                     columnName = retrieveName(field, annotation),
                     nullable = field.returnType.isMarkedNullable,
                     isJson = annotation?.json ?: false,
-                    serializer = retrieveSerializer(field, serializerAnnotation, annotation),
-                    deserializer = retrieveDeserializer(field, deserializerAnnotation, annotation)
+                    serializer = retrieveSerializer(field, annotation),
+                    deserializer = retrieveDeserializer(field, annotation)
                 ))
             }
 
@@ -125,13 +124,10 @@ internal class ModelTransformer(
      */
     private fun retrieveDeserializer(
         field: KProperty<*>,
-        useDeserializersAnnotation: UseModelDeserializers?,
         annotation: Column?
     ): ColumnDeserializer<*, *>? {
         val kClass = field.returnType.classifier as KClass<*>
-
-        return annotation?.retrieveDeserializer()
-            ?: useDeserializersAnnotation?.retrieveMatchingDeserializer(kClass)
+        return annotation?.retrieveDeserializer() ?: adapters?.retrieveDeserializer(kClass)
     }
 
     /**
@@ -141,12 +137,14 @@ internal class ModelTransformer(
      */
     private fun retrieveSerializer(
         field: KProperty<*>,
-        useSerializersAnnotation: UseModelSerializers?,
         annotation: Column?
     ): ColumnSerializer<*, *>? {
         val kClass = field.returnType.classifier as KClass<*>
+        return annotation?.retrieveSerializer() ?: adapters?.retrieveSerializer(kClass)
+    }
 
-        return annotation?.retrieveSerializer()
-            ?: useSerializersAnnotation?.retrieveMatchingSerializer(kClass)
+    companion object {
+        /** Cached map of [EntityModel]. */
+        private val models = ConcurrentHashMap<KClass<*>, EntityModel>()
     }
 }

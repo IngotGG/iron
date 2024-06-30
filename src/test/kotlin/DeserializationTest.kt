@@ -24,6 +24,7 @@ class DeserializationTest {
         ).connect()
 
         data class EmbeddedJson(val test: String)
+        @Model
         data class ExampleResponse(
             @Column(json = true)
             val test: EmbeddedJson
@@ -51,6 +52,7 @@ class DeserializationTest {
 
         @Serializable
         data class EmbeddedJson(val test: String)
+        @Model
         data class ExampleResponse(
             @Column(json = true)
             val test: EmbeddedJson
@@ -76,6 +78,7 @@ class DeserializationTest {
     fun `custom deserializer`() = runTest {
         val connection = Iron("jdbc:sqlite::memory:").connect()
 
+        @Model
         data class Response(
             @Column(deserializer = CustomTypeDeserializer::class)
             val example: CustomType
@@ -96,6 +99,7 @@ class DeserializationTest {
 
     @Test
     fun `enum deserializer`() = runTest {
+        @Model
         data class Response(val example: TestEnum)
         val connection = Iron("jdbc:sqlite::memory:").connect()
 
@@ -112,6 +116,7 @@ class DeserializationTest {
 
     @Test
     fun `enum deserializer fail`() = runTest {
+        @Model
         data class Response(val example: TestEnum)
         val connection = Iron("jdbc:sqlite::memory:").connect()
 
@@ -136,7 +141,7 @@ class DeserializationTest {
             execute("INSERT INTO example(example) VALUES ('EXAMPLE')")
 
             query("SELECT example FROM example LIMIT 1;")
-                .columnSingle<TestEnum>()
+                .single<TestEnum>()
         }
 
         assertEquals(enumValue, TestEnum.EXAMPLE)
