@@ -1,6 +1,8 @@
 package gg.ingot.iron.sql
 
 import gg.ingot.iron.serialization.ColumnDeserializer
+import gg.ingot.iron.serialization.JsonAdapter
+import gg.ingot.iron.serialization.SerializationAdapter
 import gg.ingot.iron.transformer.ResultTransformer
 import java.sql.ResultSet
 import kotlin.reflect.KClass
@@ -14,6 +16,7 @@ import kotlin.reflect.KClass
 @Suppress("MemberVisibilityCanBePrivate")
 class IronResultSet internal constructor(
     val resultSet: ResultSet?,
+    val serializationAdapter: SerializationAdapter?,
     private val transformer: ResultTransformer
 ) {
 
@@ -123,6 +126,27 @@ class IronResultSet internal constructor(
     }
 
     /**
+     * Retrieve a single result from the result set while deserializing the fields from json
+     * @return The single result from the result set.
+     */
+    inline fun <reified T: Any> singleJson(): T {
+        return singleJsonNullable<T>() ?: error("Expected a single result, but found none.")
+    }
+
+    /**
+     * Retrieve a single result from the result set while deserializing the fields from json
+     * @return The single result from the result set.
+     */
+    inline fun <reified T: Any> singleJsonNullable(): T? {
+        requireNotNull(serializationAdapter) { "A serializer adapter has not been passed through IronSettings, you will not be able to automatically deserialize JSON." }
+
+        return singleNullable<T>(JsonAdapter(
+            serializationAdapter,
+            T::class.java
+        ))
+    }
+
+    /**
      * Retrieve all results from the result set.
      * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
      * If not then the first column will be returned as the result.
@@ -156,11 +180,37 @@ class IronResultSet internal constructor(
      * @param deserializer The deserializer to use for the result.
      * @return The results from the result set.
      */
+    @Suppress("UNCHECKED_CAST")
     inline fun <reified T : Any> all(deserializer: ColumnDeserializer<*, T>? = null): List<T> {
         val v = allNullable<T>(deserializer)
         check(!v.any { it == null }) { "ResultSet contains null values" }
 
         return v as List<T>
+    }
+
+    /**
+     * Retrieve all results from the result set while deserializing the fields from json
+     * @return The single result from the result set.
+     */
+    @Suppress("UNCHECKED_CAST")
+    inline fun <reified T: Any> allJson(): List<T> {
+        val v = allJsonNullable<T>()
+        check(!v.any { it == null }) { "ResultSet contains null values" }
+
+        return v as List<T>
+    }
+
+    /**
+     * Retrieve a single result from the result set while deserializing the fields from json
+     * @return The single result from the result set.
+     */
+    inline fun <reified T: Any> allJsonNullable(): List<T?> {
+        requireNotNull(serializationAdapter) { "A serializer adapter has not been passed through IronSettings, you will not be able to automatically deserialize JSON." }
+
+        return allNullable<T>(JsonAdapter(
+            serializationAdapter,
+            T::class.java
+        ))
     }
 
     /**

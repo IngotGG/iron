@@ -110,7 +110,8 @@ internal class ValueTransformer(
         val obj = toObject(resultSet, field, namingStrategy)
             ?: return null
 
-        return serializationAdapter.deserialize(obj, field.javaField.type)
+        //todo: support binary
+        return serializationAdapter.deserialize(obj.toString(), field.javaField.type)
     }
 
     /**
