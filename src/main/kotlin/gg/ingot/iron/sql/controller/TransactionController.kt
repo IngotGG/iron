@@ -1,5 +1,10 @@
 package gg.ingot.iron.sql.controller
 
+/**
+ * A controller that can execute transactions on the database.
+ * @since 1.4
+ * @author DebitCardz
+ */
 sealed interface TransactionController : Controller {
     /**
      * Executes a transaction on the database.

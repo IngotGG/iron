@@ -4,6 +4,11 @@ import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.sql.IronResultSet
 import gg.ingot.iron.sql.params.SqlParams
 
+/**
+ * Implementation of [TransactionActionableController].
+ * @since 1.4
+ * @author DebitCardz
+ */
 internal class TransactionControllerImpl(
     private val controller: Controller
 ) : TransactionActionableController {

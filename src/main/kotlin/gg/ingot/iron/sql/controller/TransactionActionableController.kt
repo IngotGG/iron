@@ -1,5 +1,10 @@
 package gg.ingot.iron.sql.controller
 
+/**
+ * A controller that can execute actions after a transaction is committed or rolled back.
+ * @since 1.4
+ * @author DebitCardz
+ */
 interface TransactionActionableController : Controller {
     /**
      * Executes the given block after the transaction is committed.

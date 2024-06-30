@@ -10,6 +10,11 @@ import gg.ingot.iron.transformer.ResultTransformer
 import org.slf4j.LoggerFactory
 import java.sql.Connection
 
+/**
+ * Implementation of the [TransactionController] interface.
+ * @since 1.4
+ * @author DebitCardz
+ */
 internal class ControllerImpl(
     private val connection: Connection,
     private val modelTransformer: ModelTransformer,

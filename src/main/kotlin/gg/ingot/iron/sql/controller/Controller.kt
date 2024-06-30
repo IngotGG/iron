@@ -6,6 +6,11 @@ import gg.ingot.iron.sql.params.Parameters
 import gg.ingot.iron.sql.params.SqlParams
 import org.intellij.lang.annotations.Language
 
+/**
+ * Base controller for interacting with the database.
+ * @since 1.4
+ * @author DebitCardz
+ */
 sealed interface Controller {
     /**
      * Executes a raw query on the database and returns the result set.
