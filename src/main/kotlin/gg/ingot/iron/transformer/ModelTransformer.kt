@@ -116,7 +116,6 @@ internal class ModelTransformer(
         } else {
             value
         }
-
     }
 
     /**

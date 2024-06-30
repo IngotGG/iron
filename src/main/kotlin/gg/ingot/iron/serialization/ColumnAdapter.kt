@@ -7,11 +7,11 @@ package gg.ingot.iron.serialization
  * @author DebitCardz
  * @since 1.3
  */
-interface ColumnTransformer <Serialized: Any, Deserialized: Any>
+interface ColumnAdapter <Serialized : Any, Deserialized : Any>
     : ColumnSerializer<Deserialized, Serialized>, ColumnDeserializer<Serialized, Deserialized>
 
 // Internally used to denote that a column should not be transformed.
-internal object EmptyTransformer : ColumnTransformer<Nothing, Nothing> {
+internal object EmptyAdapter : ColumnAdapter<Nothing, Nothing> {
     override fun fromDatabaseValue(value: Nothing): Nothing = error("This transformer should not be used")
 
     override fun toDatabaseValue(value: Nothing): Nothing = error("This transformer should not be used")

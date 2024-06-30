@@ -4,9 +4,9 @@ import gg.ingot.iron.Iron
 import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.representation.ExplodingModel
-import gg.ingot.iron.serialization.ColumnTransformer
+import gg.ingot.iron.serialization.ColumnAdapter
 import gg.ingot.iron.serialization.SerializationAdapter
-import gg.ingot.iron.sql.sqlParams
+import gg.ingot.iron.sql.params.sqlParams
 import gg.ingot.iron.strategies.NamingStrategy
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
@@ -361,7 +361,7 @@ class DatabaseTest {
         assertTrue(rolledBack)
     }
 
-    object UUIDTransformer: ColumnTransformer<String, UUID> {
+    object UUIDTransformer: ColumnAdapter<String, UUID> {
         override fun fromDatabaseValue(value: String): UUID {
             return UUID.fromString(value)
         }

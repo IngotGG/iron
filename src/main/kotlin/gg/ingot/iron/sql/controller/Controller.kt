@@ -2,23 +2,11 @@ package gg.ingot.iron.sql.controller
 
 import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.sql.SqlParameters
+import gg.ingot.iron.sql.params.Parameters
 import gg.ingot.iron.sql.params.SqlParams
 import org.intellij.lang.annotations.Language
 
-/**
- * Controller interface for handling database transactions and queries.
- * @author DebitCardz
- * @since 1.3
- */
 sealed interface Controller {
-    /**
-     * Starts a transaction on the connection.
-     * @throws Exception If an error occurs during the transaction.
-     * @since 1.0
-     */
-    fun <T : Any?> transaction(block: TransactionController.() -> T): T
-
     /**
      * Executes a raw query on the database and returns the result set.
      *
@@ -70,7 +58,7 @@ sealed interface Controller {
      * @return The prepared statement.
      * @since 1.3
      */
-    fun prepare(@Language("SQL") statement: String, values: SqlParameters): IronResultSet {
+    fun prepare(@Language("SQL") statement: String, values: Parameters): IronResultSet {
         val insertedValues = mutableListOf<Any>()
 
         val parsedStatement = SQL_PLACEHOLDER_REGEX.replace(statement) { matchResult ->
@@ -79,7 +67,7 @@ sealed interface Controller {
             // cast
             if(group.startsWith("::")) {
                 group
-            // wrapped in text or something
+                // wrapped in text or something
             } else if(SURROUNDING_QUOTES.any { it == group.first() && it == group.last() }) {
                 group
             } else {

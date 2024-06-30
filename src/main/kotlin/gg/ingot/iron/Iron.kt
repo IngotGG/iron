@@ -6,10 +6,12 @@ import gg.ingot.iron.pool.SingleConnectionPool
 import gg.ingot.iron.representation.DBMS
 import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.sql.SqlParameters
 import gg.ingot.iron.sql.controller.Controller
 import gg.ingot.iron.sql.controller.ControllerImpl
+import gg.ingot.iron.sql.controller.TransactionActionableController
 import gg.ingot.iron.sql.controller.TransactionController
+import gg.ingot.iron.sql.params.Parameters
+import gg.ingot.iron.sql.params.SqlParams
 import gg.ingot.iron.transformer.ModelTransformer
 import gg.ingot.iron.transformer.ResultTransformer
 import gg.ingot.iron.transformer.ValueTransformer
@@ -97,7 +99,7 @@ class Iron(
      * @param block The closure to execute with the controller.
      * @since 1.3
      */
-    private suspend fun <T : Any?> withController(block: suspend (Controller) -> T): T {
+    private suspend fun <T : Any?> withController(block: suspend (TransactionController) -> T): T {
         val connection = pool?.connection()
             ?: error(UNOPENED_CONNECTION_MESSAGE)
 
@@ -118,7 +120,7 @@ class Iron(
      * Starts a transaction on the connection.
      * @since 1.0
      */
-    suspend fun <T : Any?> transaction(block: TransactionController.() -> T): T {
+    suspend fun <T : Any?> transaction(block: TransactionActionableController.() -> T): T {
         return withController { it.transaction(block) }
     }
 
@@ -171,6 +173,10 @@ class Iron(
         return withController { it.prepare(statement, model) }
     }
 
+    suspend fun prepare(@Language("SQL") statement: String, params: SqlParams): IronResultSet {
+        return withController { it.prepare(statement, params) }
+    }
+
     /**
      * Prepares a statement on the database. This method should be preferred over [execute] for security reasons.
      * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
@@ -178,7 +184,7 @@ class Iron(
      * @param values The values to bind to the statement.
      * @return The prepared statement.
      */
-    suspend fun prepare(@Language("SQL") statement: String, values: SqlParameters): IronResultSet {
+    suspend fun prepare(@Language("SQL") statement: String, values: Parameters): IronResultSet {
         return withController { it.prepare(statement, values) }
     }
 
