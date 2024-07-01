@@ -16,3 +16,14 @@ internal object EmptyAdapter : ColumnAdapter<Nothing, Nothing> {
 
     override fun toDatabaseValue(value: Nothing): Nothing = error("This transformer should not be used")
 }
+
+// Used for converting columns to and from json
+class JsonAdapter<T: Any>(private val serializationAdapter: SerializationAdapter, private val clazz: Class<T>) : ColumnAdapter<String, T> {
+    override fun fromDatabaseValue(value: String): T {
+        return serializationAdapter.deserialize(value, clazz) as T
+    }
+
+    override fun toDatabaseValue(value: T): String {
+        TODO("Not yet implemented")
+    }
+}
