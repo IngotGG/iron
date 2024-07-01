@@ -19,7 +19,6 @@ class IronResultSet internal constructor(
     val serializationAdapter: SerializationAdapter?,
     private val transformer: ResultTransformer
 ) {
-
     /**
      * Moves the cursor forward one row from its current position. A ResultSet cursor is initially positioned before
      * the first row; the first call to the method next makes the first row the current row; the second call makes the
