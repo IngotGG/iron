@@ -56,6 +56,7 @@ dependencies {
 
 ### Connection
 ```kotlin
+@Model // model annotations are required 
 data class User(val id: Int, val firstName: String, val lastName: String)
 
 suspend fun main() {
@@ -98,6 +99,7 @@ suspend fun main() {
 
 ### Query Model Mapping
 ```kotlin
+@Model
 data class PartialUser(val firstName: String, val lastName: String)
 
 suspend fun main() {
@@ -119,6 +121,7 @@ suspend fun main() {
 ### JSON Deserialization Support
 ```kotlin
 data class Example(val field: String)
+@Model
 data class ExampleModel(
     @Column(json = true)
     val example: Example
