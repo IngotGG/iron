@@ -1,22 +1,17 @@
 package gg.ingot.iron.sql.controller
 
+import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.sql.SqlParameters
+import gg.ingot.iron.sql.params.SqlParams
+import gg.ingot.iron.sql.params.SqlParamsBuilder
 import org.intellij.lang.annotations.Language
 
 /**
- * Controller interface for handling database transactions and queries.
+ * Base controller for interacting with the database.
+ * @since 1.4
  * @author DebitCardz
- * @since 1.3
  */
 sealed interface Controller {
-    /**
-     * Starts a transaction on the connection.
-     * @throws Exception If an error occurs during the transaction.
-     * @since 1.0
-     */
-    fun <T : Any?> transaction(block: TransactionController.() -> T): T
-
     /**
      * Executes a raw query on the database and returns the result set.
      *
@@ -38,6 +33,29 @@ sealed interface Controller {
     fun prepare(@Language("SQL") statement: String, vararg values: Any?): IronResultSet
 
     /**
+     * Prepares a statement on the database. This method should be preferred over [execute] for security reasons. This
+     * will take an [ExplodingModel] and extract the values from it and put them in the query for you.
+     * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
+     * the values, any values passed in through this parameter is not sanitized.
+     * @param model The model to get the data from
+     * @return The prepared statement.
+     * @since 1.0
+     */
+    fun prepare(@Language("SQL") statement: String, model: ExplodingModel): IronResultSet
+
+    /**
+     * Prepares a statement on the database. This method should be preferred over [execute] for security reasons. This
+     * will take in manually specified values and replace any named variables with the value specified. The format for
+     * the named variables are as such: `:<name>`, an example might be as follows: `:id`.
+     * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
+     * the values, any values passed in through this parameter is not sanitized.
+     * @param values The named values to pass in to the query
+     * @return The prepared statement.
+     * @since 1.0
+     */
+    fun prepare(@Language("SQL") statement: String, model: SqlParamsBuilder): IronResultSet
+
+    /**
      * Prepares a statement on the database. This method should be preferred over [execute] for security reasons.
      * @param statement The statement to prepare on the database. This statement should contain named placeholders for
      * the values, any values passed in through this parameter is not sanitized.
@@ -45,7 +63,7 @@ sealed interface Controller {
      * @return The prepared statement.
      * @since 1.3
      */
-    fun prepare(@Language("SQL") statement: String, values: SqlParameters): IronResultSet {
+    fun prepare(@Language("SQL") statement: String, values: SqlParams): IronResultSet {
         val insertedValues = mutableListOf<Any>()
 
         val parsedStatement = SQL_PLACEHOLDER_REGEX.replace(statement) { matchResult ->
@@ -54,7 +72,7 @@ sealed interface Controller {
             // cast
             if(group.startsWith("::")) {
                 group
-            // wrapped in text or something
+                // wrapped in text or something
             } else if(SURROUNDING_QUOTES.any { it == group.first() && it == group.last() }) {
                 group
             } else {

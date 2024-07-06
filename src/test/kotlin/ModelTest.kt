@@ -20,12 +20,24 @@ class ModelTest {
     )
 
     @Test
-    fun testGenerateEntityModel() {
+    fun `generate entity model`() {
         val modelTransformer = ModelTransformer(NamingStrategy.SNAKE_CASE)
 
         val entity = modelTransformer.transform(User::class)
         assertEquals(User::class, entity.clazz)
         assertEquals(4, entity.fields.size)
+    }
+
+    @Test
+    fun `proper parameter order`() {
+        val modelTransformer = ModelTransformer(NamingStrategy.NONE)
+        val entity = modelTransformer.transform(User::class)
+        val fields = entity.fields.map { it.field }
+
+        assertEquals(User::id, fields[0])
+        assertEquals(User::name, fields[1])
+        assertEquals(User::age, fields[2])
+        assertEquals(User::firstJoinTime, fields[3])
     }
 
 }

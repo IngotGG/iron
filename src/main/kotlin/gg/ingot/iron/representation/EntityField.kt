@@ -1,6 +1,7 @@
 package gg.ingot.iron.representation
 
 import gg.ingot.iron.serialization.ColumnDeserializer
+import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.strategies.NamingStrategy
 import gg.ingot.iron.transformer.isArray
 import gg.ingot.iron.transformer.isCollection
@@ -14,12 +15,13 @@ import kotlin.reflect.KProperty
  * @since 1.0
  * @see EntityModel
  */
-internal data class EntityField(
+data class EntityField(
     val field: KProperty<*>,
     val javaField: Field,
     val columnName: String,
     val nullable: Boolean,
     val isJson: Boolean,
+    val serializer: ColumnSerializer<*, *>?,
     val deserializer: ColumnDeserializer<*, *>?,
 ) {
     val isArray get() = isArray(field)

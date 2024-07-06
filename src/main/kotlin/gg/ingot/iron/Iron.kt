@@ -4,15 +4,19 @@ import gg.ingot.iron.pool.ConnectionPool
 import gg.ingot.iron.pool.MultiConnectionPool
 import gg.ingot.iron.pool.SingleConnectionPool
 import gg.ingot.iron.representation.DBMS
+import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.sql.SqlParameters
-import gg.ingot.iron.sql.controller.Controller
 import gg.ingot.iron.sql.controller.ControllerImpl
+import gg.ingot.iron.sql.controller.TransactionActionableController
 import gg.ingot.iron.sql.controller.TransactionController
+import gg.ingot.iron.sql.params.SqlParams
+import gg.ingot.iron.sql.params.SqlParamsBuilder
 import gg.ingot.iron.transformer.ModelTransformer
 import gg.ingot.iron.transformer.ResultTransformer
 import gg.ingot.iron.transformer.ValueTransformer
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.sql.Connection
@@ -34,7 +38,7 @@ class Iron(
     private var pool: ConnectionPool? = null
 
     /** The model transformer used to transform models into their corresponding entity representation. */
-    private val modelTransformer = ModelTransformer(settings.namingStrategy)
+    private val modelTransformer = ModelTransformer(settings.namingStrategy, settings.adapters)
 
     /** The value transformer used to transform values from the result set into their corresponding types. */
     private val valueTransformer = ValueTransformer(settings.serialization)
@@ -94,12 +98,12 @@ class Iron(
      * @param block The closure to execute with the controller.
      * @since 1.3
      */
-    private suspend fun <T : Any?> withController(block: suspend (Controller) -> T): T {
+    private suspend fun <T : Any?> withController(block: suspend (TransactionController) -> T): T {
         val connection = pool?.connection()
             ?: error(UNOPENED_CONNECTION_MESSAGE)
 
         return withContext(dispatcher) {
-            block(ControllerImpl(connection, resultTransformer, settings.serialization))
+            block(ControllerImpl(connection, modelTransformer, resultTransformer, settings.serialization))
         }.also { pool?.release(connection) }
     }
 
@@ -115,7 +119,7 @@ class Iron(
      * Starts a transaction on the connection.
      * @since 1.0
      */
-    suspend fun <T : Any?> transaction(block: TransactionController.() -> T): T {
+    suspend fun <T : Any?> transaction(block: TransactionActionableController.() -> T): T {
         return withController { it.transaction(block) }
     }
 
@@ -123,7 +127,7 @@ class Iron(
      * Executes a raw query on the database and returns the result set.
      *
      * **Note:** This method does no validation on the query, it is up to the user to ensure the query is safe.
-     * @param query The query to execute on the database.
+     * @param statement The query to execute on the database.
      * @return The result set from the query.
      * @since 1.0
      */
@@ -156,13 +160,30 @@ class Iron(
     }
 
     /**
+     * Prepares a statement on the database. This method should be preferred over [execute] for security reasons. This
+     * will take an [ExplodingModel] and extract the values from it and put them in the query for you.
+     * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
+     * the values, any values passed in through this parameter is not sanitized.
+     * @param model The model to get the data from
+     * @return The prepared statement.
+     * @since 1.0
+     */
+    suspend fun prepare(@Language("SQL") statement: String, model: ExplodingModel): IronResultSet {
+        return withController { it.prepare(statement, model) }
+    }
+
+    suspend fun prepare(@Language("SQL") statement: String, params: SqlParamsBuilder): IronResultSet {
+        return withController { it.prepare(statement, params) }
+    }
+
+    /**
      * Prepares a statement on the database. This method should be preferred over [execute] for security reasons.
      * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
      * the values, any values passed in through this parameter is not sanitized.
      * @param values The values to bind to the statement.
      * @return The prepared statement.
      */
-    suspend fun prepare(@Language("SQL") statement: String, values: SqlParameters): IronResultSet {
+    suspend fun prepare(@Language("SQL") statement: String, values: SqlParams): IronResultSet {
         return withController { it.prepare(statement, values) }
     }
 

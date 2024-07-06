@@ -11,15 +11,15 @@ annotation class Column(
     val ignore: Boolean = false,
     val json: Boolean = false,
 
-    val transformer: KClass<out ColumnTransformer<*, *>> = EmptyTransformer::class,
+    val adapter: KClass<out ColumnAdapter<*, *>> = EmptyAdapter::class,
     val deserializer: KClass<out ColumnDeserializer<*, *>> = EmptyDeserializer::class,
     val serializer: KClass<out ColumnSerializer<*, *>> = EmptySerializer::class
 )
 
 internal fun Column.retrieveDeserializer(): ColumnDeserializer<*, *>? {
-    if(transformer != EmptyTransformer::class) {
-        return transformer.objectInstance
-            ?: transformer.createInstance()
+    if(adapter != EmptyAdapter::class) {
+        return adapter.objectInstance
+            ?: adapter.createInstance()
     }
 
     if(deserializer != EmptyDeserializer::class) {
@@ -31,9 +31,9 @@ internal fun Column.retrieveDeserializer(): ColumnDeserializer<*, *>? {
 }
 
 internal fun Column.retrieveSerializer(): ColumnSerializer<*, *>? {
-    if(transformer != EmptyTransformer::class) {
-        return transformer.objectInstance
-            ?: transformer.createInstance()
+    if(adapter != EmptyAdapter::class) {
+        return adapter.objectInstance
+            ?: adapter.createInstance()
     }
 
     if(serializer != EmptySerializer::class) {
