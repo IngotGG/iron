@@ -102,9 +102,15 @@ class Iron(
         val connection = pool?.connection()
             ?: error(UNOPENED_CONNECTION_MESSAGE)
 
-        return withContext(dispatcher) {
-            block(ControllerImpl(connection, modelTransformer, resultTransformer, settings.serialization))
-        }.also { pool?.release(connection) }
+        return try {
+            withContext(dispatcher) {
+                block(ControllerImpl(connection, modelTransformer, resultTransformer, settings.serialization))
+            }
+        } catch(ex: Exception) {
+            throw ex
+        } finally {
+            pool?.release(connection)
+        }
     }
 
     /**
