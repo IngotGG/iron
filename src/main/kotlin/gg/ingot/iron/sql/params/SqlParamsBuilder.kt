@@ -50,5 +50,16 @@ fun sqlParams(vararg values: Pair<String, Any?>): SqlParamsBuilder {
     return SqlParamsBuilder(values.toMap().toMutableMap())
 }
 
+/**
+ * Convert a list of models into a SqlParams instance.
+ * @param models The models to convert into a SqlParams instance.
+ * @return The SqlParams instance for chaining.
+ */
+fun namedSqlParams(vararg models: ExplodingModel): SqlParamsBuilder {
+    return SqlParamsBuilder(mutableMapOf()).apply {
+        models.forEach { this + it }
+    }
+}
+
 /** The parameters to use in a SQL query. */
 typealias SqlParams = MutableMap<String, Any?>

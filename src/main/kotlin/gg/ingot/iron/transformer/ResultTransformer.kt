@@ -5,9 +5,11 @@ import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.strategies.NamingStrategy
+import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import kotlin.reflect.KClass
 import kotlin.reflect.full.declaredMemberProperties
+import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.isAccessible
 
 /**
@@ -45,7 +47,11 @@ internal class ResultTransformer(
         val entity = modelTransformer.transform(clazz)
 
         val emptyConstructor = clazz.constructors.firstOrNull { it.parameters.isEmpty() }
-        val fullConstructor = clazz.constructors.firstOrNull { it.parameters.size == entity.fields.size }
+        // prefer primary constructor first
+        // then try to use secondary constructors if they have the same length of fields.
+        val fullConstructor = clazz.primaryConstructor
+            ?.takeIf { it.parameters.size == entity.fields.size }
+            ?: clazz.constructors.firstOrNull { it.parameters.size == entity.fields.size }
 
         if (emptyConstructor != null) {
             emptyConstructor.isAccessible = true
