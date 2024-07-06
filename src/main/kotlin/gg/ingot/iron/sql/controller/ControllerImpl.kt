@@ -3,7 +3,7 @@ package gg.ingot.iron.sql.controller
 import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.serialization.SerializationAdapter
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.sql.params.SqlParams
+import gg.ingot.iron.sql.params.SqlParamsBuilder
 import gg.ingot.iron.transformer.ModelTransformer
 import gg.ingot.iron.transformer.PlaceholderTransformer
 import gg.ingot.iron.transformer.ResultTransformer
@@ -83,7 +83,7 @@ internal class ControllerImpl(
         }.toTypedArray())
     }
 
-    override fun prepare(statement: String, model: SqlParams): IronResultSet {
+    override fun prepare(statement: String, model: SqlParamsBuilder): IronResultSet {
         return prepare(statement, model.build(modelTransformer))
     }
 

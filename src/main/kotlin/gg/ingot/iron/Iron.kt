@@ -6,12 +6,11 @@ import gg.ingot.iron.pool.SingleConnectionPool
 import gg.ingot.iron.representation.DBMS
 import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.sql.controller.Controller
 import gg.ingot.iron.sql.controller.ControllerImpl
 import gg.ingot.iron.sql.controller.TransactionActionableController
 import gg.ingot.iron.sql.controller.TransactionController
-import gg.ingot.iron.sql.params.Parameters
 import gg.ingot.iron.sql.params.SqlParams
+import gg.ingot.iron.sql.params.SqlParamsBuilder
 import gg.ingot.iron.transformer.ModelTransformer
 import gg.ingot.iron.transformer.ResultTransformer
 import gg.ingot.iron.transformer.ValueTransformer
@@ -173,7 +172,7 @@ class Iron(
         return withController { it.prepare(statement, model) }
     }
 
-    suspend fun prepare(@Language("SQL") statement: String, params: SqlParams): IronResultSet {
+    suspend fun prepare(@Language("SQL") statement: String, params: SqlParamsBuilder): IronResultSet {
         return withController { it.prepare(statement, params) }
     }
 
@@ -184,7 +183,7 @@ class Iron(
      * @param values The values to bind to the statement.
      * @return The prepared statement.
      */
-    suspend fun prepare(@Language("SQL") statement: String, values: Parameters): IronResultSet {
+    suspend fun prepare(@Language("SQL") statement: String, values: SqlParams): IronResultSet {
         return withController { it.prepare(statement, values) }
     }
 

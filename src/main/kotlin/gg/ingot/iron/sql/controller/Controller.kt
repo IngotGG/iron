@@ -2,8 +2,8 @@ package gg.ingot.iron.sql.controller
 
 import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.sql.params.Parameters
 import gg.ingot.iron.sql.params.SqlParams
+import gg.ingot.iron.sql.params.SqlParamsBuilder
 import org.intellij.lang.annotations.Language
 
 /**
@@ -53,7 +53,7 @@ sealed interface Controller {
      * @return The prepared statement.
      * @since 1.0
      */
-    fun prepare(@Language("SQL") statement: String, model: SqlParams): IronResultSet
+    fun prepare(@Language("SQL") statement: String, model: SqlParamsBuilder): IronResultSet
 
     /**
      * Prepares a statement on the database. This method should be preferred over [execute] for security reasons.
@@ -63,7 +63,7 @@ sealed interface Controller {
      * @return The prepared statement.
      * @since 1.3
      */
-    fun prepare(@Language("SQL") statement: String, values: Parameters): IronResultSet {
+    fun prepare(@Language("SQL") statement: String, values: SqlParams): IronResultSet {
         val insertedValues = mutableListOf<Any>()
 
         val parsedStatement = SQL_PLACEHOLDER_REGEX.replace(statement) { matchResult ->

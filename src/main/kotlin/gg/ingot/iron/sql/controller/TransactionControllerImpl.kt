@@ -2,7 +2,7 @@ package gg.ingot.iron.sql.controller
 
 import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.sql.params.SqlParams
+import gg.ingot.iron.sql.params.SqlParamsBuilder
 
 /**
  * Implementation of [TransactionActionableController].
@@ -45,7 +45,7 @@ internal class TransactionControllerImpl(
     override fun prepare(statement: String, vararg values: Any?): IronResultSet = controller.prepare(statement, *values)
     override fun prepare(statement: String, model: ExplodingModel): IronResultSet = controller.prepare(statement, model)
 
-    override fun prepare(statement: String, model: SqlParams): IronResultSet = controller.prepare(statement, model)
+    override fun prepare(statement: String, model: SqlParamsBuilder): IronResultSet = controller.prepare(statement, model)
 
     override fun execute(statement: String): Boolean = controller.execute(statement)
 }
