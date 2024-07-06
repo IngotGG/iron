@@ -56,6 +56,7 @@ internal object PlaceholderTransformer {
 
         val inner = value.value
             ?: return null
+
         return serializationAdapter.serialize(inner, value.value::class.java)
     }
 }

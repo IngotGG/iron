@@ -14,7 +14,7 @@ interface SerializationAdapter {
      * @param clazz The class to deserialize the object into.
      * @return The deserialized object.
      */
-    fun deserialize(obj: Any, clazz: Class<*>): Any?
+    fun deserialize(obj: Any, clazz: Class<*>): Any
 
     /**
      * Serialize the given object into a string.

@@ -48,7 +48,7 @@ internal class ControllerImpl(
 
         val resultSet = connection.createStatement()
             .executeQuery(query)
-        return IronResultSet(resultSet, resultTransformer)
+        return IronResultSet(resultSet, serializationAdapter, resultTransformer)
     }
 
     override fun prepare(statement: String, vararg values: Any?): IronResultSet {
@@ -73,7 +73,7 @@ internal class ControllerImpl(
             null
         }
 
-        return IronResultSet(resultSet, resultTransformer)
+        return IronResultSet(resultSet, serializationAdapter, resultTransformer)
     }
 
     override fun prepare(statement: String, model: ExplodingModel): IronResultSet {
