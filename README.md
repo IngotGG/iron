@@ -136,8 +136,8 @@ suspend fun main() {
         )
     ).connect()
 
-    val model = connection.query<ExampleModel>("SELECT example FROM table LIMIT 1;")
-        .singleNullable()
+    val model = connection.query("SELECT example FROM table LIMIT 1;")
+        .singleNullable<ExampleModel>()
     println(model?.example)
 }
 ```
