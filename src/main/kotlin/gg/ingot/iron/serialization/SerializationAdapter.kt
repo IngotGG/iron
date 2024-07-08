@@ -1,5 +1,6 @@
 package gg.ingot.iron.serialization
 
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.serializerOrNull
 
 /**
@@ -32,7 +33,13 @@ interface SerializationAdapter {
         }
 
         override fun serialize(obj: Any, clazz: Class<*>): String {
-            val serializer = json.serializersModule.serializerOrNull(clazz)
+            // For polymorphic serialization we need to use the base class that'll
+            // include the "type" field in the JSON output, so we can then properly
+            // deserialize the value, so we literally have to check if the super class
+            // is serializable and use that instead of the actual class. - tech
+            val serializerClazz = clazz.superclass.takeIf { it.annotations.any { a -> a is Serializable } }
+                ?: clazz
+            val serializer = json.serializersModule.serializerOrNull(serializerClazz)
                 ?: error("No serializer found for type: ${clazz.simpleName}")
 
             return json.encodeToString(serializer, obj)
