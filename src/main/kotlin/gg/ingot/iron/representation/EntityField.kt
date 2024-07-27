@@ -21,6 +21,7 @@ data class EntityField(
     val columnName: String,
     val nullable: Boolean,
     val isJson: Boolean,
+    val isBoolean: Boolean,
     val serializer: ColumnSerializer<*, *>?,
     val deserializer: ColumnDeserializer<*, *>?,
 ) {
