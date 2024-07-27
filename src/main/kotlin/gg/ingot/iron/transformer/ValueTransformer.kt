@@ -3,6 +3,7 @@ package gg.ingot.iron.transformer
 import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.serialization.*
 import gg.ingot.iron.strategies.NamingStrategy
+import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import kotlin.reflect.KClass
 
@@ -91,6 +92,15 @@ internal class ValueTransformer(
         // Automatically map the enum to the enum type
         if(field.isEnum && field.deserializer == null) {
             return java.lang.Enum.valueOf(field.javaField.type as Class<out Enum<*>>, value as String)
+        }
+
+        // Automatically convert Ints to Booleans for DBMS
+        // that don't give us back a boolean type.
+        if(value != null && value is Int && field.isBoolean) {
+            if(value != 0 && value != 1) {
+                error("Expected a boolean value, but found an integer value of $value for field: ${field.field.name}")
+            }
+            return value == 1
         }
 
         return value

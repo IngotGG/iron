@@ -1,14 +1,9 @@
 package gg.ingot.iron.transformer
 
 import gg.ingot.iron.Iron
-import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Model
-import gg.ingot.iron.representation.EntityField
-import gg.ingot.iron.strategies.NamingStrategy
-import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import kotlin.reflect.KClass
-import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.isAccessible
 
@@ -114,8 +109,20 @@ internal class ResultTransformer(
         }
 
         try {
-            return if(columnLabel != null) result.getObject(columnLabel) as? T
+            val obj = if(columnLabel != null) result.getObject(columnLabel) as? T
             else result.getObject(1) as? T
+
+            // Automatically convert Ints to Booleans for DBMS
+            // that don't give us back a boolean type.
+            @Suppress("KotlinConstantConditions")
+            if(obj != null && clazz == Boolean::class && obj is Int) {
+                if(obj != 0 && obj != 1) {
+                    error("Could not convert the column to a boolean, the value was not 0 or 1.")
+                }
+                return (obj == 1) as? T
+            }
+
+            return obj
         } catch(ex: ClassCastException) {
             error("Could not cast the column to the desired type, if you're attempted to map to a model try annotating with @Model, if not try passing a custom deserializer.")
         }
