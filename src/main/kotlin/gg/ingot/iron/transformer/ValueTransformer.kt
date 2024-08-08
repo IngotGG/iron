@@ -41,7 +41,9 @@ internal class ValueTransformer(
     /**
      * Retrieve the value as an [Array] from the result set.
      * @param resultSet The result set to retrieve the value from.
-     * @param columnName The column name to retrieve the value for.
+     * @param field The field to retrieve the value for.
+     * @param namingStrategy The naming strategy to use for the field.
+     * @return The array from the result set.
      */
     private fun toArray(resultSet: ResultSet, field: EntityField, namingStrategy: NamingStrategy): Any? {
         val arr = resultSet.getArray(field.convertedName(namingStrategy))
