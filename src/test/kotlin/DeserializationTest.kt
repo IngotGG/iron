@@ -179,4 +179,26 @@ class DeserializationTest {
         assertEquals("hello", mapped.json.example)
     }
 
+    @Test
+    fun `deserialize ints as bools`() = runTest {
+        @Model
+        data class TestMapping(val bool: Boolean)
+
+        val connection = Iron("jdbc:sqlite::memory:")
+            .connect()
+
+        connection.execute("CREATE TABLE test(id INTEGER PRIMARY KEY, bool BOOLEAN NOT NULL)")
+        connection.execute("INSERT INTO test(bool) VALUES (true)")
+        connection.execute("INSERT INTO test(bool) VALUES (false)")
+
+        val booleans = connection.query("SELECT bool FROM test")
+            .all<Boolean>()
+
+        val modeledBooleans = connection.query("SELECT bool FROM test")
+            .all<TestMapping>()
+            .map { it.bool }
+
+        assertEquals(listOf(true, false), booleans)
+        assertEquals(listOf(true, false), modeledBooleans)
+    }
 }

@@ -382,9 +382,9 @@ class DatabaseTest {
     fun `test transformer`() = runTest {
         val value = connection.transaction {
             execute("CREATE TABLE uuids(uuid TEXT PRIMARY KEY)")
-            prepare("INSERT INTO uuids VALUES (?)", UUID.randomUUID())
-            prepare("INSERT INTO uuids VALUES (?)", UUID.randomUUID())
-            prepare("INSERT INTO uuids VALUES (?)", UUID.randomUUID())
+            repeat(3) {
+                prepare("INSERT INTO uuids VALUES (?)", UUID.randomUUID())
+            }
             prepare("INSERT INTO uuids VALUES (?) RETURNING *", UUID.randomUUID())
                 .single<UUID>(UUIDTransformer)
         }

@@ -60,6 +60,7 @@ internal class ModelTransformer(
                     columnName = retrieveName(field, annotation),
                     nullable = field.returnType.isMarkedNullable,
                     isJson = annotation?.json ?: false,
+                    isBoolean = field.returnType.classifier == Boolean::class,
                     serializer = retrieveSerializer(field, annotation),
                     deserializer = retrieveDeserializer(field, annotation)
                 ))
