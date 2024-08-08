@@ -56,7 +56,7 @@ internal class ModelTransformer(
 
                 fields.add(EntityField(
                     field = field,
-                    javaField = field.javaField ?: error("Field ${field.name} (${field}) has no backing field."),
+                    javaField = field.javaField ?: continue, // may be a getter field, skip it.
                     columnName = retrieveName(field, annotation),
                     nullable = field.returnType.isMarkedNullable,
                     isJson = annotation?.json ?: false,
