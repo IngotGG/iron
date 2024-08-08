@@ -23,6 +23,17 @@ class SqlParamsBuilder internal constructor(
     }
 
     /**
+     * Adds a [SqlParamsBuilder] to the parameters.
+     * @param builder The builder to add to the parameters.
+     * @return The SqlParams instance for chaining.
+     */
+    operator fun plus(builder: SqlParamsBuilder): SqlParamsBuilder {
+        models.addAll(builder.models)
+        values.putAll(builder.values)
+        return this
+    }
+
+    /**
      * Builds the SQL parameters using the provided transformer.
      * @param transformer The transformer to use to build the parameters.
      * @return The built SQL parameters.
@@ -48,6 +59,17 @@ class SqlParamsBuilder internal constructor(
  */
 fun sqlParams(vararg values: Pair<String, Any?>): SqlParamsBuilder {
     return SqlParamsBuilder(values.toMap().toMutableMap())
+}
+
+/**
+ * Creates a new SqlParams instance with the provided values.
+ * @param models The models to add to the parameters.
+ * @return The SqlParams instance for chaining.
+ */
+fun sqlParams(vararg models: ExplodingModel): SqlParamsBuilder {
+    return SqlParamsBuilder(mutableMapOf()).apply {
+        models.forEach { this + it }
+    }
 }
 
 /**
