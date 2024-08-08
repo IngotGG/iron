@@ -7,6 +7,7 @@ import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.serialization.ColumnAdapter
 import gg.ingot.iron.serialization.SerializationAdapter
+import gg.ingot.iron.sql.params.namedSqlParams
 import gg.ingot.iron.sql.params.sqlParams
 import gg.ingot.iron.strategies.NamingStrategy
 import kotlinx.coroutines.test.runTest
@@ -391,4 +392,55 @@ class DatabaseTest {
         assertNotNull(value)
     }
 
+    @Test
+    fun `add named params to exploding model`() = runTest {
+        data class TestModel(val id: String, val hello: String) : ExplodingModel
+        val model = TestModel("a", "b")
+        val model2 = TestModel("c", "d")
+
+        @Model
+        data class TestTableModel(val id: String, val hello: String, val another: String)
+
+        val models = connection.transaction {
+            prepare("CREATE TAbLE test(id TEXT PRIMARY KEY, hello TEXT, another TEXT);")
+
+            prepare(
+                "INSERT INTO test(id, hello, another) VALUES (:id, :hello, :another)",
+                sqlParams("another" to "c") + sqlParams(model)
+            )
+
+            prepare(
+                "INSERT INTO test(id, hello, another) VALUES (:id, :hello, :another)",
+                sqlParams(model2) + sqlParams("another" to "c")
+            )
+
+            query("SELECT * FROM test")
+                .all<TestTableModel>()
+        }
+
+        assertEquals(2, models.size)
+        assertEquals("a", models[0].id)
+        assertEquals("c", models[0].another)
+
+        assertEquals("c", models[1].id)
+        assertEquals("c", models[1].another)
+    }
+
+    @Test
+    fun `data class getter support`() = runTest {
+        @Model
+        data class TestModel(val id: String) {
+            val upperId get() = id.uppercase()
+        }
+
+        val model = connection.transaction {
+            execute("CREATE TABLE test(id TEXT PRIMARY KEY);")
+            prepare("INSERT INTO test(id) VALUES (?)", "test")
+
+            query("SELECT * FROM test")
+                .single<TestModel>()
+        }
+
+        assertEquals("TEST", model.upperId)
+    }
 }
