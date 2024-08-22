@@ -55,7 +55,7 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @param entity The entity to create a unique selector for
      * @return A unique selector for the entity
      */
-    internal fun uniqueSelector(entity: T): SqlPredicate {
+    fun uniqueSelector(entity: T): SqlPredicate {
         val primaryKey = model.fields.firstOrNull { it.isPrimaryKey }
         if (primaryKey == null) {
             throw IllegalStateException("No primary key found for ${clazz.simpleName}, mark one with @Column(primaryKey = true)")
@@ -175,14 +175,13 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
 
     companion object {
         private val tableRegex = Regex("^[a-zA-Z_][a-zA-Z0-9_]*$")
-        private val controllers: MutableMap<Class<*>, TableController<*>> = mutableMapOf()
+        private val controllers: MutableMap<Iron, MutableMap<Class<*>, TableController<*>>> = mutableMapOf()
 
         @Suppress("UNCHECKED_CAST")
         @JvmStatic
         fun <T: Any> getController(clazz: Class<T>, iron: Iron): TableController<T> {
-            return controllers.getOrPut(clazz) {
-                TableController(iron, clazz)
-            } as TableController<T>
+            return controllers.getOrPut(iron) { mutableMapOf() }
+                .getOrPut(clazz) { TableController(iron, clazz) } as TableController<T>
         }
     }
 }
