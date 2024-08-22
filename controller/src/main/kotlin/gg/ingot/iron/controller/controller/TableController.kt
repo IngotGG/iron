@@ -8,7 +8,7 @@ import gg.ingot.iron.controller.query.SqlPredicate
 import gg.ingot.iron.representation.EntityModel
 
 @Suppress("MemberVisibilityCanBePrivate")
-class TableController<T: Any>(private val iron: Iron, internal val clazz: Class<T>) {
+class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
 
     init {
         if (clazz.isSynthetic) {
