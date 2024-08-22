@@ -173,11 +173,20 @@ class TableController<T: Any>(private val iron: Iron, internal val clazz: Class<
         return engine.update(intercept(entity), fetch)
     }
 
-    private companion object {
+    companion object {
         private val tableRegex = Regex("^[a-zA-Z_][a-zA-Z0-9_]*$")
+        private val controllers: MutableMap<Class<*>, TableController<*>> = mutableMapOf()
+
+        @Suppress("UNCHECKED_CAST")
+        @JvmStatic
+        fun <T: Any> getController(clazz: Class<T>, iron: Iron): TableController<T> {
+            return controllers.getOrPut(clazz) {
+                TableController(iron, clazz)
+            } as TableController<T>
+        }
     }
 }
 
 inline fun <reified T: Any> Iron.controller(): TableController<T> {
-    return TableController(this, T::class.java)
+    return TableController.getController(T::class.java, this)
 }
