@@ -21,3 +21,5 @@ class SqlPredicate internal constructor(
         }
     }
 }
+
+typealias SqlFilter<T> = SQL<T>.() -> SqlPredicate

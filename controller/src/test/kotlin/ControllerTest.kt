@@ -3,14 +3,14 @@ import gg.ingot.iron.Iron
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.controller.Controller
-import gg.ingot.iron.controller.tables.controller
+import gg.ingot.iron.controller.controller.controller
 import gg.ingot.iron.strategies.NamingStrategy
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.asserter
 
-class SimpleTest {
+class ControllerTest {
     private val iron = Iron("jdbc:sqlite::memory:") {
         namingStrategy = NamingStrategy.SNAKE_CASE
     }.connect()
@@ -91,13 +91,81 @@ class SimpleTest {
     fun `test updating entities`() = runTest {
         iron.prepare("CREATE TABLE users (name TEXT, age INTEGER, email TEXT)")
         val controller = iron.controller<User>()
-        val user = User("User 1", 18, "")
+        var user = User("User 1", 18, "")
 
         controller.insert(user)
         user.age = 25
 
         controller.update(user)
+        user = controller.first()!!
+
         assertEquals(25, user.age)
+    }
+
+    @Test
+    fun `test retrieving all entities with filter`() = runTest {
+        iron.prepare("CREATE TABLE users (name TEXT, age INTEGER, email TEXT)")
+        val controller = iron.controller<User>()
+
+        for (i in 0 until 10) {
+            val user = User("User $i", i + 18, "")
+            controller.insert(user)
+        }
+
+        val users = controller.all {
+            (User::age gt 20) and (User::age lt 25)
+        }
+
+        assertEquals(4, users.size)
+    }
+
+    @Test
+    fun `test interceptors`() = runTest {
+        iron.prepare("CREATE TABLE users (name TEXT, age INTEGER, email TEXT)")
+        val controller = iron.controller<User>()
+        var user = User("User 1", 18, "")
+
+        controller.interceptor {
+            it.apply { it.age += 10 }
+        }
+
+        user = controller.insert(user, true)
+        assertEquals(28, user.age)
+
+        user.age = 30
+        user = controller.update(user, true)
+
+        assertEquals(40, user.age)
+    }
+
+    @Test
+    fun `test inserting many entities`() = runTest {
+        iron.prepare("CREATE TABLE users (name TEXT, age INTEGER, email TEXT)")
+        val controller = iron.controller<User>()
+        var users = (0 until 10).map { User("User $it", it + 18, "") }
+
+        users = controller.insertMany(users)
+        assertEquals(10, controller.count())
+        assertEquals(10, users.size)
+    }
+
+    @Test
+    fun `test inserting many entities then fetching`() = runTest {
+        iron.prepare("CREATE TABLE users (name TEXT, age INTEGER, email TEXT)")
+        val controller = iron.controller<User>()
+        var users = (0 until 10).map { User("User $it", it + 18, "") }
+
+        controller.interceptor {
+            it.apply { it.age += 10 }
+        }
+
+        users = controller.insertMany(users, true)
+        assertEquals(10, controller.count())
+        assertEquals(10, users.size)
+
+        for (i in 0 until 10) {
+            assertEquals(28 + i, users[i].age)
+        }
     }
 
 }

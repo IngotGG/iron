@@ -1,17 +1,17 @@
 package gg.ingot.iron.controller.engine.impl
 
 import gg.ingot.iron.Iron
+import gg.ingot.iron.controller.controller.TableController
 import gg.ingot.iron.controller.engine.DBMSEngine
 import gg.ingot.iron.controller.query.SQL
-import gg.ingot.iron.controller.query.SqlPredicate
-import gg.ingot.iron.controller.tables.TableController
+import gg.ingot.iron.controller.query.SqlFilter
 
 @Suppress("DuplicatedCode")
 class MySQLEngine<T: Any>(
     iron: Iron,
     controller: TableController<T>
 ): DBMSEngine<T>(iron, controller) {
-    override suspend fun all(filter: (SQL<T>.() -> SqlPredicate)?): List<T> {
+    override suspend fun all(filter: SqlFilter<T>?): List<T> {
         val scope = SQL<T>(iron, controller.model)
         val predicate = filter?.invoke(scope)
 
@@ -33,27 +33,33 @@ class MySQLEngine<T: Any>(
         iron.prepare("DROP TABLE ${controller.tableName}")
     }
 
-    override suspend fun insert(entity: T, pull: Boolean): T {
-        val columns = controller.model.fields.joinToString(",") { it.columnName }
-        val variables = controller.model.fields.joinToString(",") { ":${it.variableName}" }
-
-        return iron.transaction {
-            prepare(
-                "INSERT INTO ${controller.tableName} ($columns) VALUES ($variables)",
-                entity
-            )
-
-            if (pull) {
-                prepare("SELECT * FROM ${controller.tableName} WHERE id = last_insert_id()")
-                    .single(controller.clazz.kotlin)
-            } else {
-                entity
-            }
-        }
-
+    override suspend fun insert(entity: T, fetch: Boolean): T {
+        return insertMany(listOf(entity), fetch).first()
     }
 
-    override suspend fun first(filter: (SQL<T>.() -> SqlPredicate)?): T? {
+    override suspend fun insertMany(entities: List<T>, fetch: Boolean): List<T> {
+        return iron.transaction {
+            return@transaction entities.map { entity ->
+                val columns = controller.model.fields.joinToString(",") { it.columnName }
+                val variables = controller.model.fields.joinToString(",") { ":${it.variableName}" }
+
+                prepare(
+                    "INSERT INTO ${controller.tableName} ($columns) VALUES ($variables)",
+                    entity
+                )
+
+                if (fetch) {
+                    val selector = controller.uniqueSelector(entity)
+                    prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.params())
+                        .single(controller.clazz.kotlin)
+                } else {
+                    entity
+                }
+            }
+        }
+    }
+
+    override suspend fun first(filter: SqlFilter<T>?): T? {
         val scope = SQL<T>(iron, controller.model)
         val predicate = filter?.invoke(scope)
 
@@ -71,7 +77,7 @@ class MySQLEngine<T: Any>(
         iron.prepare("DELETE FROM ${controller.tableName}")
     }
 
-    override suspend fun delete(filter: (SQL<T>.() -> SqlPredicate)) {
+    override suspend fun delete(filter: SqlFilter<T>) {
         val scope = SQL<T>(iron, controller.model)
         val predicate = filter.invoke(scope)
 
@@ -83,10 +89,22 @@ class MySQLEngine<T: Any>(
         iron.prepare("DELETE FROM ${controller.tableName} WHERE $selector", selector.params())
     }
 
-    override suspend fun update(entity: T) {
+    override suspend fun update(entity: T, fetch: Boolean): T {
         val selector = controller.uniqueSelector(entity)
         val columns = controller.model.fields.joinToString(", ") { "${it.columnName} = :${it.variableName}" }
 
-        iron.prepare("UPDATE ${controller.tableName} SET $columns WHERE $selector", selector.params() + entity)
+        return iron.transaction {
+            prepare(
+                "UPDATE ${controller.tableName} SET $columns WHERE $selector",
+                selector.params(), entity
+            )
+
+            if (fetch) {
+                prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.params(), entity)
+                    .single(controller.clazz.kotlin)
+            } else {
+                entity
+            }
+        }
     }
 }

@@ -1,13 +1,12 @@
 package gg.ingot.iron.controller.engine
 
 import gg.ingot.iron.Iron
+import gg.ingot.iron.controller.controller.TableController
 import gg.ingot.iron.controller.engine.impl.MySQLEngine
 import gg.ingot.iron.controller.engine.impl.PostgresEngine
 import gg.ingot.iron.controller.engine.impl.SqliteEngine
 import gg.ingot.iron.controller.exceptions.NoEngineException
-import gg.ingot.iron.controller.query.SQL
-import gg.ingot.iron.controller.query.SqlPredicate
-import gg.ingot.iron.controller.tables.TableController
+import gg.ingot.iron.controller.query.SqlFilter
 import gg.ingot.iron.representation.DBMS
 import org.slf4j.LoggerFactory
 
@@ -58,16 +57,25 @@ abstract class DBMSEngine<T: Any>(
      * Retrieves all entities from the table
      * @return The list of all entities in the table
      */
-    abstract suspend fun all(filter: (SQL<T>.() -> SqlPredicate)?): List<T>
+    abstract suspend fun all(filter: SqlFilter<T>?): List<T>
 
     /**
      * Insert a new entity into the table
      * @param entity The entity to insert
-     * @param pull Whether to pull the entity after inserting
-     * @return The entity that was inserted, if `pull` is true then this will be pulled from the database.
+     * @param fetch Whether to pull the entity after inserting
+     * @return The entity that was inserted, if `fetch` is true then this will be pulled from the database.
      * Otherwise, it will be the entity that was inserted.
      */
-    abstract suspend fun insert(entity: T, pull: Boolean): T
+    abstract suspend fun insert(entity: T, fetch: Boolean): T
+
+    /**
+     * Insert multiple entities into the table
+     * @param entities The list of entities to insert
+     * @param fetch Whether to fetch the entities after inserting them
+     * @return The entities that were inserted, if `fetch` is true then this will reflect the
+     * database values, otherwise it will be exact same list that was passed in
+     */
+    abstract suspend fun insertMany(entities: List<T>, fetch: Boolean = false): List<T>
 
     /**
      * Get the amount of rows in the table
@@ -83,7 +91,7 @@ abstract class DBMSEngine<T: Any>(
     /**
      * Get a single entity from the table
      */
-    abstract suspend fun first(filter: (SQL<T>.() -> SqlPredicate)?): T?
+    abstract suspend fun first(filter: SqlFilter<T>?): T?
 
     /**
      * Delete all entities from the table
@@ -93,7 +101,7 @@ abstract class DBMSEngine<T: Any>(
     /**
      * Delete multiple entities from the table that match the filter
      */
-    abstract suspend fun delete(filter: (SQL<T>.() -> SqlPredicate))
+    abstract suspend fun delete(filter: SqlFilter<T>)
 
     /**
      * Delete a single entity from the table
@@ -103,7 +111,10 @@ abstract class DBMSEngine<T: Any>(
     /**
      * Update a single entity in the table
      * @param entity The entity to update
+     * @param fetch Whether to pull the entity after inserting
+     * @return The entity that was inserted, if `fetch` is true then this will be pulled from the database.
+     * Otherwise, it will be the entity that was inserted.
      */
-    abstract suspend fun update(entity: T)
+    abstract suspend fun update(entity: T, fetch: Boolean): T
 
 }

@@ -17,7 +17,7 @@ data class SqlParamsBuilder internal constructor(
      * @param model The model to add to the parameters.
      * @return The SqlParams instance for chaining.
      */
-    operator fun plus(model: Any): SqlParamsBuilder {
+    internal operator fun plus(model: Any): SqlParamsBuilder {
         if (!model.javaClass.isAnnotationPresent(Model::class.java)) {
             throw IllegalArgumentException("Model must be annotated with @Model")
         }
@@ -79,18 +79,7 @@ fun sqlParams(values: Map<String, Any?>): SqlParamsBuilder {
  * @param models The models to add to the parameters.
  * @return The SqlParams instance for chaining.
  */
-fun sqlParams(vararg models: Any): SqlParamsBuilder {
-    return SqlParamsBuilder(mutableMapOf()).apply {
-        models.forEach { this + it }
-    }
-}
-
-/**
- * Convert a list of models into a SqlParams instance.
- * @param models The models to convert into a SqlParams instance.
- * @return The SqlParams instance for chaining.
- */
-fun namedSqlParams(vararg models: Any): SqlParamsBuilder {
+internal fun sqlParams(vararg models: Any): SqlParamsBuilder {
     return SqlParamsBuilder(mutableMapOf()).apply {
         models.forEach { this + it }
     }

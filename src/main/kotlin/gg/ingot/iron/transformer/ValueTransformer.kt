@@ -103,6 +103,7 @@ internal class ValueTransformer(
             if(value != 0 && value != 1) {
                 error("Expected a boolean value, but found an integer value of $value for field: ${field.field.name}")
             }
+
             return value == 1
         }
 

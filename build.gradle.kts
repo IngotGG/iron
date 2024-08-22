@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "gg.ingot"
-version = "1.3.5"
+version = "2.0.0"
 
 allprojects {
     group = rootProject.group

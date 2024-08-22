@@ -68,6 +68,7 @@ class SQL<@OnlyInputTypes C: Any?>(
         return SqlPredicate.where("${columnName(this)} LIKE $variable", variable to value)
     }
 
+    @Suppress("SpellCheckingInspection")
     infix fun <@OnlyInputTypes T: Any?> KProperty1<C, T>.ilike(value: T): SqlPredicate {
         val variable = nextVariable()
         return SqlPredicate.where("${columnName(this)} ILIKE $variable", variable to value)

@@ -166,7 +166,7 @@ class DeserializationTest {
         ) : ExplodingModel
 
         connection.execute("CREATE TABLE test(id INTEGER PRIMARY KEY, json TEXT);")
-        connection.prepare("INSERT INTO test(id, json) VALUES (?, ?);", FakeModel(
+        connection.prepare("INSERT INTO test(id, json) VALUES (:id, :json);", FakeModel(
             1,
             JsonObj("hello")
         ))

@@ -54,6 +54,7 @@ internal class ResultTransformer(
 
             for (field in entity.fields) {
                 val value = valueTransformer.convert(result, field, entity.namingStrategy)
+
                 if (value == null && !field.nullable) {
                     error("Field '${field.field.name}' is not nullable but the associated column '${field.columnName}' was null for model: $clazz")
                 }
@@ -68,6 +69,7 @@ internal class ResultTransformer(
 
             val fields = entity.fields.map { field ->
                 val value = valueTransformer.convert(result, field, entity.namingStrategy)
+
                 if (value == null && !field.nullable) {
                     error("Field '${field.field.name}' is not nullable but the associated column '${field.columnName}' was null for model: $clazz")
                 }
@@ -114,16 +116,38 @@ internal class ResultTransformer(
             // Automatically convert Ints to Booleans for DBMS
             // that don't give us back a boolean type.
             @Suppress("KotlinConstantConditions")
-            if(obj != null && clazz == Boolean::class && obj is Int) {
+            if(obj != null && box(clazz) == Boolean::class.java && obj is Int) {
                 if(obj != 0 && obj != 1) {
                     error("Could not convert the column to a boolean, the value was not 0 or 1.")
                 }
+
                 return (obj == 1) as? T
             }
 
             return obj
         } catch(ex: ClassCastException) {
             error("Could not cast the column to the desired type, if you're attempted to map to a model try annotating with @Model, if not try passing a custom deserializer.")
+        }
+    }
+
+    /**
+     * Maps a primitive type to its java boxed counterpart.
+     * @param type The type to map.
+     * @return The boxed type.
+     */
+    private fun box(type: Class<*>): Class<*> {
+        return when (type) {
+            Class.forName("java.lang.Boolean") -> Boolean::class.java
+            Boolean::class.javaPrimitiveType -> Boolean::class.java
+            Byte::class.javaPrimitiveType -> Byte::class.java
+            Char::class.javaPrimitiveType -> Char::class.java
+            Short::class.javaPrimitiveType -> Short::class.java
+            Int::class.javaPrimitiveType -> Int::class.java
+            Long::class.javaPrimitiveType -> Long::class.java
+            Float::class.javaPrimitiveType -> Float::class.java
+            Double::class.javaPrimitiveType -> Double::class.java
+            Void::class.javaPrimitiveType -> Void::class.java
+            else -> type
         }
     }
 }

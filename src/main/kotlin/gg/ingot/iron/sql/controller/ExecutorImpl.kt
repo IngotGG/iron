@@ -53,11 +53,21 @@ internal class ExecutorImpl(
     }
 
     override fun prepare(statement: String, vararg values: Any?): IronResultSet {
-        if (values.size == 1) {
-            val model = values[0]!!
-            if (model.javaClass.isAnnotationPresent(Model::class.java)) {
-                return prepare(statement, sqlParams(model))
+        var params: SqlParamsBuilder? = null
+
+        for (model in values) {
+            if (model == null) {
+                continue
             }
+
+            if (model.javaClass.isAnnotationPresent(Model::class.java)) {
+                if (params == null) params = sqlParams(mapOf())
+                params + model
+            }
+        }
+
+        if (params != null) {
+            return prepare(statement, params)
         }
 
         val preparedStatement = connection.prepareStatement(statement)

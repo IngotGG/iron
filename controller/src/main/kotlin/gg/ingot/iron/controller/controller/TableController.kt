@@ -1,10 +1,9 @@
-package gg.ingot.iron.controller.tables
+package gg.ingot.iron.controller.controller
 
-import gg.ingot.iron.Inflector
 import gg.ingot.iron.Iron
 import gg.ingot.iron.controller.Controller
 import gg.ingot.iron.controller.engine.DBMSEngine
-import gg.ingot.iron.controller.query.SQL
+import gg.ingot.iron.controller.query.SqlFilter
 import gg.ingot.iron.controller.query.SqlPredicate
 import gg.ingot.iron.representation.EntityModel
 
@@ -17,8 +16,8 @@ class TableController<T: Any>(private val iron: Iron, internal val clazz: Class<
         }
     }
 
-    private val inflector = Inflector(iron)
     private val engine = DBMSEngine.getEngine(iron, this)
+    private val interceptors: MutableList<Interceptor<T>> = mutableListOf()
 
     private val annotation: Controller = clazz.getAnnotation(Controller::class.java)
         ?: throw IllegalStateException("Class ${clazz.simpleName} does not have the @Controller annotation")
@@ -38,7 +37,7 @@ class TableController<T: Any>(private val iron: Iron, internal val clazz: Class<
     val tableName: String
         get() {
             return annotation.table.ifEmpty {
-                inflector.tableName(clazz.simpleName)
+                iron.inflector.tableName(clazz.simpleName)
             }.takeIf { isValid(it) }
                 ?: throw IllegalStateException("Table name for ${clazz.simpleName} is invalid: ${annotation.table}")
         }
@@ -69,11 +68,30 @@ class TableController<T: Any>(private val iron: Iron, internal val clazz: Class<
     }
 
     /**
+     * Add an interceptor for entities before they are going to be inserted or updated in the
+     * database, this allows for easily updating a `updated_at` field, logging, or validating data, you however aren't
+     * able to prevent an update or insert operation from being performed.
+     *
+     * @param interceptor The interceptor itself
+     */
+    fun interceptor(interceptor: Interceptor<T>) {
+        interceptors.add(interceptor)
+    }
+
+    /**
+     * Run an entity through the interceptors
+     * @param entity The entity to run through the interceptors
+     */
+    private fun intercept(entity: T): T {
+        return interceptors.fold(entity) { acc, interceptor -> interceptor.intercept(acc) }
+    }
+
+    /**
      * Get all rows from the table
      * @param filter The filter to apply to the query
      * @return A list of all entities in the table
      */
-    suspend fun all(filter: (SQL<T>.() -> SqlPredicate)? = null): List<T> {
+    suspend fun all(filter: SqlFilter<T>? = null): List<T> {
         return engine.all(filter)
     }
 
@@ -85,7 +103,18 @@ class TableController<T: Any>(private val iron: Iron, internal val clazz: Class<
      * complete entity, otherwise it will be exact same entity that was passed in
      */
     suspend fun insert(entity: T, fetch: Boolean = false): T {
-        return engine.insert(entity, fetch)
+        return engine.insert(intercept(entity), fetch)
+    }
+
+    /**
+     * Insert multiple entities into the table
+     * @param entities The list of entities to insert
+     * @param fetch Whether to fetch the entities after inserting them
+     * @return The entities that were inserted, if `fetch` is true then this will reflect the
+     * database values, otherwise it will be exact same list that was passed in
+     */
+    suspend fun insertMany(entities: Collection<T>, fetch: Boolean = false): List<T> {
+        return engine.insertMany(entities.map { intercept(it) }, fetch)
     }
 
     /**
@@ -108,7 +137,7 @@ class TableController<T: Any>(private val iron: Iron, internal val clazz: Class<
      * Get the first entity from the table that matches the filter
      * @param filter The filter to apply to the query
      */
-    suspend fun first(filter: (SQL<T>.() -> SqlPredicate)? = null): T? {
+    suspend fun first(filter: SqlFilter<T>? = null): T? {
         return engine.first(filter)
     }
 
@@ -123,7 +152,7 @@ class TableController<T: Any>(private val iron: Iron, internal val clazz: Class<
      * Delete multiple entities from the table that match the filter
      * @param filter The filter to apply to the query
      */
-    suspend fun delete(filter: (SQL<T>.() -> SqlPredicate)) {
+    suspend fun delete(filter: SqlFilter<T>) {
         engine.delete(filter)
     }
 
@@ -138,9 +167,10 @@ class TableController<T: Any>(private val iron: Iron, internal val clazz: Class<
     /**
      * Update a single entity in the table
      * @param entity The entity to update
+     * @param fetch Whether to fetch the entity after inserting it
      */
-    suspend fun update(entity: T) {
-        engine.update(entity)
+    suspend fun update(entity: T, fetch: Boolean = false): T {
+        return engine.update(intercept(entity), fetch)
     }
 
     private companion object {
