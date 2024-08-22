@@ -1,9 +1,10 @@
 package gg.ingot.iron.sql.controller
 
-import gg.ingot.iron.representation.ExplodingModel
+import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.serialization.SerializationAdapter
 import gg.ingot.iron.sql.IronResultSet
 import gg.ingot.iron.sql.params.SqlParamsBuilder
+import gg.ingot.iron.sql.params.sqlParams
 import gg.ingot.iron.transformer.ModelTransformer
 import gg.ingot.iron.transformer.PlaceholderTransformer
 import gg.ingot.iron.transformer.ResultTransformer
@@ -11,18 +12,18 @@ import org.slf4j.LoggerFactory
 import java.sql.Connection
 
 /**
- * Implementation of the [TransactionController] interface.
+ * Implementation of the [TransactionExecutor] interface.
  * @since 1.4
  * @author DebitCardz
  */
-internal class ControllerImpl(
+internal class ExecutorImpl(
     private val connection: Connection,
     private val modelTransformer: ModelTransformer,
     private val resultTransformer: ResultTransformer,
     private val serializationAdapter: SerializationAdapter? = null
-) : TransactionController {
+) : TransactionExecutor {
     override fun <T> transaction(block: TransactionActionableController.() -> T): T {
-        val transactionController = TransactionControllerImpl(this)
+        val transactionController = TransactionExecutorImpl(this)
 
         return try {
             connection.autoCommit = false
@@ -52,6 +53,13 @@ internal class ControllerImpl(
     }
 
     override fun prepare(statement: String, vararg values: Any?): IronResultSet {
+        if (values.size == 1) {
+            val model = values[0]!!
+            if (model.javaClass.isAnnotationPresent(Model::class.java)) {
+                return prepare(statement, sqlParams(model))
+            }
+        }
+
         val preparedStatement = connection.prepareStatement(statement)
 
         require(preparedStatement.parameterMetaData.parameterCount == values.size) {
@@ -76,13 +84,6 @@ internal class ControllerImpl(
         return IronResultSet(resultSet, serializationAdapter, resultTransformer)
     }
 
-    override fun prepare(statement: String, model: ExplodingModel): IronResultSet {
-        val entity = modelTransformer.transform(model::class)
-        return this.prepare(statement, *entity.fields.map {
-            modelTransformer.getModelValue(model, it)
-        }.toTypedArray())
-    }
-
     override fun prepare(statement: String, model: SqlParamsBuilder): IronResultSet {
         return prepare(statement, model.build(modelTransformer))
     }
@@ -96,6 +97,6 @@ internal class ControllerImpl(
 
     private companion object {
         /** The logger for this class. */
-        private val logger = LoggerFactory.getLogger(ControllerImpl::class.java)
+        private val logger = LoggerFactory.getLogger(ExecutorImpl::class.java)
     }
 }

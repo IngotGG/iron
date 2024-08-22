@@ -6,6 +6,8 @@ import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.serialization.SerializationAdapter
 import gg.ingot.iron.strategies.NamingStrategy
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import java.util.*
 import kotlin.reflect.KClass
 import kotlin.time.Duration
@@ -31,6 +33,8 @@ data class IronSettings(
     var driverProperties: Properties? = null,
     /** Naming Strategy to use when handling column names. */
     var namingStrategy: NamingStrategy = NamingStrategy.NONE,
+    /** The dispatcher to use when running coroutines. */
+    var dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     var adapters: Adapters? = null
         private set
@@ -59,64 +63,82 @@ data class IronSettings(
      */
     class Adapters {
         /** The default adapters for the [Iron] instance. */
-        private val defaultAdapters = mutableMapOf<KClass<*>, ColumnAdapter<*, *>>()
+        private val defaultAdapters = mutableMapOf<Class<*>, ColumnAdapter<*, *>>()
         /** The default serializers for the [Iron] instance. */
-        private val defaultSerializers = mutableMapOf<KClass<*>, ColumnSerializer<*, *>>()
+        private val defaultSerializers = mutableMapOf<Class<*>, ColumnSerializer<*, *>>()
         /** The default deserializers for the [Iron] instance. */
-        private val defaultDeserializers = mutableMapOf<KClass<*>, ColumnDeserializer<*, *>>()
+        private val defaultDeserializers = mutableMapOf<Class<*>, ColumnDeserializer<*, *>>()
 
         /**
          * Adds a default adapter for the [Iron] instance.
-         * @param kClass The class to add the adapter for.
+         * @param clazz The class to add the adapter for.
          * @param adapter The adapter to add.
          */
-        fun adapter(kClass: KClass<*>, adapter: ColumnAdapter<*, *>) {
-            defaultAdapters[kClass] = adapter
+        fun adapter(clazz: Class<*>, adapter: ColumnAdapter<*, *>) {
+            defaultAdapters[clazz] = adapter
+        }
+
+        /**
+         * Adds a default adapter for the [Iron] instance.
+         * @param clazz The kotlin class to add the adapter for.
+         * @param adapter The adapter to add.
+         */
+        fun adapter(clazz: KClass<*>, adapter: ColumnAdapter<*, *>) {
+            defaultAdapters[clazz.java] = adapter
         }
 
         /**
          * Adds a default serializer for the [Iron] instance.
-         * @param kClass The class to add the serializer for.
+         * @param clazz The class to add the serializer for.
          * @param serializer The serializer to add.
          */
-        fun serializer(kClass: KClass<*>, serializer: ColumnSerializer<*, *>) {
-            defaultSerializers[kClass] = serializer
+        fun serializer(clazz: Class<*>, serializer: ColumnSerializer<*, *>) {
+            defaultSerializers[clazz] = serializer
+        }
+
+        /**
+         * Adds a default serializer for the [Iron] instance.
+         * @param clazz The kotlin class to add the serializer for.
+         * @param serializer The serializer to add.
+         */
+        fun serializer(clazz: KClass<*>, serializer: ColumnSerializer<*, *>) {
+            defaultSerializers[clazz.java] = serializer
         }
 
         /**
          * Retrieves the default serializer for the provided class.
-         * @param kClass The class to retrieve
+         * @param clazz The class to retrieve
          * @return The serializer for the class.
          */
-        internal fun retrieveSerializer(kClass: KClass<*>): ColumnSerializer<*, *>? {
-            return defaultAdapters[kClass] ?: defaultSerializers[kClass]
+        internal fun retrieveSerializer(clazz: Class<*>): ColumnSerializer<*, *>? {
+            return defaultAdapters[clazz] ?: defaultSerializers[clazz]
         }
 
         /**
          * Adds a default deserializer for the [Iron] instance.
-         * @param kClass The class to add the deserializer for.
+         * @param clazz The class to add the deserializer for.
          * @param deserializer The deserializer to add.
          */
-        fun deserializer(kClass: KClass<*>, deserializer: ColumnDeserializer<*, *>) {
-            defaultDeserializers[kClass] = deserializer
+        fun deserializer(clazz: Class<*>, deserializer: ColumnDeserializer<*, *>) {
+            defaultDeserializers[clazz] = deserializer
+        }
+
+        /**
+         * Adds a default deserializer for the [Iron] instance.
+         * @param clazz The kotlin class to add the deserializer for.
+         * @param deserializer The deserializer to add.
+         */
+        fun deserializer(clazz: KClass<*>, deserializer: ColumnDeserializer<*, *>) {
+            defaultDeserializers[clazz.java] = deserializer
         }
 
         /**
          * Retrieves the default deserializer for the provided class.
-         * @param kClass The class to retrieve
+         * @param clazz The class to retrieve
          * @return The deserializer for the class.
          */
-        internal fun retrieveDeserializer(kClass: KClass<*>): ColumnDeserializer<*, *>? {
-            return defaultAdapters[kClass] ?: defaultDeserializers[kClass]
+        internal fun retrieveDeserializer(clazz: Class<*>): ColumnDeserializer<*, *>? {
+            return defaultAdapters[clazz] ?: defaultDeserializers[clazz]
         }
     }
-}
-
-/**
- * Creates a new [IronSettings] with the provided block.
- * @param block The block to apply to the settings.
- * @return The created settings.
- */
-fun ironSettings(block: IronSettings.() -> Unit): IronSettings {
-    return IronSettings().apply(block)
 }

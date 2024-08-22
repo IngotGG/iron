@@ -3,11 +3,7 @@ package gg.ingot.iron.representation
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.strategies.NamingStrategy
-import gg.ingot.iron.transformer.isArray
-import gg.ingot.iron.transformer.isCollection
-import gg.ingot.iron.transformer.isEnum
 import java.lang.reflect.Field
-import kotlin.reflect.KProperty
 
 /**
  * Represents a field in an entity.
@@ -16,20 +12,43 @@ import kotlin.reflect.KProperty
  * @see EntityModel
  */
 data class EntityField(
-    val field: KProperty<*>,
-    val javaField: Field,
+    val field: Field,
     val columnName: String,
+    val variableName: String,
     val nullable: Boolean,
     val isJson: Boolean,
-    val isBoolean: Boolean,
+    val isPrimaryKey: Boolean,
     val serializer: ColumnSerializer<*, *>?,
     val deserializer: ColumnDeserializer<*, *>?,
 ) {
-    val isArray get() = isArray(field)
+    val isBoolean get() = box(field.type) == Boolean::class.java
+    val isArray get() = field.type.isArray
+    val isEnum get() = field.type.isEnum || isArray && field.type.componentType.isEnum
+    val isCollection get() = Collection::class.java.isAssignableFrom(field.type)
 
-    val isCollection get() = isCollection(field)
+    fun value(instance: Any): Any? {
+        return field.get(instance)
+    }
 
-    val isEnum get() = isEnum(field)
+    /**
+     * Maps a primitive type to its java boxed counterpart.
+     * @param type The type to map.
+     * @return The boxed type.
+     */
+    private fun box(type: Class<*>): Class<*> {
+        return when (type) {
+            Boolean::class.javaPrimitiveType -> Boolean::class.java
+            Byte::class.javaPrimitiveType -> Byte::class.java
+            Char::class.javaPrimitiveType -> Char::class.java
+            Short::class.javaPrimitiveType -> Short::class.java
+            Int::class.javaPrimitiveType -> Int::class.java
+            Long::class.javaPrimitiveType -> Long::class.java
+            Float::class.javaPrimitiveType -> Float::class.java
+            Double::class.javaPrimitiveType -> Double::class.java
+            Void::class.javaPrimitiveType -> Void::class.java
+            else -> type
+        }
+    }
 
     /** Transforms the name of the column using the naming strategy. */
     fun convertedName(namingStrategy: NamingStrategy): String = namingStrategy.transform(columnName)

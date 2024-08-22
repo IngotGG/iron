@@ -6,4 +6,5 @@ package gg.ingot.iron.representation
  * @author DebitCardz
  * @since 1.3
  */
+@Deprecated("This interface is no longer used and will be removed in a future release.")
 interface ExplodingModel

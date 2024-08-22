@@ -5,7 +5,7 @@ package gg.ingot.iron.sql.controller
  * @since 1.4
  * @author DebitCardz
  */
-sealed interface TransactionController : Controller {
+sealed interface TransactionExecutor : Executor {
     /**
      * Executes a transaction on the database.
      * @param block The block to execute within the transaction.

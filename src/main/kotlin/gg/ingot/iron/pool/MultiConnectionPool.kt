@@ -1,7 +1,10 @@
 package gg.ingot.iron.pool
 
 import gg.ingot.iron.IronSettings
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.sql.DriverManager
@@ -18,11 +21,10 @@ import kotlin.time.Duration.Companion.seconds
 class MultiConnectionPool(
     private val connectionString: String,
     private val settings: IronSettings,
-    dispatcher: CoroutineDispatcher
 ) : ConnectionPool {
     private val logger = LoggerFactory.getLogger(MultiConnectionPool::class.java)
 
-    private val coroutineScope = CoroutineScope(dispatcher + SupervisorJob())
+    private val coroutineScope = CoroutineScope(settings.dispatcher + SupervisorJob())
 
     /** The pool of connections. */
     private val pool = ArrayBlockingQueue<Connection>(settings.minimumActiveConnections)

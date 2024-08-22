@@ -1,7 +1,6 @@
 package gg.ingot.iron.representation
 
 import gg.ingot.iron.strategies.NamingStrategy
-import kotlin.reflect.KClass
 
 /**
  * A representation of a class (of which that class is a database entity). This holds information retrieved from
@@ -11,7 +10,7 @@ import kotlin.reflect.KClass
  * @see gg.ingot.iron.transformer.ModelTransformer
  */
 data class EntityModel(
-    val clazz: KClass<*>,
+    val clazz: Class<*>,
     val fields: List<EntityField>,
     val namingStrategy: NamingStrategy
 )

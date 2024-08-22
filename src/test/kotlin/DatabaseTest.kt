@@ -7,7 +7,6 @@ import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.serialization.ColumnAdapter
 import gg.ingot.iron.serialization.SerializationAdapter
-import gg.ingot.iron.sql.params.namedSqlParams
 import gg.ingot.iron.sql.params.sqlParams
 import gg.ingot.iron.strategies.NamingStrategy
 import kotlinx.coroutines.test.runTest
@@ -21,9 +20,9 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class DatabaseTest {
-    private val connection = Iron("jdbc:sqlite::memory:", IronSettings(
-        namingStrategy = NamingStrategy.CAMEL_CASE
-    )).connect()
+    private val connection = Iron("jdbc:sqlite::memory:") {
+        namingStrategy = NamingStrategy.SNAKE_CASE
+    }.connect()
 
     @Test
     fun testIronUse() = runTest {
@@ -200,10 +199,11 @@ class DatabaseTest {
 
         @Serializable
         data class EmbeddedJson(val test: String)
+
         @Model
         data class ExampleResponse(
             @Column(json = true)
-            val test: EmbeddedJson
+            val test: EmbeddedJson,
         )
 
         val res = ironSerializationInstance.transaction {
@@ -284,12 +284,12 @@ class DatabaseTest {
         val model = TestModel()
 
         val result = connection.transaction {
-            execute("CREATE TABLE test (id INTEGER PRIMARY KEY, firstName TEXT, lastName TEXT);")
-            prepare("INSERT INTO test(firstName, lastName) VALUES (?, ?);", model)
+            execute("CREATE TABLE test (id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT);")
+            prepare("INSERT INTO test(first_name, last_name) VALUES (:firstName, :lastName);", model)
 
             prepare("""
-                SELECT firstName, lastName FROM test 
-                  WHERE firstName = ? AND lastName = ? LIMIT 2;
+                SELECT first_name, last_name FROM test 
+                  WHERE first_name = :firstName AND last_name = :lastName LIMIT 2;
             """.trimIndent(), model)
                 .single<TestModel>()
         }
@@ -335,12 +335,13 @@ class DatabaseTest {
 
     @Test
     fun `model named placeholder`() = runTest {
-        data class TestModel(val name: String) : ExplodingModel
+        @Model
+        data class TestModel(val name: String)
         val model = TestModel("test")
 
         val res = connection.transaction {
             execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT);")
-            prepare("INSERT INTO test(name) VALUES (?);", model)
+            prepare("INSERT INTO test(name) VALUES (:name);", model)
 
             query("SELECT name FROM test;")
         }
@@ -394,7 +395,8 @@ class DatabaseTest {
 
     @Test
     fun `add named params to exploding model`() = runTest {
-        data class TestModel(val id: String, val hello: String) : ExplodingModel
+        @Model
+        data class TestModel(val id: String, val hello: String)
         val model = TestModel("a", "b")
         val model2 = TestModel("c", "d")
 
@@ -443,4 +445,28 @@ class DatabaseTest {
 
         assertEquals("TEST", model.upperId)
     }
+
+    @Test
+    fun `direct model reference`() = runTest {
+        @Model
+        data class TestModel(
+            val id: String,
+            val hello: String
+        )
+
+        val model = TestModel("a", "b")
+        connection.transaction {
+            prepare("CREATE TABLE test(id TEXT PRIMARY KEY, hello TEXT);")
+            prepare("INSERT INTO test(id, hello) VALUES (:id, :hello)", model)
+        }
+
+        val result = connection.transaction {
+            prepare("SELECT * FROM test WHERE id = :id", model)
+                .single<TestModel>()
+        }
+
+        assertEquals("a", result.id)
+        assertEquals("b", result.hello)
+    }
+
 }

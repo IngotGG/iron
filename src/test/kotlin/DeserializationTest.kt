@@ -24,6 +24,7 @@ class DeserializationTest {
         ).connect()
 
         data class EmbeddedJson(val test: String)
+
         @Model
         data class ExampleResponse(
             @Column(json = true)
@@ -76,6 +77,7 @@ class DeserializationTest {
 
     @Test
     fun `custom deserializer`() = runTest {
+        // Tests have access to internal resources, so we do this to specify which function to use
         val connection = Iron("jdbc:sqlite::memory:").connect()
 
         @Model

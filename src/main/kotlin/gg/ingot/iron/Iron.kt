@@ -6,16 +6,14 @@ import gg.ingot.iron.pool.SingleConnectionPool
 import gg.ingot.iron.representation.DBMS
 import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.sql.controller.ControllerImpl
+import gg.ingot.iron.sql.controller.ExecutorImpl
 import gg.ingot.iron.sql.controller.TransactionActionableController
-import gg.ingot.iron.sql.controller.TransactionController
+import gg.ingot.iron.sql.controller.TransactionExecutor
 import gg.ingot.iron.sql.params.SqlParams
 import gg.ingot.iron.sql.params.SqlParamsBuilder
 import gg.ingot.iron.transformer.ModelTransformer
 import gg.ingot.iron.transformer.ResultTransformer
 import gg.ingot.iron.transformer.ValueTransformer
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
@@ -27,18 +25,20 @@ import java.sql.Connection
  * @since 1.0
  */
 @Suppress("MemberVisibilityCanBePrivate")
-class Iron(
+class Iron internal constructor(
     private val connectionString: String,
-    private val settings: IronSettings = IronSettings(),
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO
+    val settings: IronSettings
 ) {
     private val logger = LoggerFactory.getLogger(Iron::class.java)
 
     /** The connection pool used to manage connections to the database. */
     private var pool: ConnectionPool? = null
 
+    /** The inflector used to transform names into their corresponding requested form. */
+    val inflector = Inflector(this)
+
     /** The model transformer used to transform models into their corresponding entity representation. */
-    private val modelTransformer = ModelTransformer(settings.namingStrategy, settings.adapters)
+    val modelTransformer = ModelTransformer(settings, inflector)
 
     /** The value transformer used to transform values from the result set into their corresponding types. */
     private val valueTransformer = ValueTransformer(settings.serialization)
@@ -65,12 +65,13 @@ class Iron(
 
         if (dbms == null) {
             logger.warn("No DBMS found for value $dbmsValue, make sure you load the driver manually before calling connect().")
-        }
+        } else settings.driver = dbms
+
         dbms?.load()
 
         pool = if(settings.isMultiConnectionPool) {
             logger.trace("Using multi connection pool.")
-            MultiConnectionPool(connectionString, settings, dispatcher)
+            MultiConnectionPool(connectionString, settings)
         } else {
             logger.trace("Using single connection pool.")
             SingleConnectionPool(connectionString, settings)
@@ -98,13 +99,13 @@ class Iron(
      * @param block The closure to execute with the controller.
      * @since 1.3
      */
-    private suspend fun <T : Any?> withController(block: suspend (TransactionController) -> T): T {
+    private suspend fun <T : Any?> withController(block: suspend (TransactionExecutor) -> T): T {
         val connection = pool?.connection()
             ?: error(UNOPENED_CONNECTION_MESSAGE)
 
         return try {
-            withContext(dispatcher) {
-                block(ControllerImpl(connection, modelTransformer, resultTransformer, settings.serialization))
+            withContext(settings.dispatcher) {
+                block(ExecutorImpl(connection, modelTransformer, resultTransformer, settings.serialization))
             }
         } catch(ex: Exception) {
             throw ex
@@ -197,4 +198,8 @@ class Iron(
         /** Error message to send when a connection is requested but [Iron.connect] has not been called. */
         private const val UNOPENED_CONNECTION_MESSAGE = "Connection is not open, call connect() before using the connection."
     }
+}
+
+fun Iron(connectionString: String, block: IronSettings.() -> Unit = {}): Iron {
+    return Iron(connectionString, IronSettings().apply(block))
 }

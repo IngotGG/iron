@@ -3,7 +3,6 @@ package gg.ingot.iron.transformer
 import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.serialization.*
 import gg.ingot.iron.strategies.NamingStrategy
-import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import kotlin.reflect.KClass
 
@@ -46,6 +45,7 @@ internal class ValueTransformer(
      * @param namingStrategy The naming strategy to use for the field.
      * @return The array from the result set.
      */
+    @Suppress("UNCHECKED_CAST")
     private fun toArray(resultSet: ResultSet, field: EntityField, namingStrategy: NamingStrategy): Any? {
         val arr = resultSet.getArray(field.convertedName(namingStrategy))
             ?.array
@@ -57,7 +57,7 @@ internal class ValueTransformer(
         ) {
             // map to enum values
             return arr.map {
-                java.lang.Enum.valueOf(field.javaField.type.componentType as Class<out Enum<*>>, it as String)
+                java.lang.Enum.valueOf(field.field.type.componentType as Class<out Enum<*>>, it as String)
             }.toTypedArray()
         }
 
@@ -75,9 +75,9 @@ internal class ValueTransformer(
 
         val transformation = arrayTransformations.entries
             // retrieve the first transformation that matches the type
-            .firstOrNull { it.key.java.isAssignableFrom(field.javaField.type) }
+            .firstOrNull { it.key.java.isAssignableFrom(field.field.type) }
             ?.value
-            ?: error("Unsupported collection type: ${field.javaField.type.name}")
+            ?: error("Unsupported collection type: ${field.field.type.name}")
 
         return transformation(arr)
     }
@@ -88,12 +88,13 @@ internal class ValueTransformer(
      * @param columnName The column name to retrieve the value for.
      * @return The value from the result set.
      */
+    @Suppress("UNCHECKED_CAST")
     private fun toObject(resultSet: ResultSet, field: EntityField, namingStrategy: NamingStrategy): Any? {
         val value = resultSet.getObject(field.convertedName(namingStrategy))
 
         // Automatically map the enum to the enum type
         if(field.isEnum && field.deserializer == null) {
-            return java.lang.Enum.valueOf(field.javaField.type as Class<out Enum<*>>, value as String)
+            return java.lang.Enum.valueOf(field.field.type as Class<out Enum<*>>, value as String)
         }
 
         // Automatically convert Ints to Booleans for DBMS
@@ -123,7 +124,7 @@ internal class ValueTransformer(
             ?: return null
 
         //todo: support binary
-        return serializationAdapter.deserialize(obj.toString(), field.javaField.type)
+        return serializationAdapter.deserialize(obj.toString(), field.field.type)
     }
 
     /**
@@ -133,6 +134,7 @@ internal class ValueTransformer(
      * @param field The field to retrieve the value for.
      * @return The value from the result set.
      */
+    @Suppress("UNCHECKED_CAST")
     private fun toCustomDeserializedObj(resultSet: ResultSet, field: EntityField, namingStrategy: NamingStrategy): Any? {
         val obj = toObject(resultSet, field, namingStrategy)
             ?: return null

@@ -1,23 +1,27 @@
 package gg.ingot.iron.sql.params
 
-import gg.ingot.iron.representation.ExplodingModel
+import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.transformer.ModelTransformer
 
 /**
  * A builder for SQL parameters that allows for easy parameter creation and addition.
  */
-class SqlParamsBuilder internal constructor(
+data class SqlParamsBuilder internal constructor(
     val values: SqlParams
 ) {
     /** The models to add to the parameters. */
-    private val models = mutableListOf<ExplodingModel>()
+    private val models = mutableListOf<Any>()
 
     /**
      * Adds a model to the parameters.
      * @param model The model to add to the parameters.
      * @return The SqlParams instance for chaining.
      */
-    operator fun plus(model: ExplodingModel): SqlParamsBuilder {
+    operator fun plus(model: Any): SqlParamsBuilder {
+        if (!model.javaClass.isAnnotationPresent(Model::class.java)) {
+            throw IllegalArgumentException("Model must be annotated with @Model")
+        }
+
         models.add(model)
         return this
     }
@@ -42,9 +46,9 @@ class SqlParamsBuilder internal constructor(
         val variables = values.toMutableMap()
 
         for (model in models) {
-            val entity = transformer.transform(model::class)
+            val entity = transformer.transform(model::class.java)
             for (field in entity.fields) {
-                variables[field.columnName] = transformer.getModelValue(model, field)
+                variables[field.variableName] = transformer.getModelValue(model, field)
             }
         }
 
@@ -63,10 +67,19 @@ fun sqlParams(vararg values: Pair<String, Any?>): SqlParamsBuilder {
 
 /**
  * Creates a new SqlParams instance with the provided values.
+ * @param values The values to add to the parameters.
+ * @return The SqlParams instance for chaining.
+ */
+fun sqlParams(values: Map<String, Any?>): SqlParamsBuilder {
+    return SqlParamsBuilder(values.toMap().toMutableMap())
+}
+
+/**
+ * Creates a new SqlParams instance with the provided values.
  * @param models The models to add to the parameters.
  * @return The SqlParams instance for chaining.
  */
-fun sqlParams(vararg models: ExplodingModel): SqlParamsBuilder {
+fun sqlParams(vararg models: Any): SqlParamsBuilder {
     return SqlParamsBuilder(mutableMapOf()).apply {
         models.forEach { this + it }
     }
@@ -77,7 +90,7 @@ fun sqlParams(vararg models: ExplodingModel): SqlParamsBuilder {
  * @param models The models to convert into a SqlParams instance.
  * @return The SqlParams instance for chaining.
  */
-fun namedSqlParams(vararg models: ExplodingModel): SqlParamsBuilder {
+fun namedSqlParams(vararg models: Any): SqlParamsBuilder {
     return SqlParamsBuilder(mutableMapOf()).apply {
         models.forEach { this + it }
     }

@@ -3,9 +3,8 @@ package gg.ingot.iron.transformer
 import gg.ingot.iron.Iron
 import gg.ingot.iron.annotations.Model
 import java.sql.ResultSet
-import kotlin.reflect.KClass
 import kotlin.reflect.full.primaryConstructor
-import kotlin.reflect.jvm.isAccessible
+import kotlin.reflect.jvm.javaConstructor
 
 /**
  * Transforms a result set into a model representation, allowing for the model to be easily built. You shouldn't
@@ -26,7 +25,7 @@ internal class ResultTransformer(
      */
     fun <T: Any> read(
         result: ResultSet,
-        clazz: KClass<T>,
+        clazz: Class<T>,
         columnLabel: String? = null
     ): T? {
         return if(clazz.annotations.any { it is Model }) readModel(result, clazz) else readValue(result, clazz, columnLabel)
@@ -38,19 +37,20 @@ internal class ResultTransformer(
      * @param clazz The class to transform the result to.
      * @return The model from the result set.
      */
-    private fun <T : Any> readModel(result: ResultSet, clazz: KClass<T>): T {
+    @Suppress("UNCHECKED_CAST")
+    private fun <T : Any> readModel(result: ResultSet, clazz: Class<T>): T {
         val entity = modelTransformer.transform(clazz)
-
         val emptyConstructor = clazz.constructors.firstOrNull { it.parameters.isEmpty() }
-        // prefer primary constructor first
-        // then try to use secondary constructors if they have the same length of fields.
-        val fullConstructor = clazz.primaryConstructor
+
+        // prefer primary constructor first then try to use secondary constructors if they have the same
+        // length of fields.
+        val fullConstructor = clazz.kotlin.primaryConstructor?.javaConstructor
             ?.takeIf { it.parameters.size == entity.fields.size }
             ?: clazz.constructors.firstOrNull { it.parameters.size == entity.fields.size }
 
         if (emptyConstructor != null) {
             emptyConstructor.isAccessible = true
-            val model = emptyConstructor.call()
+            val model: T = emptyConstructor.newInstance() as T
 
             for (field in entity.fields) {
                 val value = valueTransformer.convert(result, field, entity.namingStrategy)
@@ -58,8 +58,8 @@ internal class ResultTransformer(
                     error("Field '${field.field.name}' is not nullable but the associated column '${field.columnName}' was null for model: $clazz")
                 }
 
-                field.javaField.setAccessible(true)
-                field.javaField.set(model, value)
+                field.field.setAccessible(true)
+                field.field.set(model, value)
             }
 
             return model
@@ -75,7 +75,7 @@ internal class ResultTransformer(
                 value
             }
 
-            return fullConstructor.call(*fields.toTypedArray())
+            return fullConstructor.newInstance(*fields.toTypedArray()) as T
         } else {
             error("No empty or full constructor found for model: $clazz")
         }
@@ -91,21 +91,20 @@ internal class ResultTransformer(
     @Suppress("UNCHECKED_CAST")
     private fun <T : Any> readValue(
         result: ResultSet,
-        clazz: KClass<T>,
+        clazz: Class<T>,
         columnLabel: String? = null
     ): T? {
-        val javaClass = clazz.java
-        if(Collection::class.java.isAssignableFrom(javaClass))
+        if(Collection::class.java.isAssignableFrom(clazz))
             error("Use an Array instead of a Collection")
 
-        if(javaClass.isArray) {
+        if(clazz.isArray) {
             if(columnLabel != null) result.getArray(columnLabel)?.array as? T
             else result.getArray(1)?.array as? T
         }
 
-        if(javaClass.isEnum) {
+        if(clazz.isEnum) {
             val value = if(columnLabel != null) result.getString(columnLabel) else result.getString(1)
-            return java.lang.Enum.valueOf(javaClass as Class<out Enum<*>>, value) as? T
+            return java.lang.Enum.valueOf(clazz as Class<out Enum<*>>, value) as? T
         }
 
         try {

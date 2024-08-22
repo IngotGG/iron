@@ -5,7 +5,7 @@ package gg.ingot.iron.sql.controller
  * @since 1.4
  * @author DebitCardz
  */
-interface TransactionActionableController : Controller {
+interface TransactionActionableController : Executor {
     /**
      * Executes the given block after the transaction is committed.
      * @param block The block to execute.

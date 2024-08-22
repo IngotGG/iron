@@ -1,6 +1,5 @@
 package gg.ingot.iron.sql.controller
 
-import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.sql.IronResultSet
 import gg.ingot.iron.sql.params.SqlParams
 import gg.ingot.iron.sql.params.SqlParamsBuilder
@@ -11,7 +10,7 @@ import org.intellij.lang.annotations.Language
  * @since 1.4
  * @author DebitCardz
  */
-sealed interface Controller {
+sealed interface Executor {
     /**
      * Executes a raw query on the database and returns the result set.
      *
@@ -31,17 +30,6 @@ sealed interface Controller {
      * @since 1.0
      */
     fun prepare(@Language("SQL") statement: String, vararg values: Any?): IronResultSet
-
-    /**
-     * Prepares a statement on the database. This method should be preferred over [execute] for security reasons. This
-     * will take an [ExplodingModel] and extract the values from it and put them in the query for you.
-     * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
-     * the values, any values passed in through this parameter is not sanitized.
-     * @param model The model to get the data from
-     * @return The prepared statement.
-     * @since 1.0
-     */
-    fun prepare(@Language("SQL") statement: String, model: ExplodingModel): IronResultSet
 
     /**
      * Prepares a statement on the database. This method should be preferred over [execute] for security reasons. This

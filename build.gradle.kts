@@ -1,6 +1,6 @@
 plugins {
-    kotlin("jvm") version "2.0.0"
-    kotlin("plugin.serialization") version "2.0.0-RC3"
+    alias(libs.plugins.kotlin)
+    alias(libs.plugins.kotlinx.serialization)
 
     `maven-publish`
 }
@@ -8,50 +8,67 @@ plugins {
 group = "gg.ingot"
 version = "1.3.5"
 
-repositories {
-    mavenCentral()
+allprojects {
+    group = rootProject.group
+    version = rootProject.version
+
+    apply(plugin = "org.jetbrains.kotlin.jvm")
+    apply(plugin = "maven-publish")
+
+    repositories {
+        mavenCentral()
+        mavenLocal()
+    }
+
+    dependencies {
+        implementation(rootProject.libs.slf4j)
+    }
+
+    kotlin {
+        jvmToolchain(17)
+    }
+
+    java {
+        withJavadocJar()
+        withSourcesJar()
+    }
+
+    publishing {
+        publications {
+            register<MavenPublication>("gpr") {
+                from(components["java"])
+            }
+        }
+    }
+
+    tasks.test {
+        useJUnitPlatform()
+    }
 }
 
 dependencies {
     // kotlin
     implementation(kotlin("reflect"))
-    compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0-RC")
+    implementation(libs.kotlinx.coroutines)
 
     // serialization
-    compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.0-RC")
-    compileOnly("com.google.code.gson:gson:2.11.0")
+    compileOnly(libs.kotlinx.serialization)
+    compileOnly(libs.gson)
 
-    // logging
-    implementation("org.slf4j:slf4j-api:2.0.13")
+    // inflector
+    implementation(libs.evo)
 
     // unit tests
     testImplementation(kotlin("test"))
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0-RC")
-    testImplementation("org.xerial:sqlite-jdbc:3.46.0.0")
-    testImplementation("ch.qos.logback:logback-classic:1.5.6")
+    testImplementation(libs.bundles.testing)
 
     // serialization
-    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.0-RC")
-    testImplementation("com.google.code.gson:gson:2.11.0")
+    testImplementation(libs.kotlinx.serialization)
+    testImplementation(libs.gson)
 }
 
-tasks.test {
-    useJUnitPlatform()
-}
-
-kotlin {
-    jvmToolchain(17)
-}
-
-java {
-    withJavadocJar()
-    withSourcesJar()
-}
-
-publishing {
-    publications {
-        register<MavenPublication>("gpr") {
-            from(components["java"])
-        }
+buildscript {
+    dependencies {
+        classpath(kotlin("gradle-plugin", version = libs.versions.kotlin.get()))
     }
 }
