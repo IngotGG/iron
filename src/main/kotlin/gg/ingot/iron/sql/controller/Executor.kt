@@ -52,7 +52,7 @@ sealed interface Executor {
      * @since 1.3
      */
     fun prepare(@Language("SQL") statement: String, values: SqlParams): IronResultSet {
-        val insertedValues = mutableListOf<Any>()
+        val insertedValues = mutableListOf<Any?>()
 
         val parsedStatement = SQL_PLACEHOLDER_REGEX.replace(statement) { matchResult ->
             val group = matchResult.groupValues.first()
@@ -65,9 +65,7 @@ sealed interface Executor {
                 group
             } else {
                 val name = matchResult.groupValues[1]
-                insertedValues.add(
-                    values[name] ?: error("no value found for placeholder $name")
-                )
+                insertedValues.add(values[name])
                 "?"
             }
         }
