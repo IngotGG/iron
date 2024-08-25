@@ -1,6 +1,5 @@
 package gg.ingot.iron.controller.query
 
-import gg.ingot.iron.controller.engine.DBMSEngine
 import gg.ingot.iron.sql.params.SqlParamsBuilder
 import gg.ingot.iron.sql.params.sqlParams
 
@@ -14,14 +13,6 @@ class SqlPredicate internal constructor(
 
     override fun toString(): String {
         return queries.joinToString(" AND ")
-    }
-
-    fun toString(engine: DBMSEngine<*>): String {
-        return queries.joinToString(" AND ") { query ->
-            columnRegex.replace(query) { match ->
-                engine.column(match.groupValues[1])
-            }
-        }
     }
 
     companion object {

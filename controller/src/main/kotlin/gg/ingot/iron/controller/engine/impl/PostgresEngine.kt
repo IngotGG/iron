@@ -16,14 +16,14 @@ class PostgresEngine<T: Any>(
     }
 
     override suspend fun all(filter: SqlFilter<T>?): List<T> {
-        val scope = SQL<T>(iron, controller.model)
+        val scope = SQL<T>(iron, controller.model, this)
         val predicate = filter?.invoke(scope)
 
         return if (predicate == null) {
             iron.prepare("SELECT * FROM ${controller.tableName}")
                 .all(controller.clazz.kotlin)
         } else {
-            iron.prepare("SELECT * FROM ${controller.tableName} WHERE ${predicate.toString(this)}", predicate.params())
+            iron.prepare("SELECT * FROM ${controller.tableName} WHERE $predicate", predicate.params())
                 .all(controller.clazz.kotlin)
         }
     }
@@ -54,7 +54,7 @@ class PostgresEngine<T: Any>(
 
                 if (fetch) {
                     val selector = controller.uniqueSelector(entity)
-                    prepare("SELECT * FROM ${controller.tableName} WHERE ${selector.toString(this@PostgresEngine)}", selector.params())
+                    prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.params())
                         .single(controller.clazz.kotlin)
                 } else {
                     entity
@@ -64,14 +64,14 @@ class PostgresEngine<T: Any>(
     }
 
     override suspend fun first(filter: SqlFilter<T>?): T? {
-        val scope = SQL<T>(iron, controller.model)
+        val scope = SQL<T>(iron, controller.model, this)
         val predicate = filter?.invoke(scope)
 
         return if (predicate == null) {
             iron.prepare("SELECT * FROM ${controller.tableName} LIMIT 1")
                 .singleNullable(controller.clazz.kotlin)
         } else {
-            iron.prepare("SELECT * FROM ${controller.tableName} WHERE ${predicate.toString(this)}", predicate.params())
+            iron.prepare("SELECT * FROM ${controller.tableName} WHERE $predicate", predicate.params())
                 .singleNullable(controller.clazz.kotlin)
         }
     }
@@ -82,15 +82,15 @@ class PostgresEngine<T: Any>(
     }
 
     override suspend fun delete(filter: SqlFilter<T>) {
-        val scope = SQL<T>(iron, controller.model)
+        val scope = SQL<T>(iron, controller.model, this)
         val predicate = filter.invoke(scope)
 
-        iron.prepare("DELETE FROM ${controller.tableName} WHERE ${predicate.toString(this)}", predicate.params())
+        iron.prepare("DELETE FROM ${controller.tableName} WHERE $predicate", predicate.params())
     }
 
     override suspend fun delete(entity: T) {
         val selector = controller.uniqueSelector(entity)
-        iron.prepare("DELETE FROM ${controller.tableName} WHERE ${selector.toString(this)}", selector.params())
+        iron.prepare("DELETE FROM ${controller.tableName} WHERE $selector", selector.params())
     }
 
     override suspend fun update(entity: T, fetch: Boolean): T {
@@ -99,12 +99,12 @@ class PostgresEngine<T: Any>(
 
         return iron.transaction {
             prepare(
-                "UPDATE ${controller.tableName} SET $columns WHERE ${selector.toString(this@PostgresEngine)}",
+                "UPDATE ${controller.tableName} SET $columns WHERE $selector",
                 selector.params(), entity
             )
 
             if (fetch) {
-                prepare("SELECT * FROM ${controller.tableName} WHERE ${selector.toString(this@PostgresEngine)}", selector.params(), entity)
+                prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.params(), entity)
                     .single(controller.clazz.kotlin)
             } else {
                 entity

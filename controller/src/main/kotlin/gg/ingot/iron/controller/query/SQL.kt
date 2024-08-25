@@ -3,6 +3,7 @@
 package gg.ingot.iron.controller.query
 
 import gg.ingot.iron.Iron
+import gg.ingot.iron.controller.engine.DBMSEngine
 import gg.ingot.iron.representation.EntityModel
 import kotlin.internal.OnlyInputTypes
 import kotlin.reflect.KProperty
@@ -12,7 +13,8 @@ import kotlin.reflect.jvm.javaField
 @Suppress("unused")
 class SQL<@OnlyInputTypes C: Any?>(
     internal val iron: Iron,
-    private val model: EntityModel
+    private val model: EntityModel,
+    private val engine: DBMSEngine<*>
 ) {
     private var counter = 0
 
@@ -22,7 +24,7 @@ class SQL<@OnlyInputTypes C: Any?>(
 
     private fun columnName(property: KProperty<*>): String {
         val field = model.fields.find { it.field == property.javaField }!!
-        return "`${field.columnName}`"
+        return engine.column(field.columnName)
     }
 
     infix fun <@OnlyInputTypes T: Any?> KProperty1<C, T>.eq(value: T): SqlPredicate {
