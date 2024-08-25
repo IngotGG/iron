@@ -54,6 +54,13 @@ abstract class DBMSEngine<T: Any>(
     }
 
     /**
+     * Escapes the column name to prevent issues with reserved keywords
+     * @param name The name of the column
+     * @return The escaped column name
+     */
+    abstract fun column(name: String): String
+
+    /**
      * Retrieves all entities from the table
      * @return The list of all entities in the table
      */

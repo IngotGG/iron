@@ -168,4 +168,23 @@ class ControllerTest {
         }
     }
 
+    @Test
+    fun `test inserting with reserved keyword`() = runTest {
+        @Model
+        @Controller
+        class Table {
+            @Column(primaryKey = true)
+            val id: String = "name"
+            val default: Boolean = true
+        }
+
+        iron.prepare("CREATE TABLE tables (id TEXT PRIMARY KEY, `default` INTEGER)")
+        val controller = iron.controller<Table>()
+        controller.insert(Table())
+
+        val table = controller.first()
+        assertEquals("name", table?.id)
+        assertEquals(true, table?.default)
+    }
+
 }

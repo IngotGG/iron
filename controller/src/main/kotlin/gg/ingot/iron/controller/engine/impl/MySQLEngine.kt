@@ -11,6 +11,10 @@ class MySQLEngine<T: Any>(
     iron: Iron,
     controller: TableController<T>
 ): DBMSEngine<T>(iron, controller) {
+    override fun column(name: String): String {
+        return "`$name`"
+    }
+
     override suspend fun all(filter: SqlFilter<T>?): List<T> {
         val scope = SQL<T>(iron, controller.model)
         val predicate = filter?.invoke(scope)
@@ -19,7 +23,7 @@ class MySQLEngine<T: Any>(
             iron.prepare("SELECT * FROM ${controller.tableName}")
                 .all(controller.clazz.kotlin)
         } else {
-            iron.prepare("SELECT * FROM ${controller.tableName} WHERE $predicate", predicate.params())
+            iron.prepare("SELECT * FROM ${controller.tableName} WHERE ${predicate.toString(this)}", predicate.params())
                 .all(controller.clazz.kotlin)
         }
     }
@@ -40,7 +44,7 @@ class MySQLEngine<T: Any>(
     override suspend fun insertMany(entities: List<T>, fetch: Boolean): List<T> {
         return iron.transaction {
             return@transaction entities.map { entity ->
-                val columns = controller.model.fields.joinToString(",") { it.columnName }
+                val columns = controller.model.fields.joinToString(",") { column(it.columnName) }
                 val variables = controller.model.fields.joinToString(",") { ":${it.variableName}" }
 
                 prepare(
@@ -50,7 +54,7 @@ class MySQLEngine<T: Any>(
 
                 if (fetch) {
                     val selector = controller.uniqueSelector(entity)
-                    prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.params())
+                    prepare("SELECT * FROM ${controller.tableName} WHERE ${selector.toString(this@MySQLEngine)}", selector.params())
                         .single(controller.clazz.kotlin)
                 } else {
                     entity
@@ -67,7 +71,7 @@ class MySQLEngine<T: Any>(
             iron.prepare("SELECT * FROM ${controller.tableName} LIMIT 1")
                 .singleNullable(controller.clazz.kotlin)
         } else {
-            iron.prepare("SELECT * FROM ${controller.tableName} WHERE $predicate", predicate.params())
+            iron.prepare("SELECT * FROM ${controller.tableName} WHERE ${predicate.toString(this)}", predicate.params())
                 .singleNullable(controller.clazz.kotlin)
         }
     }
@@ -81,26 +85,26 @@ class MySQLEngine<T: Any>(
         val scope = SQL<T>(iron, controller.model)
         val predicate = filter.invoke(scope)
 
-        iron.prepare("DELETE FROM ${controller.tableName} WHERE $predicate", predicate.params())
+        iron.prepare("DELETE FROM ${controller.tableName} WHERE ${predicate.toString(this)}", predicate.params())
     }
 
     override suspend fun delete(entity: T) {
         val selector = controller.uniqueSelector(entity)
-        iron.prepare("DELETE FROM ${controller.tableName} WHERE $selector", selector.params())
+        iron.prepare("DELETE FROM ${controller.tableName} WHERE ${selector.toString(this)}", selector.params())
     }
 
     override suspend fun update(entity: T, fetch: Boolean): T {
         val selector = controller.uniqueSelector(entity)
-        val columns = controller.model.fields.joinToString(", ") { "${it.columnName} = :${it.variableName}" }
+        val columns = controller.model.fields.joinToString(", ") { "${column(it.columnName)} = :${it.variableName}" }
 
         return iron.transaction {
             prepare(
-                "UPDATE ${controller.tableName} SET $columns WHERE $selector",
+                "UPDATE ${controller.tableName} SET $columns WHERE ${selector.toString(this@MySQLEngine)}",
                 selector.params(), entity
             )
 
             if (fetch) {
-                prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.params(), entity)
+                prepare("SELECT * FROM ${controller.tableName} WHERE ${selector.toString(this@MySQLEngine)}", selector.params(), entity)
                     .single(controller.clazz.kotlin)
             } else {
                 entity
