@@ -3,6 +3,7 @@ package gg.ingot.iron.transformer
 import gg.ingot.iron.Iron
 import gg.ingot.iron.annotations.Model
 import java.sql.ResultSet
+import kotlin.jvm.internal.DefaultConstructorMarker
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.javaConstructor
 
@@ -74,6 +75,10 @@ internal class ResultTransformer(
                 }
 
                 value
+            }.toMutableList()
+
+            if (fullConstructor.parameters.last().type == DefaultConstructorMarker::class.java) {
+                fields.add(null)
             }
 
             try {
