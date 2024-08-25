@@ -45,7 +45,6 @@ internal class ResultTransformer(
         // prefer primary constructor first then try to use secondary constructors if they have the same
         // length of fields.
         val fullConstructor = clazz.kotlin.primaryConstructor?.javaConstructor
-            ?.takeIf { it.parameters.size == entity.fields.size }
             ?: clazz.constructors.firstOrNull { it.parameters.size == entity.fields.size }
 
         if (emptyConstructor != null) {
@@ -77,7 +76,11 @@ internal class ResultTransformer(
                 value
             }
 
-            return fullConstructor.newInstance(*fields.toTypedArray()) as T
+            try {
+                return fullConstructor.newInstance(*fields.toTypedArray()) as T
+            } catch (ex: Exception) {
+                throw RuntimeException(ex)
+            }
         } else {
             error("No empty or full constructor found for model: $clazz")
         }

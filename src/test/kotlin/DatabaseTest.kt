@@ -469,4 +469,29 @@ class DatabaseTest {
         assertEquals("b", result.hello)
     }
 
+    @Test
+    fun `test nullable inserts`() = runTest {
+        @Model
+        data class TestModel(
+            val id: Int,
+            val name: String?,
+            val age: Int?
+        )
+
+        val model = TestModel(1, null, null)
+        connection.transaction {
+            prepare("CREATE TABLE test(id INTEGER PRIMARY KEY, name TEXT, age INTEGER);")
+            prepare("INSERT INTO test(id, name, age) VALUES (:id, :name, :age)", model)
+        }
+
+        val result = connection.transaction {
+            prepare("SELECT * FROM test WHERE id = :id", model)
+                .single<TestModel>()
+        }
+
+        assertEquals(1, result.id)
+        assertEquals(null, result.name)
+        assertEquals(null, result.age)
+    }
+
 }
