@@ -116,6 +116,13 @@ abstract class DBMSEngine<T: Any>(
     abstract suspend fun delete(entity: T)
 
     /**
+     * Upsert an entity into the table, if it is already in the table it will be updated, otherwise it will be inserted
+     * @param entity The entity to upsert
+     * @param fetch Whether to fetch the entity after inserting or updating it
+     */
+    abstract suspend fun upsert(entity: T, fetch: Boolean = false): T
+
+    /**
      * Update a single entity in the table
      * @param entity The entity to update
      * @param fetch Whether to pull the entity after inserting

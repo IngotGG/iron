@@ -111,4 +111,25 @@ class MySQLEngine<T: Any>(
             }
         }
     }
+
+    override suspend fun upsert(entity: T, fetch: Boolean): T {
+        val selector = controller.uniqueSelector(entity)
+        val columns = controller.model.fields.joinToString(", ") { column(it.columnName) }
+        val variables = controller.model.fields.joinToString(", ") { ":${it.variableName}" }
+        val updates = controller.model.fields.joinToString(", ") { "${column(it.columnName)} = :${it.variableName}" }
+
+        return iron.transaction {
+            prepare(
+                "INSERT INTO ${controller.tableName} ($columns) VALUES ($variables) ON DUPLICATE KEY UPDATE $updates",
+                entity
+            )
+
+            if (fetch) {
+                prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.params(), entity)
+                    .single(controller.clazz.kotlin)
+            } else {
+                entity
+            }
+        }
+    }
 }

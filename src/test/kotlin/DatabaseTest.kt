@@ -89,10 +89,6 @@ class DatabaseTest {
 
     @Model
     private data class TestModel(val id: Int, val name: String)
-    private class TestModel2 {
-        var id: Int = 0
-        var name: String = ""
-    }
 
     @Test
     fun testMapperAll() = runTest {

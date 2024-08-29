@@ -173,6 +173,15 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
         return engine.update(intercept(entity), fetch)
     }
 
+    /**
+     * Upsert an entity into the table, if it is already in the table it will be updated, otherwise it will be inserted
+     * @param entity The entity to upsert
+     * @param fetch Whether to fetch the entity after inserting or updating it
+     */
+    suspend fun upsert(entity: T, fetch: Boolean = false): T {
+        return engine.upsert(intercept(entity), fetch)
+    }
+
     companion object {
         private val tableRegex = Regex("^[a-zA-Z_][a-zA-Z0-9_]*$")
         private val controllers: MutableMap<Iron, MutableMap<Class<*>, TableController<*>>> = mutableMapOf()

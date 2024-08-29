@@ -70,13 +70,12 @@ internal class ExecutorImpl(
             return prepare(statement, params)
         }
 
+        logger.trace("Preparing Statement\n{}", statement)
         val preparedStatement = connection.prepareStatement(statement)
 
         require(preparedStatement.parameterMetaData.parameterCount == values.size) {
             "The number of parameters provided does not match the number of parameters in the prepared statement."
         }
-
-        logger.trace("Preparing Statement\n{}", statement)
 
         for((index, value) in values.withIndex()) {
             preparedStatement.setObject(

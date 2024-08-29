@@ -187,4 +187,21 @@ class ControllerTest {
         assertEquals(true, table?.default)
     }
 
+    @Test
+    fun `test upserting`() = runTest {
+        iron.prepare("CREATE TABLE users (name TEXT PRIMARY KEY, age INTEGER, email TEXT)")
+        val controller = iron.controller<User>()
+        val user = User("User 1", 18, "")
+
+        controller.upsert(user)
+        assertEquals(1, controller.count())
+
+        user.age = 25
+        controller.upsert(user)
+        assertEquals(1, controller.count())
+
+        val updatedUser = controller.first()!!
+        assertEquals(25, updatedUser.age)
+    }
+
 }
