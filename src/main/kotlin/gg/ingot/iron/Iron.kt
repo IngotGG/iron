@@ -200,6 +200,7 @@ class Iron internal constructor(
     }
 }
 
+@JvmOverloads
 fun Iron(connectionString: String, block: IronSettings.() -> Unit = {}): Iron {
     return Iron(connectionString, IronSettings().apply(block))
 }
