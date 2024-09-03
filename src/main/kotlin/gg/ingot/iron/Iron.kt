@@ -82,8 +82,22 @@ class Iron internal constructor(
         return this
     }
 
+    /**
+     * Returns a blocking executor for the Iron instance. Any operations performed on this executor will block the
+     * current thread until the operation is complete.
+     */
     fun blocking() = BlockingIronExecutor(this)
+
+    /**
+     * Returns a coroutine executor for the Iron instance. Any operations performed on this executor will be suspended
+     * until the operation is complete.
+     */
     fun coroutines() = CoroutineIronExecutor(this)
+
+    /**
+     * Returns a completable executor for the Iron instance. Any operations performed on this executor will be completed
+     * using completable futures.
+     */
     fun completable() = CompletableIronExecutor(this)
 
     /**
@@ -197,9 +211,6 @@ class Iron internal constructor(
     }
 
     companion object {
-        /** Error message to send when a connection is requested but [Iron.connect] has not been called. */
-        private const val UNOPENED_CONNECTION_MESSAGE = "Connection is not open, call connect() before using the connection."
-
         /** The logger for the Iron class. */
         private val logger = LoggerFactory.getLogger(Iron::class.java)
 

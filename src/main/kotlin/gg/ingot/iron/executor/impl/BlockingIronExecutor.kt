@@ -5,9 +5,11 @@ import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.executor.IronConnection
 import gg.ingot.iron.executor.transaction.Transaction
 import gg.ingot.iron.sql.IronResultSet
+import gg.ingot.iron.sql.params.SqlParams
 import gg.ingot.iron.sql.params.SqlParamsBuilder
 import gg.ingot.iron.sql.params.sqlParams
 import gg.ingot.iron.transformer.PlaceholderTransformer
+import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.util.function.Consumer
 
@@ -99,6 +101,13 @@ open class BlockingIronExecutor(private val iron: Iron): IronConnection {
     fun prepare(statement: String, model: SqlParamsBuilder): IronResultSet {
         return prepare(statement, model.build(iron.modelTransformer))
     }
+
+    fun prepare(@Language("SQL") statement: String, values: SqlParams): IronResultSet {
+        return this.parseParams(statement, values).let { (stmt, params) ->
+            prepare(stmt, *params.toTypedArray())
+        }
+    }
+
 
     fun execute(statement: String): Boolean {
         logger.trace("Executing Statement\n{}", statement)

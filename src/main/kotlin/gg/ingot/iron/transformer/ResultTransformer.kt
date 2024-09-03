@@ -47,10 +47,13 @@ internal class ResultTransformer(
         val entity = modelTransformer.transform(clazz)
         val emptyConstructor = clazz.constructors.firstOrNull { it.parameters.isEmpty() }
 
-        // prefer primary constructor first then try to use secondary constructors if they have the same
-        // length of fields.
-        val fullConstructor = clazz.kotlin.primaryConstructor?.javaConstructor
-            ?: clazz.constructors.firstOrNull { it.parameters.size == entity.fields.size }
+        val fullConstructor = if (clazz.isRecord) {
+            clazz.constructors.firstOrNull { it.parameters.size == entity.fields.size }
+        } else if (clazz.kotlin.primaryConstructor != null) {
+            clazz.kotlin.primaryConstructor?.javaConstructor
+        } else {
+            clazz.constructors.firstOrNull { it.parameters.size == entity.fields.size }
+        }
 
         if (emptyConstructor != null) {
             emptyConstructor.isAccessible = true

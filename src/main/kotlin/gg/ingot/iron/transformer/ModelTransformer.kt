@@ -14,6 +14,7 @@ import gg.ingot.iron.sql.params.ColumnJsonField
 import gg.ingot.iron.sql.params.ColumnSerializedField
 import gg.ingot.iron.strategies.NamingStrategy
 import java.lang.reflect.Field
+import java.lang.reflect.Modifier
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
 import kotlin.reflect.full.declaredMemberProperties
@@ -68,7 +69,7 @@ class ModelTransformer(
             for((field, annotation) in properties.entries) {
                 field.isAccessible = true
 
-                if (annotation?.ignore == true || field.isSynthetic) {
+                if (annotation?.ignore == true || field.isSynthetic || Modifier.isTransient(field.modifiers)) {
                     continue
                 }
 
