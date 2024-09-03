@@ -29,7 +29,11 @@ internal class ResultTransformer(
         clazz: Class<T>,
         columnLabel: String? = null
     ): T? {
-        return if(clazz.annotations.any { it is Model }) readModel(result, clazz) else readValue(result, clazz, columnLabel)
+        return if (clazz.annotations.any { it is Model }) readModel(result, clazz) else readValue(
+            result,
+            clazz,
+            columnLabel
+        )
     }
 
     /**

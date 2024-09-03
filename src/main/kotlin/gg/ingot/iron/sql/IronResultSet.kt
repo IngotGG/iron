@@ -37,6 +37,7 @@ class IronResultSet internal constructor(
      * @return The last model in the result set.
      * @since 1.0
      */
+    @JvmOverloads
     fun <T: Any> get(clazz: Class<T>, columnLabel: String? = null): T? {
         requireNotNull(resultSet) { "The prepared statement did not return a result" }
 
@@ -49,6 +50,7 @@ class IronResultSet internal constructor(
      * @return The last model in the result set.
      * @since 1.0
      */
+    @JvmOverloads
     fun <T: Any> get(clazz: KClass<T>, columnLabel: String? = null): T? {
         return get(clazz.java, columnLabel)
     }
@@ -174,8 +176,21 @@ class IronResultSet internal constructor(
      * @param deserializer The deserializer to use for the result.
      * @return The single result from the result set.
      */
-    fun <T: Any> single(clazz: KClass<T>, deserializer: ColumnDeserializer<*, T>? = null): T {
+    @JvmOverloads
+    fun <T: Any> single(clazz: Class<T>, deserializer: ColumnDeserializer<*, T>? = null): T {
         return singleNullable(clazz, deserializer) ?: error("Expected a single result, but found none.")
+    }
+
+    /**
+     * Retrieve a single result from the result set.
+     * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
+     * If not then the first column will be returned as the result.
+     * @param deserializer The deserializer to use for the result.
+     * @return The single result from the result set.
+     */
+    @JvmOverloads
+    fun <T: Any> single(clazz: KClass<T>, deserializer: ColumnDeserializer<*, T>? = null): T {
+        return single(clazz.java, deserializer)
     }
 
     /**

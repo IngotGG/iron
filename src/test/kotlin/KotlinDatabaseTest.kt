@@ -19,7 +19,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-class DatabaseTest {
+class KotlinDatabaseTest {
     private val connection = Iron("jdbc:sqlite::memory:") {
         namingStrategy = NamingStrategy.SNAKE_CASE
     }.connect()
