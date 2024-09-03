@@ -4,6 +4,7 @@ import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.serialization.*
 import gg.ingot.iron.strategies.NamingStrategy
 import java.sql.ResultSet
+import java.util.*
 import kotlin.reflect.KClass
 
 /**
@@ -85,7 +86,8 @@ internal class ValueTransformer(
     /**
      * Retrieve the value as an object from the result set.
      * @param resultSet The result set to retrieve the value from.
-     * @param columnName The column name to retrieve the value for.
+     * @param field The field we're retrieving the value for.
+     * @param namingStrategy The naming strategy to use for the field.
      * @return The value from the result set.
      */
     @Suppress("UNCHECKED_CAST")
@@ -105,6 +107,11 @@ internal class ValueTransformer(
             }
 
             return value == 1
+        }
+
+        // Handle optional values
+        if (field.isOptional) {
+            return Optional.ofNullable(value)
         }
 
         return value

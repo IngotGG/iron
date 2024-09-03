@@ -25,6 +25,7 @@ data class EntityField(
     val isArray get() = field.type.isArray
     val isEnum get() = field.type.isEnum || isArray && field.type.componentType.isEnum
     val isCollection get() = Collection::class.java.isAssignableFrom(field.type)
+    val isOptional get() = field.type == java.util.Optional::class.java
 
     fun value(instance: Any): Any? {
         return field.get(instance)

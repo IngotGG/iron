@@ -5,6 +5,7 @@ import gg.ingot.iron.serialization.SerializationAdapter
 import gg.ingot.iron.sql.params.ColumnJsonField
 import gg.ingot.iron.sql.params.ColumnSerializedField
 import org.slf4j.LoggerFactory
+import java.util.*
 
 /**
  * Transforms a placeholder value into a value that can be used in a SQL query. This is useful for
@@ -24,6 +25,7 @@ internal object PlaceholderTransformer {
             is ColumnSerializedField -> convertSerialized(value)
             is ColumnJsonField -> convertJson(value, serializationAdapter)
             is Enum<*> -> value.name
+            is Optional<*> -> value.orElse(null)
             else -> value
         }
     }

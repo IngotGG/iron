@@ -74,7 +74,7 @@ internal class ResultTransformer(
         } else if (fullConstructor != null) {
             fullConstructor.isAccessible = true
 
-            val fields = entity.fields.map { field ->
+            val arguments = entity.fields.map { field ->
                 val value = valueTransformer.convert(result, field, entity.namingStrategy)
 
                 if (value == null && !field.nullable) {
@@ -85,11 +85,11 @@ internal class ResultTransformer(
             }.toMutableList()
 
             if (fullConstructor.parameters.last().type == DefaultConstructorMarker::class.java) {
-                fields.add(null)
+                arguments.add(null)
             }
 
             try {
-                return fullConstructor.newInstance(*fields.toTypedArray()) as T
+                return fullConstructor.newInstance(*arguments.toTypedArray()) as T
             } catch (ex: Exception) {
                 throw RuntimeException(ex)
             }
