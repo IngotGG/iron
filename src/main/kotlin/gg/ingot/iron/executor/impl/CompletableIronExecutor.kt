@@ -7,6 +7,7 @@ import gg.ingot.iron.sql.IronResultSet
 import gg.ingot.iron.sql.params.SqlParams
 import gg.ingot.iron.sql.params.SqlParamsBuilder
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.intellij.lang.annotations.Language
@@ -16,10 +17,12 @@ import java.util.function.Consumer
 class CompletableIronExecutor(private val iron: Iron): IronConnection {
     private val blockingExecutor = BlockingIronExecutor(iron)
 
+    private val scope = CoroutineScope(iron.settings.dispatcher + SupervisorJob())
+
     private fun <T> complete(block: suspend () -> T): CompletableFuture<T> {
         val future = CompletableFuture<T>()
 
-        CoroutineScope(iron.settings.dispatcher + SupervisorJob()).launch {
+        scope.launch {
             try {
                 future.complete(block())
             } catch (e: Exception) {
