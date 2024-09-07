@@ -44,19 +44,19 @@ class CompletableIronExecutor(private val iron: Iron): IronConnection {
         }
     }
 
-    fun query(query: String): CompletableFuture<IronResultSet> {
+    fun query(@Language("SQL") query: String): CompletableFuture<IronResultSet> {
         return complete {
             blockingExecutor.query(query)
         }
     }
 
-    fun prepare(statement: String, vararg values: Any?): CompletableFuture<IronResultSet> {
+    fun prepare(@Language("SQL") statement: String, vararg values: Any?): CompletableFuture<IronResultSet> {
         return complete {
             blockingExecutor.prepare(statement, *values)
         }
     }
 
-    fun prepare(statement: String, model: SqlParamsBuilder): CompletableFuture<IronResultSet> {
+    fun prepare(@Language("SQL") statement: String, model: SqlParamsBuilder): CompletableFuture<IronResultSet> {
         return complete {
             blockingExecutor.prepare(statement, model)
         }
@@ -68,7 +68,7 @@ class CompletableIronExecutor(private val iron: Iron): IronConnection {
         }
     }
 
-    fun execute(statement: String): CompletableFuture<Boolean> {
+    fun execute(@Language("SQL") statement: String): CompletableFuture<Boolean> {
         return complete {
             blockingExecutor.execute(statement)
         }

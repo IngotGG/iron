@@ -44,7 +44,7 @@ open class BlockingIronExecutor(private val iron: Iron): IronConnection {
         }
     }
 
-    fun query(query: String): IronResultSet {
+    fun query(@Language("SQL") query: String): IronResultSet {
         logger.trace("Executing Query\n{}", query)
 
         return iron.useBlocking {
@@ -54,7 +54,7 @@ open class BlockingIronExecutor(private val iron: Iron): IronConnection {
         }
     }
 
-    fun prepare(statement: String, vararg values: Any?): IronResultSet {
+    fun prepare(@Language("SQL") statement: String, vararg values: Any?): IronResultSet {
         var params: SqlParamsBuilder? = null
 
         for (model in values) {
@@ -98,7 +98,7 @@ open class BlockingIronExecutor(private val iron: Iron): IronConnection {
         }
     }
 
-    fun prepare(statement: String, model: SqlParamsBuilder): IronResultSet {
+    fun prepare(@Language("SQL") statement: String, model: SqlParamsBuilder): IronResultSet {
         return prepare(statement, model.build(iron.modelTransformer))
     }
 
@@ -109,7 +109,7 @@ open class BlockingIronExecutor(private val iron: Iron): IronConnection {
     }
 
 
-    fun execute(statement: String): Boolean {
+    fun execute(@Language("SQL") statement: String): Boolean {
         logger.trace("Executing Statement\n{}", statement)
 
         return iron.useBlocking {

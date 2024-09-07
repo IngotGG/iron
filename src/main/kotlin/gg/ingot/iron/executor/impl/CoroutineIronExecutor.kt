@@ -69,14 +69,9 @@ open class CoroutineIronExecutor(private val iron: Iron): IronConnection {
         }
     }
 
-    suspend fun execute(statement: String): Boolean {
+    suspend fun execute(@Language("SQL") statement: String): Boolean {
         return withContext(iron.settings.dispatcher) {
             return@withContext blockingExecutor.execute(statement)
         }
-    }
-
-    private companion object {
-        /** The logger for this class. */
-        private val logger = LoggerFactory.getLogger(CoroutineIronExecutor::class.java)
     }
 }
