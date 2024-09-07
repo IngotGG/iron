@@ -7,7 +7,6 @@ import gg.ingot.iron.sql.IronResultSet
 import gg.ingot.iron.sql.params.SqlParams
 import gg.ingot.iron.sql.params.SqlParamsBuilder
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.intellij.lang.annotations.Language

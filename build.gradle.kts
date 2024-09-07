@@ -49,7 +49,7 @@ allprojects {
 dependencies {
     // kotlin
     implementation(kotlin("reflect"))
-    implementation(libs.kotlinx.coroutines)
+    compileOnly(libs.kotlinx.coroutines)
 
     // serialization
     compileOnly(libs.kotlinx.serialization)

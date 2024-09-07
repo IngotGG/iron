@@ -6,7 +6,7 @@ import gg.ingot.iron.executor.transaction.Transaction
 import gg.ingot.iron.sql.IronResultSet
 import gg.ingot.iron.sql.params.SqlParams
 import gg.ingot.iron.sql.params.SqlParamsBuilder
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.util.function.Consumer
@@ -45,19 +45,19 @@ open class CoroutineIronExecutor(private val iron: Iron): IronConnection {
         }
     }
 
-    suspend fun query(query: String): IronResultSet {
+    suspend fun query(@Language("SQL") query: String): IronResultSet {
         return withContext(iron.settings.dispatcher) {
             return@withContext blockingExecutor.query(query)
         }
     }
 
-    suspend fun prepare(statement: String, vararg values: Any?): IronResultSet {
+    suspend fun prepare(@Language("SQL") statement: String, vararg values: Any?): IronResultSet {
         return withContext(iron.settings.dispatcher) {
             return@withContext blockingExecutor.prepare(statement, *values)
         }
     }
 
-    suspend fun prepare(statement: String, model: SqlParamsBuilder): IronResultSet {
+    suspend fun prepare(@Language("SQL") statement: String, model: SqlParamsBuilder): IronResultSet {
         return withContext(iron.settings.dispatcher) {
             return@withContext blockingExecutor.prepare(statement, model)
         }

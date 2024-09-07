@@ -490,4 +490,18 @@ class KotlinDatabaseTest {
         assertEquals(null, result.age)
     }
 
+    @Test
+    fun `test deferred`() = runTest {
+        @Model
+        data class TestModel(val id: Int)
+
+        connection.execute("CREATE TABLE test(id INTEGER PRIMARY KEY);")
+        connection.prepare("INSERT INTO test(id) VALUES (?)", 1)
+
+        val model = connection.deferred()
+            .query("SELECT * FROM test LIMIT 1")
+            .await()
+            .single<TestModel>()
+        assertEquals(1, model.id)
+    }
 }

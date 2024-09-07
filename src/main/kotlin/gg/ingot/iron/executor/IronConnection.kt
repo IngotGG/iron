@@ -16,7 +16,7 @@ interface IronConnection {
     fun parseParams(statement: String, params: SqlParams): Pair<String, List<Any?>> {
         val insertedValues = mutableListOf<Any?>()
 
-        val statement = SQL_PLACEHOLDER_REGEX.replace(statement) { matchResult ->
+        val parsedStatement = SQL_PLACEHOLDER_REGEX.replace(statement) { matchResult ->
             val group = matchResult.groupValues.first()
 
             // cast
@@ -32,7 +32,7 @@ interface IronConnection {
             }
         }
 
-        return statement to insertedValues
+        return parsedStatement to insertedValues
     }
 
     private companion object {

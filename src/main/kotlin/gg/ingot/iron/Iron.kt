@@ -3,6 +3,7 @@ package gg.ingot.iron
 import gg.ingot.iron.executor.impl.BlockingIronExecutor
 import gg.ingot.iron.executor.impl.CompletableIronExecutor
 import gg.ingot.iron.executor.impl.CoroutineIronExecutor
+import gg.ingot.iron.executor.impl.DeferredIronExecutor
 import gg.ingot.iron.executor.transaction.Transaction
 import gg.ingot.iron.pool.ConnectionPool
 import gg.ingot.iron.pool.MultiConnectionPool
@@ -93,6 +94,13 @@ class Iron internal constructor(
      * until the operation is complete.
      */
     fun coroutines() = CoroutineIronExecutor(this)
+
+    /**
+     * Returns a deferred executor for the IRon instance. Any operations performed on this executor will
+     * be executed in the dispatcher provided to [IronSettings] and returned as a deferred to be awaited
+     * at a later time.
+     */
+    fun deferred() = DeferredIronExecutor(this)
 
     /**
      * Returns a completable executor for the Iron instance. Any operations performed on this executor will be completed
