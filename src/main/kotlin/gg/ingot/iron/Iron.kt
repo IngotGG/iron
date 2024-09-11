@@ -96,7 +96,7 @@ class Iron internal constructor(
     fun coroutines() = CoroutineIronExecutor(this)
 
     /**
-     * Returns a deferred executor for the IRon instance. Any operations performed on this executor will
+     * Returns a deferred executor for the Iron instance. Any operations performed on this executor will
      * be executed in the dispatcher provided to [IronSettings] and returned as a deferred to be awaited
      * at a later time.
      */
