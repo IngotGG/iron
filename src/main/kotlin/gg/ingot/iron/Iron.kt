@@ -49,6 +49,10 @@ class Iron internal constructor(
     /** The default executor to use if one isn't specified */
     private val executor = CoroutineIronExecutor(this)
 
+    /** Whether Iron is currently closed. */
+    val isClosed: Boolean
+        get() = pool == null
+
     /**
      * Establishes a connection to the database using the provided connection string.
      *
@@ -74,10 +78,10 @@ class Iron internal constructor(
 
         pool = if(settings.isMultiConnectionPool) {
             logger.trace("Using multi connection pool.")
-            MultiConnectionPool(connectionString, settings)
+            MultiConnectionPool(connectionString, this)
         } else {
             logger.trace("Using single connection pool.")
-            SingleConnectionPool(connectionString, settings)
+            SingleConnectionPool(connectionString, this)
         }
 
         return this
@@ -117,8 +121,10 @@ class Iron internal constructor(
         val connection = pool?.connection()
             ?: error("Connection is not open, call connect() before using the connection.")
 
-        return block(connection)
-            .also { pool?.release(connection) }
+        val response = block(connection)
+        pool?.release(connection)
+
+        return response
     }
 
     /**
@@ -130,16 +136,20 @@ class Iron internal constructor(
         val connection = pool?.connection()
             ?: error("Connection is not open, call connect() before using the connection.")
 
-        return block(connection)
-            .also { pool?.release(connection) }
+        val response = block(connection)
+        pool?.release(connection)
+
+        return response
     }
 
     /**
      * Closes the connection to the database.
      * @since 1.0
      */
-    fun close() {
-        pool?.close()
+    @JvmOverloads
+    fun close(force: Boolean = false) {
+        pool?.close(force)
+        pool = null
     }
 
     /**

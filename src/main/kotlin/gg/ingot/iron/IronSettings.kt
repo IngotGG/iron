@@ -12,12 +12,14 @@ import java.util.*
 import kotlin.reflect.KClass
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toKotlinDuration
 
 /**
  * Settings for the Iron connection pool.
  * @author DebitCardz
  * @since 1.2
  */
+
 data class IronSettings internal constructor(
     /** Minimum active connections in the pool. */
     var minimumActiveConnections: Int = 1,
@@ -25,6 +27,8 @@ data class IronSettings internal constructor(
     var maximumConnections: Int = minimumActiveConnections,
     /** The timeout for connection polling. */
     var connectionPollTimeout: Duration = 30.seconds,
+    /** How long connections should last before being closed if above the minimum */
+    var connectionTTL: Duration = 10.seconds,
     /** The driver to use for the connection pool. */
     var driver: DatabaseDriver? = null,
     /** The serialization adapter to use for models. */
@@ -146,6 +150,7 @@ data class IronSettings internal constructor(
         private var minimumActiveConnections: Int = 1
         private var maximumConnections: Int = minimumActiveConnections
         private var connectionPollTimeout: Duration = 30.seconds
+        private var connectionTTL: Duration = 10.seconds
         private var driver: DatabaseDriver? = null
         private var serialization: SerializationAdapter? = null
         private var driverProperties: Properties? = null
@@ -154,7 +159,8 @@ data class IronSettings internal constructor(
 
         fun minimumActiveConnections(minimumActiveConnections: Int) = apply { this.minimumActiveConnections = minimumActiveConnections }
         fun maximumConnections(maximumConnections: Int) = apply { this.maximumConnections = maximumConnections }
-        fun connectionPollTimeout(connectionPollTimeout: Duration) = apply { this.connectionPollTimeout = connectionPollTimeout }
+        fun connectionPollTimeout(connectionPollTimeout: java.time.Duration) = apply { this.connectionPollTimeout = connectionPollTimeout.toKotlinDuration() }
+        fun connectionTTL(ttl: java.time.Duration) = apply { this.connectionTTL = ttl.toKotlinDuration() }
         fun driver(driver: DatabaseDriver) = apply { this.driver = driver }
         fun serialization(serialization: SerializationAdapter) = apply { this.serialization = serialization }
         fun driverProperties(driverProperties: Properties) = apply { this.driverProperties = driverProperties }
@@ -166,6 +172,7 @@ data class IronSettings internal constructor(
                 minimumActiveConnections,
                 maximumConnections,
                 connectionPollTimeout,
+                connectionTTL,
                 driver,
                 serialization,
                 driverProperties,

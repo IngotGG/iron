@@ -1,6 +1,6 @@
 package gg.ingot.iron.pool
 
-import gg.ingot.iron.IronSettings
+import gg.ingot.iron.Iron
 import java.sql.Connection
 import java.sql.DriverManager
 
@@ -11,10 +11,10 @@ import java.sql.DriverManager
  */
 class SingleConnectionPool(
     connectionString: String,
-    settings: IronSettings
+    iron: Iron
 ) : ConnectionPool {
-    private val connection = if(settings.driverProperties != null) {
-        DriverManager.getConnection(connectionString, settings.driverProperties)
+    private val connection = if(iron.settings.driverProperties != null) {
+        DriverManager.getConnection(connectionString, iron.settings.driverProperties)
     } else {
         DriverManager.getConnection(connectionString)
     }
@@ -25,7 +25,7 @@ class SingleConnectionPool(
 
     override fun release(connection: Connection) = Unit
 
-    override fun close() {
+    override fun close(force: Boolean) {
         connection.close()
     }
 }
