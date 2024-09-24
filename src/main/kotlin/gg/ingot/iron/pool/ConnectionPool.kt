@@ -22,6 +22,7 @@ interface ConnectionPool {
 
     /**
      * Closes the connection pool.
+     * @param force If the pool should be closed immediately, or wait for all connections to be released.
      */
     fun close(force: Boolean)
 
