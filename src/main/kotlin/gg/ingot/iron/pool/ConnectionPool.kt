@@ -23,7 +23,7 @@ interface ConnectionPool {
     /**
      * Closes the connection pool.
      */
-    fun close()
+    fun close(force: Boolean)
 
     /**
      * Uses a connection from the pool and releases it after the block is executed.

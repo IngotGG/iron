@@ -63,7 +63,7 @@ class JavaDatabaseTest {
     }
     
     @Test
-    void testJavaBlocking() throws Exception {
+    void testJavaBlocking() {
         final var iron = Iron.create(
             "jdbc:sqlite::memory:",
             new IronSettings.Builder()
@@ -83,7 +83,7 @@ class JavaDatabaseTest {
     }
     
     @Test
-    void testBlockingRecord() throws Exception {
+    void testBlockingRecord() {
         final var iron = Iron.create(
             "jdbc:sqlite::memory:",
             new IronSettings.Builder()
@@ -103,7 +103,7 @@ class JavaDatabaseTest {
     }
     
     @Test
-    void testOptionalRecord() throws Exception {
+    void testOptionalRecord() {
         final var iron = Iron.create(
             "jdbc:sqlite::memory:",
             new IronSettings.Builder()
