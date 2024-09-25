@@ -1,7 +1,7 @@
 package gg.ingot.iron.sql.params
 
 import gg.ingot.iron.annotations.Model
-import gg.ingot.iron.transformer.ModelTransformer
+import gg.ingot.iron.transformerOld.ModelTransformerOld
 
 /**
  * A builder for SQL parameters that allows for easy parameter creation and addition.
@@ -42,7 +42,7 @@ data class SqlParamsBuilder internal constructor(
      * @param transformer The transformer to use to build the parameters.
      * @return The built SQL parameters.
      */
-    internal fun build(transformer: ModelTransformer): SqlParams {
+    internal fun build(transformer: ModelTransformerOld): SqlParams {
         val variables = values.toMutableMap()
 
         for (model in models) {

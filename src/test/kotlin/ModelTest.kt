@@ -2,7 +2,7 @@ import gg.ingot.iron.Iron
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.strategies.NamingStrategy
-import gg.ingot.iron.transformer.ModelTransformer
+import gg.ingot.iron.transformerOld.ModelTransformerOld
 import kotlin.reflect.jvm.kotlinProperty
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -24,7 +24,7 @@ class ModelTest {
     @Test
     fun `generate entity model`() {
         val iron = Iron("jdbc:sqlite::memory:")
-        val modelTransformer = ModelTransformer(iron.settings, iron.inflector)
+        val modelTransformer = ModelTransformerOld(iron.settings, iron.inflector)
 
         val entity = modelTransformer.transform(User::class)
         assertEquals(User::class, entity.clazz.kotlin)
@@ -34,7 +34,7 @@ class ModelTest {
     @Test
     fun `proper parameter order`() {
         val iron = Iron("jdbc:sqlite::memory:")
-        val modelTransformer = ModelTransformer(iron.settings, iron.inflector)
+        val modelTransformer = ModelTransformerOld(iron.settings, iron.inflector)
 
         val entity = modelTransformer.transform(User::class)
         val fields = entity.fields.map { it.field }

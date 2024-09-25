@@ -3,7 +3,7 @@ package gg.ingot.iron.sql
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.JsonAdapter
 import gg.ingot.iron.serialization.SerializationAdapter
-import gg.ingot.iron.transformer.ResultTransformer
+import gg.ingot.iron.transformerOld.ResultTransformerOld
 import java.sql.ResultSet
 import kotlin.reflect.KClass
 
@@ -17,7 +17,7 @@ import kotlin.reflect.KClass
 class IronResultSet internal constructor(
     val resultSet: ResultSet?,
     val serializationAdapter: SerializationAdapter?,
-    private val transformer: ResultTransformer
+    private val transformer: ResultTransformerOld
 ) {
     /**
      * Moves the cursor forward one row from its current position. A ResultSet cursor is initially positioned before

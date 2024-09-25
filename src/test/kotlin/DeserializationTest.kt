@@ -130,6 +130,7 @@ class DeserializationTest {
                     .singleNullable<Response>()
             }
         } catch(ex: Exception) {
+            ex.printStackTrace()
             assert(ex is IllegalArgumentException)
         }
     }

@@ -7,7 +7,7 @@ import gg.ingot.iron.strategies.NamingStrategy
  * reflection about the class, allowing for the entity to be easily built.
  * @author Santio
  * @since 1.0
- * @see gg.ingot.iron.transformer.ModelTransformer
+ * @see gg.ingot.iron.transformer.ModelTransformerOld
  */
 data class EntityModel(
     val clazz: Class<*>,

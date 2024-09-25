@@ -8,7 +8,7 @@ import gg.ingot.iron.sql.IronResultSet
 import gg.ingot.iron.sql.params.SqlParams
 import gg.ingot.iron.sql.params.SqlParamsBuilder
 import gg.ingot.iron.sql.params.sqlParams
-import gg.ingot.iron.transformer.PlaceholderTransformer
+import gg.ingot.iron.transformerOld.PlaceholderTransformerOld
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.util.function.Consumer
@@ -84,7 +84,7 @@ open class BlockingIronExecutor(private val iron: Iron): IronConnection {
             for((index, value) in values.withIndex()) {
                 preparedStatement.setObject(
                     index + 1,
-                    PlaceholderTransformer.convert(value, iron.settings.serialization)
+                    PlaceholderTransformerOld.convert(value, iron.settings.serialization)
                 )
             }
 

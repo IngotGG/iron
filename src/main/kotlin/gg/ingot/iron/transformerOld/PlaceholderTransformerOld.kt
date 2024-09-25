@@ -1,10 +1,9 @@
-package gg.ingot.iron.transformer
+package gg.ingot.iron.transformerOld
 
 import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.serialization.SerializationAdapter
 import gg.ingot.iron.sql.params.ColumnJsonField
 import gg.ingot.iron.sql.params.ColumnSerializedField
-import gg.ingot.iron.transformerOld.PlaceholderTransformerOld
 import org.slf4j.LoggerFactory
 import java.util.*
 
@@ -14,7 +13,7 @@ import java.util.*
  * @since 1.3
  * @author DebitCardz
  */
-internal object PlaceholderTransformer {
+internal object PlaceholderTransformerOld {
     private val logger = LoggerFactory.getLogger(PlaceholderTransformerOld::class.java)
 
     fun convert(

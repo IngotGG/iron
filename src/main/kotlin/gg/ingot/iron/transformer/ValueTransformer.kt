@@ -1,155 +1,120 @@
 package gg.ingot.iron.transformer
 
+import gg.ingot.iron.Iron
 import gg.ingot.iron.representation.EntityField
-import gg.ingot.iron.serialization.*
-import gg.ingot.iron.strategies.NamingStrategy
+import gg.ingot.iron.serialization.ColumnDeserializer
 import java.sql.ResultSet
+import java.sql.SQLException
 import java.util.*
-import kotlin.reflect.KClass
 
 /**
- * Transforms a value from a [ResultSet] into its corresponding type.
- * @author DebitCardz
- * @since 1.2
+ * Handles the conversion of any value to and from [ResultSet]s / prepared statements.
+ * @author santio
+ * @since 2.0
  */
-internal class ValueTransformer(
-    private val serializationAdapter: SerializationAdapter?
-) {
-    private val arrayTransformations: Map<KClass<*>, (Array<*>) -> Collection<*>> = mapOf(
-        List::class to { it.toList() },
-        Set::class to { it.toSet() }
-    )
+internal class ValueTransformer(private val iron: Iron) {
+
+    private fun getValue(resultSet: ResultSet, field: EntityField): Any? {
+        return if (field.isArray || field.isCollection) {
+            try {
+                resultSet.getArray(field.convertedName(iron.settings.namingStrategy))
+            } catch (ex: SQLException) {
+                ex.printStackTrace()
+                error("Failed to retrieve array value for field '${field.field.name}'")
+            }
+        } else {
+            try {
+                resultSet.getObject(field.convertedName(iron.settings.namingStrategy))
+            } catch (ex: SQLException) {
+                ex.printStackTrace()
+                error("Failed to retrieve value for field '${field.field.name}'")
+            }
+        }
+    }
 
     /**
-     * Retrieve the value from the result set for the given field.
-     * Will automatically convert an [Array] into a given [Collection] type if the field is said [Collection].
+     * Takes a value from a [ResultSet] and converts it's appropriate java type.
      * @param resultSet The result set to retrieve the value from.
      * @param field The field to retrieve the value for.
      * @return The value from the result set.
      */
-    fun convert(
-        resultSet: ResultSet,
-        field: EntityField,
-        namingStrategy: NamingStrategy
-    ): Any? {
-        return if(field.deserializer != null) toCustomDeserializedObj(resultSet, field, namingStrategy)
-        else if(field.isJson) toJsonObject(resultSet, field, namingStrategy)
-        else if(field.isArray) toArray(resultSet, field, namingStrategy)
-        else if(field.isCollection) toCollection(resultSet, field, namingStrategy)
-        else toObject(resultSet, field, namingStrategy)
-    }
-
-    /**
-     * Retrieve the value as an [Array] from the result set.
-     * @param resultSet The result set to retrieve the value from.
-     * @param field The field to retrieve the value for.
-     * @param namingStrategy The naming strategy to use for the field.
-     * @return The array from the result set.
-     */
     @Suppress("UNCHECKED_CAST")
-    private fun toArray(resultSet: ResultSet, field: EntityField, namingStrategy: NamingStrategy): Any? {
-        val arr = resultSet.getArray(field.convertedName(namingStrategy))
-            ?.array
+    fun fromResultSet(resultSet: ResultSet, field: EntityField, wrapOptional: Boolean = true): Any? {
+        val value = this.getValue(resultSet, field)
 
-        if(
-            arr is Array<*>
-            && field.isEnum
-            && field.isArray
-        ) {
-            // map to enum values
-            return arr.map {
-                java.lang.Enum.valueOf(field.field.type.componentType as Class<out Enum<*>>, it as String)
-            }.toTypedArray()
-        }
-
-        return arr
-    }
-
-    /**
-     * Retrieve the value as a [Collection] from the result set.
-     * @param resultSet The result set to retrieve the value from.
-     * @param columnName The column name to retrieve the value for.
-     * @param type The type of the collection.
-     */
-    private fun toCollection(resultSet: ResultSet, field: EntityField, namingStrategy: NamingStrategy): Collection<*> {
-        val arr = toArray(resultSet, field, namingStrategy) as Array<*>
-
-        val transformation = arrayTransformations.entries
-            // retrieve the first transformation that matches the type
-            .firstOrNull { it.key.java.isAssignableFrom(field.field.type) }
-            ?.value
-            ?: error("Unsupported collection type: ${field.field.type.name}")
-
-        return transformation(arr)
-    }
-
-    /**
-     * Retrieve the value as an object from the result set.
-     * @param resultSet The result set to retrieve the value from.
-     * @param field The field we're retrieving the value for.
-     * @param namingStrategy The naming strategy to use for the field.
-     * @return The value from the result set.
-     */
-    @Suppress("UNCHECKED_CAST")
-    private fun toObject(resultSet: ResultSet, field: EntityField, namingStrategy: NamingStrategy): Any? {
-        val value = resultSet.getObject(field.convertedName(namingStrategy))
-
-        // Automatically map the enum to the enum type
-        if(field.isEnum && field.deserializer == null) {
-            return java.lang.Enum.valueOf(field.field.type as Class<out Enum<*>>, value as String)
-        }
-
-        // Automatically convert Ints to Booleans for DBMS
-        // that don't give us back a boolean type.
-        if(value != null && value is Int && field.isBoolean) {
-            if(value != 0 && value != 1) {
-                error("Expected a boolean value, but found an integer value of $value for field: ${field.field.name}")
+        // Handle null values, if the field is nullable, we can just return null
+        if (!field.nullable && value == null) {
+            if (field.isOptional) {
+                return Optional.empty<Any>()
             }
 
-            return value == 1
+            error("Field '${field.field.name}' is not nullable but we received a null value.")
+        } else if (value == null) {
+            return null
         }
 
-        // Handle optional values
-        if (field.isOptional) {
-            return Optional.ofNullable(value)
+        // Handle optional values, we'll snatch the value from the result set then wrap it in an optional
+        if (field.isOptional && wrapOptional) {
+            return Optional.ofNullable(fromResultSet(resultSet, field, false))
+        }
+
+        // Check if the user provides us a deserializer
+        val deserializer = field.deserializer as? ColumnDeserializer<Any, *>
+
+        if (deserializer != null) {
+            return deserializer.fromDatabaseValue(value)
+        }
+
+        // Handle arrays
+        if (field.isArray && value is Array<*> && field.isEnum) {
+            return value.map { iron.settings.enumTransformation.serialize(it as Enum<*>) }
+        } else if (field.isArray && value is Array<*>) {
+            return value
+        } else if (field.isArray && value is Collection<*>) {
+            return value.toTypedArray()
+        } else if (field.isArray) {
+            error("Field '${field.field.name}' is an array the database gave back ${value::class.java.name}")
+        }
+
+        // Handle collections
+        if (field.isCollection && value is Collection<*> && field.isEnum) {
+            return value.map { iron.settings.enumTransformation.serialize(it as Enum<*>) }
+        } else if (field.isCollection && value is Collection<*>) {
+            return value
+        } else if (field.isCollection && value is Array<*>) {
+            return value.toList()
+        } else if (field.isCollection) {
+            error("Field '${field.field.name}' is a collection but the database gave back ${value::class.java.name}")
+        }
+
+        // Handle enums based on the provided transformation
+        if (field.isEnum && value is String) {
+            return iron.settings.enumTransformation.deserialize(value, field.field.type)
+        } else if (field.isEnum && value is Int) {
+            return iron.settings.enumTransformation.deserialize(value.toString(), field.field.type)
+        } else if (field.isEnum) {
+            error("Field '${field.field.name}' is an enum but the database gave back ${value::class.java.name}")
+        }
+
+        // Handle booleans
+        if (field.isBoolean && value is Boolean) {
+            return value
+        } else if (field.isBoolean && value is Int) {
+            return value > 0
+        } else if (field.isBoolean && value is String && !iron.settings.strictBooleans) {
+            return value.equals("true", true) || value.equals("1") || value.equals("yes", true)
+        } else if (field.isBoolean) {
+            error("Field '${field.field.name}' is a boolean but the database gave back ${value::class.java.name}")
+        }
+
+        // Handle json
+        if (field.isJson && value is String && iron.settings.serialization != null) {
+            return iron.settings.serialization!!.deserialize(value, field.field.type)
+        } else if (field.isJson) {
+            error("Field '${field.field.name}' is json but the database gave back ${value::class.java.name}")
         }
 
         return value
     }
 
-    /**
-     * Retrieve the value as a deserialized JSON object from the result set.
-     * @param resultSet The result set to retrieve the value from.
-     * @param field The field to retrieve the value for.
-     * @return The value from the result set.
-     */
-    private fun toJsonObject(resultSet: ResultSet, field: EntityField, namingStrategy: NamingStrategy): Any? {
-        checkNotNull(serializationAdapter) {
-            "A serializer adapter has not been passed through IronSettings, you will not be able to automatically deserialize JSON."
-        }
-
-        val obj = toObject(resultSet, field, namingStrategy)
-            ?: return null
-
-        //todo: support binary
-        return serializationAdapter.deserialize(obj.toString(), field.field.type)
-    }
-
-    /**
-     * Retrieve the value as a deserialized object from the provided
-     * [ColumnDeserializer].
-     * @param resultSet The result set to retrieve the value from.
-     * @param field The field to retrieve the value for.
-     * @return The value from the result set.
-     */
-    @Suppress("UNCHECKED_CAST")
-    private fun toCustomDeserializedObj(resultSet: ResultSet, field: EntityField, namingStrategy: NamingStrategy): Any? {
-        val obj = toObject(resultSet, field, namingStrategy)
-            ?: return null
-
-        val deserializer = field.deserializer as? ColumnDeserializer<Any, *>
-            ?: error("Deserializer is null, but it should not be.")
-
-        return deserializer.fromDatabaseValue(obj)
-    }
 }

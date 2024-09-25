@@ -5,6 +5,7 @@ import gg.ingot.iron.serialization.ColumnAdapter
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.serialization.SerializationAdapter
+import gg.ingot.iron.strategies.EnumTransformation
 import gg.ingot.iron.strategies.NamingStrategy
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -39,6 +40,10 @@ data class IronSettings internal constructor(
     var namingStrategy: NamingStrategy = NamingStrategy.NONE,
     /** The dispatcher to use when running coroutines. */
     var dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    /** How enums are handled when converting to and from the database. */
+    var enumTransformation: EnumTransformation = EnumTransformation.Name,
+    /** Whether booleans can only be read from the database as booleans and not strings (ex: yes, 1, true). */
+    var strictBooleans: Boolean = false,
 ) {
     var adapters: Adapters? = null
         private set
@@ -156,6 +161,8 @@ data class IronSettings internal constructor(
         private var driverProperties: Properties? = null
         private var namingStrategy: NamingStrategy = NamingStrategy.NONE
         private var dispatcher: CoroutineDispatcher = Dispatchers.IO
+        private var enumTransformation: EnumTransformation = EnumTransformation.Name
+        private var strictBooleans: Boolean = false
 
         fun minimumActiveConnections(minimumActiveConnections: Int) = apply { this.minimumActiveConnections = minimumActiveConnections }
         fun maximumConnections(maximumConnections: Int) = apply { this.maximumConnections = maximumConnections }
@@ -166,6 +173,8 @@ data class IronSettings internal constructor(
         fun driverProperties(driverProperties: Properties) = apply { this.driverProperties = driverProperties }
         fun namingStrategy(namingStrategy: NamingStrategy) = apply { this.namingStrategy = namingStrategy }
         fun dispatcher(dispatcher: CoroutineDispatcher) = apply { this.dispatcher = dispatcher }
+        fun enumTransformation(enumTransformation: EnumTransformation) = apply { this.enumTransformation = enumTransformation }
+        fun strictBooleans(strictBooleans: Boolean) = apply { this.strictBooleans = strictBooleans }
 
         fun build(): IronSettings {
             return IronSettings(
@@ -177,7 +186,9 @@ data class IronSettings internal constructor(
                 serialization,
                 driverProperties,
                 namingStrategy,
-                dispatcher
+                dispatcher,
+                enumTransformation,
+                strictBooleans
             )
         }
     }

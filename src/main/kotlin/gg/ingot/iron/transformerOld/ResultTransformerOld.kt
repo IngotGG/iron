@@ -1,9 +1,8 @@
-package gg.ingot.iron.transformer
+package gg.ingot.iron.transformerOld
 
 import gg.ingot.iron.Iron
 import gg.ingot.iron.annotations.Model
-import gg.ingot.iron.transformerOld.ModelTransformerOld
-import gg.ingot.iron.transformerOld.ValueTransformerOld
+import gg.ingot.iron.transformer.ValueTransformer
 import java.sql.ResultSet
 import kotlin.jvm.internal.DefaultConstructorMarker
 import kotlin.reflect.full.primaryConstructor
@@ -16,9 +15,10 @@ import kotlin.reflect.jvm.javaConstructor
  * @author Santio
  * @since 1.0
  */
-internal class ResultTransformer(
+internal class ResultTransformerOld(
     private val modelTransformer: ModelTransformerOld,
     private val valueTransformerOld: ValueTransformerOld,
+    private val valueTransformer: ValueTransformer
 ) {
     /**
      * Reads the result set and transforms it into a model or value.
@@ -62,7 +62,7 @@ internal class ResultTransformer(
             val model: T = emptyConstructor.newInstance() as T
 
             for (field in entity.fields) {
-                val value = valueTransformerOld.convert(result, field, entity.namingStrategy)
+                val value = valueTransformer.fromResultSet(result, field)
 
                 if (value == null && !field.nullable) {
                     error("Field '${field.field.name}' is not nullable but the associated column '${field.columnName}' was null for model: $clazz")
@@ -77,7 +77,7 @@ internal class ResultTransformer(
             fullConstructor.isAccessible = true
 
             val arguments = entity.fields.map { field ->
-                val value = valueTransformerOld.convert(result, field, entity.namingStrategy)
+                val value = valueTransformer.fromResultSet(result, field)
 
                 if (value == null && !field.nullable) {
                     error("Field '${field.field.name}' is not nullable but the associated column '${field.columnName}' was null for model: $clazz")
