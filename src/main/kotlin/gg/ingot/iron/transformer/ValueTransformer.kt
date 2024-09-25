@@ -19,15 +19,15 @@ internal class ValueTransformer(private val iron: Iron) {
             try {
                 resultSet.getArray(field.convertedName(iron.settings.namingStrategy))
             } catch (ex: SQLException) {
-                ex.printStackTrace()
-                error("Failed to retrieve array value for field '${field.field.name}'")
+                IllegalStateException("Failed to retrieve array value for field '${field.field.name}'", ex).printStackTrace()
+                throw ex
             }
         } else {
             try {
                 resultSet.getObject(field.convertedName(iron.settings.namingStrategy))
             } catch (ex: SQLException) {
-                ex.printStackTrace()
-                error("Failed to retrieve value for field '${field.field.name}'")
+                IllegalStateException("Failed to retrieve array value for field '${field.field.name}'", ex).printStackTrace()
+                throw ex
             }
         }
     }
