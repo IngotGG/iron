@@ -15,20 +15,24 @@ import gg.ingot.iron.IronSettings
  * @since 2.0
  */
 abstract class EnumTransformation {
-    abstract fun <T: Enum<T>> serialize(value: Enum<T>): String
-    abstract fun <T: Enum<T>> deserialize(value: String, enum: Class<*>): Enum<T>
+    abstract fun <T: Enum<T>> serialize(value: Enum<T>): Any
+    abstract fun <T: Enum<T>> deserialize(value: Any, enum: Class<*>): Enum<T>
 
     /**
      * Transforms an enum value into a string using the name of the enum value.
      */
     object Name: EnumTransformation() {
-        override fun <T: Enum<T>> serialize(value: Enum<T>): String {
+        override fun <T: Enum<T>> serialize(value: Enum<T>): Any {
             return value.name
         }
 
         @Suppress("UNCHECKED_CAST")
-        override fun <T : Enum<T>> deserialize(value: String, enum: Class<*>): Enum<T> {
-            return java.lang.Enum.valueOf(enum as Class<out Enum<*>>, value) as Enum<T>
+        override fun <T : Enum<T>> deserialize(value: Any, enum: Class<*>): Enum<T> {
+            if (value is String) {
+                return java.lang.Enum.valueOf(enum as Class<out Enum<*>>, value) as Enum<T>
+            } else {
+                error("Failed to deserialize enum value, expected a string but got ${value::class.java.name} (value: $value)")
+            }
         }
     }
 
@@ -36,13 +40,19 @@ abstract class EnumTransformation {
      * Transforms an enum value into a string using the ordinal position of the enum value.
      */
     object Ordinal: EnumTransformation() {
-        override fun <T: Enum<T>> serialize(value: Enum<T>): String {
-            return value.ordinal.toString()
+        override fun <T: Enum<T>> serialize(value: Enum<T>): Any {
+            return value.ordinal
         }
 
         @Suppress("UNCHECKED_CAST")
-        override fun <T : Enum<T>> deserialize(value: String, enum: Class<*>): Enum<T> {
-            return enum.enumConstants[value.toInt()] as Enum<T>
+        override fun <T : Enum<T>> deserialize(value: Any, enum: Class<*>): Enum<T> {
+            return when (value) {
+                is String -> deserialize(value.toIntOrNull() ?: false, enum)
+                is Int -> enum.enumConstants[value] as Enum<T>
+                else -> {
+                    error("Failed to deserialize enum value, expected an int but got ${value::class.java.name} (value: $value)")
+                }
+            }
         }
     }
 }

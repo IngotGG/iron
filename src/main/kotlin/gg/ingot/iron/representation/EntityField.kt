@@ -1,9 +1,10 @@
 package gg.ingot.iron.representation
 
+import gg.ingot.iron.model.ModelField
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.strategies.NamingStrategy
-import java.lang.reflect.Field
+import java.lang.reflect.ParameterizedType
 
 /**
  * Represents a field in an entity.
@@ -12,25 +13,34 @@ import java.lang.reflect.Field
  * @see EntityModel
  */
 data class EntityField(
-    val field: Field,
-    val columnName: String,
-    val variableName: String,
+    val field: ModelField,
     val nullable: Boolean,
     val isJson: Boolean,
-    val isPrimaryKey: Boolean,
     val serializer: ColumnSerializer<*, *>?,
     val deserializer: ColumnDeserializer<*, *>?,
+
+    // Computed
+    val isArray: Boolean = field.java.type.isArray,
+    val isCollection: Boolean = Collection::class.java.isAssignableFrom(field.java.type),
+    val isSet: Boolean = Set::class.java.isAssignableFrom(field.java.type),
 ) {
-    val isBoolean get() = field.type == Boolean::class.java || field.type == Boolean::class.javaPrimitiveType
-    val isArray get() = field.type.isArray
-    val isEnum get() = field.type.isEnum || isArray && field.type.componentType.isEnum
-    val isCollection get() = Collection::class.java.isAssignableFrom(field.type)
-    val isOptional get() = field.type == java.util.Optional::class.java
+
+    val isOptional: Boolean = field.java.type == java.util.Optional::class.java
+    val name: String = field.java.name
+
+    internal fun getUnderlyingType(): Class<*> {
+        return if (field.java.type.isArray) {
+            field.java.type.componentType
+        } else if (field.java.genericType is ParameterizedType) {
+            val parameterizedType = field.java.genericType as ParameterizedType
+            parameterizedType.actualTypeArguments[0] as Class<*>
+        } else field.java.type
+    }
 
     fun value(instance: Any): Any? {
-        return field.get(instance)
+        return field.java.get(instance)
     }
 
     /** Transforms the name of the column using the naming strategy. */
-    fun convertedName(namingStrategy: NamingStrategy): String = namingStrategy.transform(columnName)
+    fun convertedName(namingStrategy: NamingStrategy): String = namingStrategy.transform(field.column)
 }

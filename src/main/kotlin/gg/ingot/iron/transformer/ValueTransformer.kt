@@ -1,8 +1,11 @@
 package gg.ingot.iron.transformer
 
 import gg.ingot.iron.Iron
+import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.serialization.ColumnDeserializer
+import gg.ingot.iron.serialization.ColumnSerializer
+import gg.ingot.iron.transformer.adapter.*
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.util.*
@@ -14,107 +17,166 @@ import java.util.*
  */
 internal class ValueTransformer(private val iron: Iron) {
 
-    private fun getValue(resultSet: ResultSet, field: EntityField): Any? {
-        return if (field.isArray || field.isCollection) {
-            try {
-                resultSet.getArray(field.convertedName(iron.settings.namingStrategy))
-            } catch (ex: SQLException) {
-                IllegalStateException("Failed to retrieve array value for field '${field.field.name}'", ex).printStackTrace()
-                throw ex
-            }
-        } else {
-            try {
-                resultSet.getObject(field.convertedName(iron.settings.namingStrategy))
-            } catch (ex: SQLException) {
-                IllegalStateException("Failed to retrieve array value for field '${field.field.name}'", ex).printStackTrace()
-                throw ex
-            }
-        }
-    }
-
     /**
      * Takes a value from a [ResultSet] and converts it's appropriate java type.
      * @param resultSet The result set to retrieve the value from.
      * @param field The field to retrieve the value for.
      * @return The value from the result set.
      */
-    @Suppress("UNCHECKED_CAST")
-    fun fromResultSet(resultSet: ResultSet, field: EntityField, wrapOptional: Boolean = true): Any? {
-        val value = this.getValue(resultSet, field)
-
-        // Handle null values, if the field is nullable, we can just return null
-        if (!field.nullable && value == null) {
-            if (field.isOptional) {
-                return Optional.empty<Any>()
+    fun fromResultSet(resultSet: ResultSet, field: EntityField): Any? {
+        val value = if (field.isArray || field.isCollection) {
+            try {
+                resultSet.getArray(field.convertedName(iron.settings.namingStrategy)).array
+            } catch (ex: SQLException) {
+                throw IllegalStateException("Failed to retrieve array value for field '${field.name}'", ex)
             }
+        } else {
+            try {
+                resultSet.getObject(field.convertedName(iron.settings.namingStrategy))
+            } catch (ex: SQLException) {
+                throw IllegalStateException("Failed to retrieve value for field '${field.name}'", ex)
+            }
+        }
 
-            error("Field '${field.field.name}' is not nullable but we received a null value.")
+        return deserialize(value, field)
+    }
+
+    /**
+     * Takes a value from a [ResultSet] and converts it to it's appropriate java type, or if it's a
+     * model, we'll send it to the model transformer to convert it.
+     * @param resultSet The result set to retrieve the value from.
+     * @param label The label to retrieve the value for.
+     * @param clazz The class to retrieve the value for.
+     * @return The value from the result set.
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun read(resultSet: ResultSet, label: String?, clazz: Class<*>): Any? {
+        if (clazz.annotations.any { it is Model }) {
+            return iron.modelTransformer.readModel(resultSet, clazz)
+        }
+
+        val value = if (label == null)
+            resultSet.getObject(1)
+        else if (clazz.isArray) resultSet.getArray(label).array
+        else resultSet.getObject(label)
+
+        if (value == null) return null
+
+        return if (clazz.isArray) {
+            value as Array<*>
+        } else if (clazz.isEnum) {
+            java.lang.Enum.valueOf(clazz as Class<out Enum<*>>, value as String)
+        } else if (Collection::class.java.isAssignableFrom(clazz)) {
+            (value as Array<*>).toList()
+        } else if (Set::class.java.isAssignableFrom(clazz)) {
+            (value as Array<*>).toSet()
+        } else if (box(clazz) == Boolean::class.java) {
+            when (value) {
+                true -> true
+                is Int -> {
+                    when (value) {
+                        0 -> false
+                        1 -> true
+                        else -> error("Failed to convert boolean value for field '${label}'")
+                    }
+                }
+                else -> {
+                    error("Failed to convert boolean value for field '${label}'")
+                }
+            }
+        } else {
+            value
+        }
+    }
+
+    private fun getValueAdapter(field: EntityField): ValueAdapter<*>? {
+        return if (field.isArray) {
+            ArrayValueAdapter
+        } else if (field.isSet) {
+            SetValueAdapter
+        } else if (field.isCollection) {
+            CollectionValueAdapter
+        } else if (field.isJson) {
+            JsonValueAdapter
+        } else if (box(field.field.java.type) == Boolean::class.java) {
+            BooleanValueAdapter
+        } else if (field.getUnderlyingType().isEnum) {
+            EnumValueAdapter
+        } else {
+            null
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun deserialize(value: Any?, field: EntityField, wrapOptional: Boolean = true): Any? {
+        // Handle null values
+        if (value == null && !field.nullable && !field.isOptional) {
+            error("Field '${field.name}' is not nullable but we received a null value.")
+        } else if (value == null && field.isOptional) {
+            return Optional.empty<Any>()
         } else if (value == null) {
             return null
         }
 
-        // Handle optional values, we'll snatch the value from the result set then wrap it in an optional
-        if (field.isOptional && wrapOptional) {
-            return Optional.ofNullable(fromResultSet(resultSet, field, false))
+        // Handle transformations
+        return if (field.isOptional && wrapOptional) {
+            Optional.ofNullable(deserialize(value, field, false))
+        } else if (field.deserializer != null) {
+            // User provided deserializer
+            val deserializer = field.deserializer as ColumnDeserializer<Any, *>
+            deserializer.fromDatabaseValue(value)
+        } else {
+            val adapter = getValueAdapter(field)
+                ?: return value
+
+            adapter.fromDatabaseValue(value, iron, field)
         }
-
-        // Check if the user provides us a deserializer
-        val deserializer = field.deserializer as? ColumnDeserializer<Any, *>
-
-        if (deserializer != null) {
-            return deserializer.fromDatabaseValue(value)
-        }
-
-        // Handle arrays
-        if (field.isArray && value is Array<*> && field.isEnum) {
-            return value.map { iron.settings.enumTransformation.serialize(it as Enum<*>) }
-        } else if (field.isArray && value is Array<*>) {
-            return value
-        } else if (field.isArray && value is Collection<*>) {
-            return value.toTypedArray()
-        } else if (field.isArray) {
-            error("Field '${field.field.name}' is an array the database gave back ${value::class.java.name}")
-        }
-
-        // Handle collections
-        if (field.isCollection && value is Collection<*> && field.isEnum) {
-            return value.map { iron.settings.enumTransformation.serialize(it as Enum<*>) }
-        } else if (field.isCollection && value is Collection<*>) {
-            return value
-        } else if (field.isCollection && value is Array<*>) {
-            return value.toList()
-        } else if (field.isCollection) {
-            error("Field '${field.field.name}' is a collection but the database gave back ${value::class.java.name}")
-        }
-
-        // Handle enums based on the provided transformation
-        if (field.isEnum && value is String) {
-            return iron.settings.enumTransformation.deserialize(value, field.field.type)
-        } else if (field.isEnum && value is Int) {
-            return iron.settings.enumTransformation.deserialize(value.toString(), field.field.type)
-        } else if (field.isEnum) {
-            error("Field '${field.field.name}' is an enum but the database gave back ${value::class.java.name}")
-        }
-
-        // Handle booleans
-        if (field.isBoolean && value is Boolean) {
-            return value
-        } else if (field.isBoolean && value is Int) {
-            return value > 0
-        } else if (field.isBoolean && value is String && !iron.settings.strictBooleans) {
-            return value.equals("true", true) || value.equals("1") || value.equals("yes", true)
-        } else if (field.isBoolean) {
-            error("Field '${field.field.name}' is a boolean but the database gave back ${value::class.java.name}")
-        }
-
-        // Handle json
-        if (field.isJson && value is String && iron.settings.serialization != null) {
-            return iron.settings.serialization!!.deserialize(value, field.field.type)
-        } else if (field.isJson) {
-            error("Field '${field.field.name}' is json but the database gave back ${value::class.java.name}")
-        }
-
-        return value
     }
 
+    @Suppress("UNCHECKED_CAST")
+    fun serialize(value: Any?, field: EntityField): Any? {
+        // Unwrap optionals
+        if (value is Optional<*>) {
+            return serialize(value.orElse(null), field)
+        }
+
+        // Handle null values
+        if (value == null && !field.nullable) {
+            error("Field '${field.name}' is not nullable but we received a null value.")
+        } else if (value == null) {
+            return null
+        }
+
+        return if (field.serializer != null) {
+            // User provided serializer
+            val serializer = field.serializer as ColumnSerializer<Any, *>
+            serializer.toDatabaseValue(value)
+        } else {
+            val adapter = getValueAdapter(field) as ValueAdapter<Any>?
+                ?: return value
+
+            adapter.toDatabaseValue(value, iron, field)
+        }
+    }
+}
+
+/**
+ * Maps a primitive type to its java boxed counterpart.
+ * @param type The type to map.
+ * @return The boxed type.
+ */
+internal fun box(type: Class<*>): Class<*> {
+    return when (type) {
+        Class.forName("java.lang.Boolean") -> Boolean::class.java
+        Boolean::class.javaPrimitiveType -> Boolean::class.java
+        Byte::class.javaPrimitiveType -> Byte::class.java
+        Char::class.javaPrimitiveType -> Char::class.java
+        Short::class.javaPrimitiveType -> Short::class.java
+        Int::class.javaPrimitiveType -> Int::class.java
+        Long::class.javaPrimitiveType -> Long::class.java
+        Float::class.javaPrimitiveType -> Float::class.java
+        Double::class.javaPrimitiveType -> Double::class.java
+        Void::class.javaPrimitiveType -> Void::class.java
+        else -> type
+    }
 }

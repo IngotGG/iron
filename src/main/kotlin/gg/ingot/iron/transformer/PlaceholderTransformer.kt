@@ -1,10 +1,10 @@
 package gg.ingot.iron.transformer
 
+import gg.ingot.iron.Iron
 import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.serialization.SerializationAdapter
 import gg.ingot.iron.sql.params.ColumnJsonField
 import gg.ingot.iron.sql.params.ColumnSerializedField
-import gg.ingot.iron.transformerOld.PlaceholderTransformerOld
 import org.slf4j.LoggerFactory
 import java.util.*
 
@@ -14,8 +14,8 @@ import java.util.*
  * @since 1.3
  * @author DebitCardz
  */
-internal object PlaceholderTransformer {
-    private val logger = LoggerFactory.getLogger(PlaceholderTransformerOld::class.java)
+internal class PlaceholderTransformer(private val iron: Iron) {
+    private val logger = LoggerFactory.getLogger(PlaceholderTransformer::class.java)
 
     fun convert(
         value: Any?,
@@ -23,11 +23,21 @@ internal object PlaceholderTransformer {
     ): Any? {
         return when(value) {
             null -> null
+            is Collection<*> -> convert(value.toTypedArray(), serializationAdapter)
+            is Array<*> -> value.map { convert(it, serializationAdapter) }.toTypedArray()
             is ColumnSerializedField -> convertSerialized(value)
             is ColumnJsonField -> convertJson(value, serializationAdapter)
-            is Enum<*> -> value.name
+            is Enum<*> -> iron.settings.enumTransformation.serialize(value)
             is Optional<*> -> value.orElse(null)
             else -> value
+        }.also {
+            logger.trace(
+                "Converted parameter {} {} to {} {}.",
+                if (value != null) value::class.simpleName else "",
+                value,
+                if (it != null) it::class.simpleName else "",
+                it
+            )
         }
     }
 

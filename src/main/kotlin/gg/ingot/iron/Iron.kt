@@ -5,6 +5,7 @@ import gg.ingot.iron.executor.impl.CompletableIronExecutor
 import gg.ingot.iron.executor.impl.CoroutineIronExecutor
 import gg.ingot.iron.executor.impl.DeferredIronExecutor
 import gg.ingot.iron.executor.transaction.Transaction
+import gg.ingot.iron.model.ModelReader
 import gg.ingot.iron.pool.ConnectionPool
 import gg.ingot.iron.pool.MultiConnectionPool
 import gg.ingot.iron.pool.SingleConnectionPool
@@ -13,10 +14,9 @@ import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.sql.IronResultSet
 import gg.ingot.iron.sql.params.SqlParams
 import gg.ingot.iron.sql.params.SqlParamsBuilder
+import gg.ingot.iron.transformer.ModelTransformer
+import gg.ingot.iron.transformer.PlaceholderTransformer
 import gg.ingot.iron.transformer.ValueTransformer
-import gg.ingot.iron.transformerOld.ModelTransformerOld
-import gg.ingot.iron.transformerOld.ResultTransformerOld
-import gg.ingot.iron.transformerOld.ValueTransformerOld
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.sql.Connection
@@ -36,19 +36,19 @@ class Iron internal constructor(
     val inflector = Inflector(this)
 
     /** The model transformer used to transform models into their corresponding entity representation. */
-    val modelTransformer = ModelTransformerOld(settings, inflector)
+    val modelReader = ModelReader(this)
 
     /** The connection pool used to manage connections to the database. */
     internal var pool: ConnectionPool? = null
 
-    /** The value transformer used to transform values from the result set into their corresponding types. */
-    internal val valueTransformerOld = ValueTransformerOld(settings.serialization)
+    /** The placeholder transformer used to transform values from the result set into their corresponding types. */
+    internal val placeholderTransformer = PlaceholderTransformer(this)
 
     /** The value transformer used to transform values from the result set into their corresponding types. */
     internal val valueTransformer = ValueTransformer(this)
 
     /** The result transformer used to transform the result set into a model. */
-    internal val resultTransformer = ResultTransformerOld(modelTransformer, valueTransformerOld, valueTransformer)
+    internal val modelTransformer = ModelTransformer(this)
 
     /** The default executor to use if one isn't specified */
     private val executor = CoroutineIronExecutor(this)

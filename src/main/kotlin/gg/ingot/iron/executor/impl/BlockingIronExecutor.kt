@@ -8,7 +8,6 @@ import gg.ingot.iron.sql.IronResultSet
 import gg.ingot.iron.sql.params.SqlParams
 import gg.ingot.iron.sql.params.SqlParamsBuilder
 import gg.ingot.iron.sql.params.sqlParams
-import gg.ingot.iron.transformerOld.PlaceholderTransformerOld
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.util.function.Consumer
@@ -50,7 +49,7 @@ open class BlockingIronExecutor(private val iron: Iron): IronConnection {
         return iron.useBlocking {
             val resultSet = it.createStatement()
                 .executeQuery(query)
-            return@useBlocking IronResultSet(resultSet, iron.settings.serialization, iron.resultTransformer)
+            return@useBlocking IronResultSet(resultSet, iron)
         }
     }
 
@@ -84,7 +83,7 @@ open class BlockingIronExecutor(private val iron: Iron): IronConnection {
             for((index, value) in values.withIndex()) {
                 preparedStatement.setObject(
                     index + 1,
-                    PlaceholderTransformerOld.convert(value, iron.settings.serialization)
+                    iron.placeholderTransformer.convert(value, iron.settings.serialization)
                 )
             }
 
@@ -94,12 +93,12 @@ open class BlockingIronExecutor(private val iron: Iron): IronConnection {
                 null
             }
 
-            return@useBlocking IronResultSet(resultSet, iron.settings.serialization, iron.resultTransformer)
+            return@useBlocking IronResultSet(resultSet, iron)
         }
     }
 
     fun prepare(@Language("SQL") statement: String, model: SqlParamsBuilder): IronResultSet {
-        return prepare(statement, model.build(iron.modelTransformer))
+        return prepare(statement, model.build(iron))
     }
 
     fun prepare(@Language("SQL") statement: String, values: SqlParams): IronResultSet {

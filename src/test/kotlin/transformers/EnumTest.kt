@@ -1,4 +1,4 @@
-
+package transformers
 import gg.ingot.iron.Iron
 import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.strategies.EnumTransformation

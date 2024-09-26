@@ -44,8 +44,8 @@ class MySQLEngine<T: Any>(
     override suspend fun insertMany(entities: List<T>, fetch: Boolean): List<T> {
         return iron.transaction {
             return@transaction entities.map { entity ->
-                val columns = controller.model.fields.joinToString(",") { column(it.columnName) }
-                val variables = controller.model.fields.joinToString(",") { ":${it.variableName}" }
+                val columns = controller.model.fields.joinToString(",") { column(it.field.column) }
+                val variables = controller.model.fields.joinToString(",") { ":${it.field.variable}" }
 
                 prepare(
                     "INSERT INTO ${controller.tableName} ($columns) VALUES ($variables)",
@@ -95,7 +95,7 @@ class MySQLEngine<T: Any>(
 
     override suspend fun update(entity: T, fetch: Boolean): T {
         val selector = controller.uniqueSelector(entity)
-        val columns = controller.model.fields.joinToString(", ") { "${column(it.columnName)} = :${it.variableName}" }
+        val columns = controller.model.fields.joinToString(", ") { "${column(it.field.column)} = :${it.field.variable}" }
 
         return iron.transaction {
             prepare(
@@ -114,9 +114,9 @@ class MySQLEngine<T: Any>(
 
     override suspend fun upsert(entity: T, fetch: Boolean): T {
         val selector = controller.uniqueSelector(entity)
-        val columns = controller.model.fields.joinToString(", ") { column(it.columnName) }
-        val variables = controller.model.fields.joinToString(", ") { ":${it.variableName}" }
-        val updates = controller.model.fields.joinToString(", ") { "${column(it.columnName)} = :${it.variableName}" }
+        val columns = controller.model.fields.joinToString(", ") { column(it.field.column) }
+        val variables = controller.model.fields.joinToString(", ") { ":${it.field.variable}" }
+        val updates = controller.model.fields.joinToString(", ") { "${column(it.field.column)} = :${it.field.variable}" }
 
         return iron.transaction {
             prepare(
