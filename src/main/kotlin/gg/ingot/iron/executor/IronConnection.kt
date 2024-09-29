@@ -3,7 +3,6 @@ package gg.ingot.iron.executor
 import gg.ingot.iron.executor.impl.BlockingIronExecutor
 import gg.ingot.iron.executor.impl.CompletableIronExecutor
 import gg.ingot.iron.executor.impl.CoroutineIronExecutor
-import gg.ingot.iron.sql.params.SqlParams
 
 /**
  * Represents the entrypoint for executing queries on the database.
@@ -13,7 +12,7 @@ import gg.ingot.iron.sql.params.SqlParams
  * @see CompletableIronExecutor
  */
 interface IronConnection {
-    fun parseParams(statement: String, params: SqlParams): Pair<String, List<Any?>> {
+    fun parseParams(statement: String, params: Map<String, Any?>): Pair<String, List<Any?>> {
         val insertedValues = mutableListOf<Any?>()
 
         val parsedStatement = SQL_PLACEHOLDER_REGEX.replace(statement) { matchResult ->

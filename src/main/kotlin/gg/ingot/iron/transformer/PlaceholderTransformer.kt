@@ -30,14 +30,6 @@ internal class PlaceholderTransformer(private val iron: Iron) {
             is Enum<*> -> iron.settings.enumTransformation.serialize(value)
             is Optional<*> -> value.orElse(null)
             else -> value
-        }.also {
-            logger.trace(
-                "Converted parameter {} {} to {} {}.",
-                if (value != null) value::class.simpleName else "",
-                value,
-                if (it != null) it::class.simpleName else "",
-                it
-            )
         }
     }
 

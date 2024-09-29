@@ -1,6 +1,5 @@
 import gg.ingot.iron.Iron;
 import gg.ingot.iron.IronSettings;
-import gg.ingot.iron.sql.params.SqlParamsBuilder;
 import gg.ingot.iron.strategies.NamingStrategy;
 import models.UserClass;
 import models.UserOptional;

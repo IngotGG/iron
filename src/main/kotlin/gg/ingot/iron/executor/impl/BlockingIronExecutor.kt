@@ -1,38 +1,46 @@
 package gg.ingot.iron.executor.impl
 
 import gg.ingot.iron.Iron
-import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.executor.IronConnection
 import gg.ingot.iron.executor.transaction.Transaction
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.sql.params.SqlParams
-import gg.ingot.iron.sql.params.SqlParamsBuilder
-import gg.ingot.iron.sql.params.sqlParams
+import gg.ingot.iron.sql.binding.SqlBindings
+import kotlinx.coroutines.runBlocking
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
+import java.sql.Connection
 import java.util.function.Consumer
 
-open class BlockingIronExecutor(private val iron: Iron): IronConnection {
+open class BlockingIronExecutor(
+    private val iron: Iron,
+    private val connection: Connection? = null
+): IronConnection {
+    internal suspend fun <T> transaction(connection: Connection, block: suspend Transaction.() -> T): T {
+        val transactionController = Transaction(iron, connection)
+
+        return try {
+            connection.autoCommit = false
+            val result = block(transactionController)
+
+            connection.commit()
+            transactionController.commit()
+
+            result
+        } catch (ex: Exception) {
+            connection.rollback()
+            transactionController.rollback()
+
+            throw ex
+        } finally {
+            connection.autoCommit = true
+        }
+    }
+
+    @Suppress("DuplicatedCode")
     fun <T> transaction(block: Transaction.() -> T): T {
-        val transactionController = Transaction(iron)
-
-        return iron.useBlocking {
-            return@useBlocking try {
-                it.autoCommit = false
-
-                val result = block(transactionController)
-
-                it.commit()
-                transactionController.commit()
-
-                result
-            } catch (ex: Exception) {
-                it.rollback()
-                transactionController.rollback()
-
-                throw ex
-            } finally {
-                it.autoCommit = true
+        return use {
+            return@use runBlocking {
+                return@runBlocking transaction(it, block)
             }
         }
     }
@@ -43,37 +51,28 @@ open class BlockingIronExecutor(private val iron: Iron): IronConnection {
         }
     }
 
+    internal fun <T> use(block: (Connection) -> T): T {
+        return if (connection != null) {
+            block(connection)
+        } else {
+            iron.useBlocking(block)
+        }
+    }
+
     fun query(@Language("SQL") query: String): IronResultSet {
         logger.trace("Executing Query\n{}", query)
 
-        return iron.useBlocking {
+        return use {
             val resultSet = it.createStatement()
                 .executeQuery(query)
-            return@useBlocking IronResultSet(resultSet, iron)
+            return@use IronResultSet(resultSet, iron)
         }
     }
 
     fun prepare(@Language("SQL") statement: String, vararg values: Any?): IronResultSet {
-        var params: SqlParamsBuilder? = null
-
-        for (model in values) {
-            if (model == null) {
-                continue
-            }
-
-            if (model.javaClass.isAnnotationPresent(Model::class.java)) {
-                if (params == null) params = sqlParams(mapOf())
-                params + model
-            }
-        }
-
-        if (params != null) {
-            return prepare(statement, params)
-        }
-
         logger.trace("Preparing Statement\n{}", statement)
 
-        return iron.useBlocking {
+        return use {
             val preparedStatement = it.prepareStatement(statement)
 
             require(preparedStatement.parameterMetaData.parameterCount == values.size) {
@@ -93,26 +92,24 @@ open class BlockingIronExecutor(private val iron: Iron): IronConnection {
                 null
             }
 
-            return@useBlocking IronResultSet(resultSet, iron)
+            return@use IronResultSet(resultSet, iron)
         }
     }
 
-    fun prepare(@Language("SQL") statement: String, model: SqlParamsBuilder): IronResultSet {
-        return prepare(statement, model.build(iron))
-    }
+    fun prepare(@Language("SQL") statement: String, variable: SqlBindings, vararg variables: SqlBindings): IronResultSet {
+        val concatenated = variable.concat(variables.fold(variable) { acc, binding -> acc.concat(binding) })
+        val parsed = concatenated.parse(iron)
 
-    fun prepare(@Language("SQL") statement: String, values: SqlParams): IronResultSet {
-        return this.parseParams(statement, values).let { (stmt, params) ->
+        return this.parseParams(statement, parsed).let { (stmt, params) ->
             prepare(stmt, *params.toTypedArray())
         }
     }
 
-
     fun execute(@Language("SQL") statement: String): Boolean {
         logger.trace("Executing Statement\n{}", statement)
 
-        return iron.useBlocking {
-            return@useBlocking it.createStatement()
+        return use {
+            return@use it.createStatement()
                 .execute(statement)
         }
     }

@@ -1,4 +1,4 @@
-
+package gg.ingot.iron.test.suites.controllers
 import gg.ingot.iron.Iron
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.annotations.Model

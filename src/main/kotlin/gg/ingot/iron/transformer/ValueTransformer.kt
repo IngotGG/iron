@@ -9,6 +9,7 @@ import gg.ingot.iron.transformer.adapter.*
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.util.*
+import kotlin.reflect.typeOf
 
 /**
  * Handles the conversion of any value to and from [ResultSet]s / prepared statements.
@@ -24,18 +25,15 @@ internal class ValueTransformer(private val iron: Iron) {
      * @return The value from the result set.
      */
     fun fromResultSet(resultSet: ResultSet, field: EntityField): Any? {
-        val value = if (field.isArray || field.isCollection) {
-            try {
-                resultSet.getArray(field.convertedName(iron.settings.namingStrategy)).array
-            } catch (ex: SQLException) {
-                throw IllegalStateException("Failed to retrieve array value for field '${field.name}'", ex)
-            }
-        } else {
-            try {
-                resultSet.getObject(field.convertedName(iron.settings.namingStrategy))
-            } catch (ex: SQLException) {
-                throw IllegalStateException("Failed to retrieve value for field '${field.name}'", ex)
-            }
+        var value = try {
+            resultSet.getObject(field.convertedName(iron.settings.namingStrategy))
+        } catch (ex: SQLException) {
+            throw IllegalStateException("Failed to retrieve value for field '${field.name}'", ex)
+        }
+
+        // We want to only work with arrays, they can become collections later down the flow
+        if (value != null && Collection::class.java.isAssignableFrom(value::class.java)) {
+            value = (value as List<*>).toTypedArray()
         }
 
         return deserialize(value, field)
@@ -57,12 +55,14 @@ internal class ValueTransformer(private val iron: Iron) {
 
         val value = if (label == null)
             resultSet.getObject(1)
-        else if (clazz.isArray) resultSet.getArray(label).array
         else resultSet.getObject(label)
 
         if (value == null) return null
+        val supertypes = clazz.kotlin.supertypes
 
-        return if (clazz.isArray) {
+        return if (supertypes.contains(typeOf<java.sql.Array>())) {
+            (value as java.sql.Array).array
+        } else if (clazz.isArray) {
             value as Array<*>
         } else if (clazz.isEnum) {
             java.lang.Enum.valueOf(clazz as Class<out Enum<*>>, value as String)
@@ -71,19 +71,9 @@ internal class ValueTransformer(private val iron: Iron) {
         } else if (Set::class.java.isAssignableFrom(clazz)) {
             (value as Array<*>).toSet()
         } else if (box(clazz) == Boolean::class.java) {
-            when (value) {
-                true -> true
-                is Int -> {
-                    when (value) {
-                        0 -> false
-                        1 -> true
-                        else -> error("Failed to convert boolean value for field '${label}'")
-                    }
-                }
-                else -> {
-                    error("Failed to convert boolean value for field '${label}'")
-                }
-            }
+            if (trueValues.contains(value)) return true
+            else if (falseValues.contains(value)) return false
+            else error("Failed to convert boolean value for field '${label}'")
         } else {
             value
         }
@@ -157,6 +147,14 @@ internal class ValueTransformer(private val iron: Iron) {
 
             adapter.toDatabaseValue(value, iron, field)
         }
+    }
+
+    private companion object {
+        /** The values which represent true in databases. */
+        private val trueValues = arrayOf(true, 1)
+
+        /** The values which represent false in databases. */
+        private val falseValues = arrayOf(false, 0)
     }
 }
 

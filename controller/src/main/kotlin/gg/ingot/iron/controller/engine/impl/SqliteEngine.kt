@@ -23,7 +23,7 @@ class SqliteEngine<T: Any>(
             iron.prepare("SELECT * FROM ${controller.tableName}")
                 .all(controller.clazz.kotlin)
         } else {
-            iron.prepare("SELECT * FROM ${controller.tableName} WHERE $predicate", predicate.params())
+            iron.prepare("SELECT * FROM ${controller.tableName} WHERE $predicate", predicate.bindings())
                 .all(controller.clazz.kotlin)
         }
     }
@@ -54,7 +54,7 @@ class SqliteEngine<T: Any>(
 
                 if (fetch) {
                     val selector = controller.uniqueSelector(entity)
-                    prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.params())
+                    prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.bindings())
                         .single(controller.clazz.kotlin)
                 } else {
                     entity
@@ -71,7 +71,7 @@ class SqliteEngine<T: Any>(
             iron.prepare("SELECT * FROM ${controller.tableName} LIMIT 1")
                 .singleNullable(controller.clazz.kotlin)
         } else {
-            iron.prepare("SELECT * FROM ${controller.tableName} WHERE $predicate", predicate.params())
+            iron.prepare("SELECT * FROM ${controller.tableName} WHERE $predicate", predicate.bindings())
                 .singleNullable(controller.clazz.kotlin)
         }
     }
@@ -85,12 +85,12 @@ class SqliteEngine<T: Any>(
         val scope = SQL<T>(iron, controller.model, this)
         val predicate = filter.invoke(scope)
 
-        iron.prepare("DELETE FROM ${controller.tableName} WHERE $predicate", predicate.params())
+        iron.prepare("DELETE FROM ${controller.tableName} WHERE $predicate", predicate.bindings())
     }
 
     override suspend fun delete(entity: T) {
         val selector = controller.uniqueSelector(entity)
-        iron.prepare("DELETE FROM ${controller.tableName} WHERE $selector", selector.params())
+        iron.prepare("DELETE FROM ${controller.tableName} WHERE $selector", selector.bindings())
     }
 
     override suspend fun update(entity: T, fetch: Boolean): T {
@@ -100,11 +100,11 @@ class SqliteEngine<T: Any>(
         return iron.transaction {
             prepare(
                 "UPDATE ${controller.tableName} SET $columns WHERE $selector",
-                selector.params(), entity
+                selector.bindings(), entity
             )
 
             if (fetch) {
-                prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.params(), entity)
+                prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.bindings(), entity)
                     .single(controller.clazz.kotlin)
             } else {
                 entity
@@ -126,7 +126,7 @@ class SqliteEngine<T: Any>(
             )
 
             if (fetch) {
-                prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.params(), entity)
+                prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.bindings(), entity)
                     .single(controller.clazz.kotlin)
             } else {
                 entity

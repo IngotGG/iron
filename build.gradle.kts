@@ -62,6 +62,8 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation(libs.bundles.testing)
 
+    testImplementation(project(":controller"))
+
     // serialization
     testImplementation(libs.kotlinx.serialization)
     testImplementation(libs.gson)

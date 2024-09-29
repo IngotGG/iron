@@ -7,8 +7,12 @@ gson = "2.11.0"
 slf4j = "2.0.13"
 sqlite = "3.46.0.0"
 h2 = "2.3.232"
+postgres = "42.7.4"
 evo = "1.3"
 logback = "1.5.8"
+kotest = "5.9.1"
+kotest-testcontainers = "2.0.2"
+testcontainers-postgresql = "1.20.1"
 
 [plugins]
 kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
@@ -22,15 +26,27 @@ slf4j = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 evo = { module = "org.atteo:evo-inflector", version.ref = "evo" }
 
 test-kotlinx-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
-test-sqlite = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite" }
-test-h2 = { module = "com.h2database:h2", version.ref = "h2" }
+test-driver-sqlite = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite" }
+test-driver-h2 = { module = "com.h2database:h2", version.ref = "h2" }
+test-driver-postgresql = { module = "org.postgresql:postgresql", version.ref = "postgres" }
 test-logback = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+test-kotest = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
+test-kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
+test-kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest" }
+test-testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers-postgresql" }
+test-kotest-testcontainers = { module = "io.kotest.extensions:kotest-extensions-testcontainers", version.ref = "kotest-testcontainers" }
 
 [bundles]
 testing = [
     "test-kotlinx-coroutines",
     "kotlinx-serialization",
-    "test-sqlite",
-    "test-h2",
-    "test-logback"
+    "test-logback",
+    "test-kotest-testcontainers",
+    "test-testcontainers-postgresql",
+    "test-kotest",
+    "test-kotest-assertions",
+    "test-kotest-property",
+    "test-driver-sqlite",
+    "test-driver-h2",
+    "test-driver-postgresql",
 ]

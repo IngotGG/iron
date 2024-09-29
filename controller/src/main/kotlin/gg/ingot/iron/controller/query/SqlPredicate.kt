@@ -1,14 +1,14 @@
 package gg.ingot.iron.controller.query
 
-import gg.ingot.iron.sql.params.SqlParamsBuilder
-import gg.ingot.iron.sql.params.sqlParams
+import gg.ingot.iron.sql.binding.SqlBindings
+import gg.ingot.iron.sql.binding.bind
 
 class SqlPredicate internal constructor(
     val queries: List<String>,
     val values: Map<String, Any?>
 ) {
-    internal fun params(): SqlParamsBuilder {
-        return sqlParams(values.mapKeys { it.key.removePrefix(":") })
+    internal fun bindings(): SqlBindings {
+        return bind(values.mapKeys { it.key.removePrefix(":") })
     }
 
     override fun toString(): String {

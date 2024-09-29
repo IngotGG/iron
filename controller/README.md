@@ -154,7 +154,7 @@ help in keeping your queries easier to refactor.
 Unlike Iron, Iron Controllers does not come with support for all DBMS' out of the box because of the inherent complexity,
 however you can register your own `DBMSEngine` implementation to add support for a DBMS not supported by default.
 
-To create an engine, simple implement the `DBMSEngine` interface:
+To create an engine, simply implement the `DBMSEngine` interface:
 ```kotlin
 class MyCustomEngine : DBMSEngine {
     ...

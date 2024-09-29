@@ -4,8 +4,7 @@ import gg.ingot.iron.Iron
 import gg.ingot.iron.executor.IronConnection
 import gg.ingot.iron.executor.transaction.Transaction
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.sql.params.SqlParams
-import gg.ingot.iron.sql.params.SqlParamsBuilder
+import gg.ingot.iron.sql.binding.SqlBindings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -56,15 +55,9 @@ class CompletableIronExecutor(private val iron: Iron): IronConnection {
         }
     }
 
-    fun prepare(@Language("SQL") statement: String, model: SqlParamsBuilder): CompletableFuture<IronResultSet> {
+    fun prepare(@Language("SQL") statement: String, variable: SqlBindings, vararg variables: SqlBindings): CompletableFuture<IronResultSet> {
         return complete {
-            blockingExecutor.prepare(statement, model)
-        }
-    }
-
-    fun prepare(@Language("SQL") statement: String, values: SqlParams): CompletableFuture<IronResultSet> {
-        return complete {
-            blockingExecutor.prepare(statement, values)
+            blockingExecutor.prepare(statement, variable, *variables)
         }
     }
 
