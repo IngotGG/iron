@@ -15,4 +15,19 @@ interface Bindings {
         return SqlBindings(mapping)
     }
 
+    companion object {
+        @JvmStatic
+        @JvmName("get")
+        fun get(model: Any, iron: Iron): SqlBindings {
+            val reader = iron.modelReader
+            val entityModel = reader.read(this::class.java)
+
+            val mapping = entityModel.fields.associate {
+                it.field.variable to it.value(model)
+            }.toMutableMap()
+
+            return SqlBindings(mapping)
+        }
+    }
+
 }

@@ -72,6 +72,12 @@ open class BlockingIronExecutor(
     fun prepare(@Language("SQL") statement: String, vararg values: Any?): IronResultSet {
         logger.trace("Preparing Statement\n{}", statement)
 
+        // Check to see if we have any remaining variables
+        val variables = iron.placeholderTransformer.getVariables(statement)
+        if (variables.isNotEmpty()) {
+            error("The statement contains variables that are not bound, make sure to bind all variables before executing the statement. Missing variables: ${variables.joinToString(", ")}")
+        }
+
         return use {
             val preparedStatement = it.prepareStatement(statement)
 
@@ -100,7 +106,7 @@ open class BlockingIronExecutor(
         val concatenated = variable.concat(variables.fold(variable) { acc, binding -> acc.concat(binding) })
         val parsed = concatenated.parse(iron)
 
-        return this.parseParams(statement, parsed).let { (stmt, params) ->
+        return iron.placeholderTransformer.parseParams(statement, parsed).let { (stmt, params) ->
             prepare(stmt, *params.toTypedArray())
         }
     }

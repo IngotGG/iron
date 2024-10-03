@@ -1,6 +1,7 @@
 package gg.ingot.iron.annotations
 
 import gg.ingot.iron.serialization.*
+import gg.ingot.iron.strategies.EnumTransformation
 import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance
 
@@ -39,6 +40,14 @@ annotation class Column(
      * controller module
      */
     val primaryKey: Boolean = false,
+
+    /**
+     * The enum transformation to use for this column, defaults to Iron's default (EnumTransformation::class),
+     * you can specify a custom enum transformation by providing a KClass<out EnumTransformation> here, such as
+     * EnumTransformation.Ordinal::class.
+     */
+    val enum: KClass<out EnumTransformation> = EnumTransformation::class,
+
     val adapter: KClass<out ColumnAdapter<*, *>> = EmptyAdapter::class,
     val deserializer: KClass<out ColumnDeserializer<*, *>> = EmptyDeserializer::class,
     val serializer: KClass<out ColumnSerializer<*, *>> = EmptySerializer::class

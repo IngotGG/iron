@@ -64,4 +64,40 @@ internal class PlaceholderTransformer(private val iron: Iron) {
 
         return serializationAdapter.serialize(inner, value.value::class.java)
     }
+
+    fun getVariables(statement: String): List<String> {
+        return SQL_PLACEHOLDER_REGEX.findAll(statement).map { it.groupValues[1] }
+            .filter { it.isNotBlank() }
+            .toList()
+    }
+
+    fun parseParams(statement: String, params: Map<String, Any?>): Pair<String, List<Any?>> {
+        val insertedValues = mutableListOf<Any?>()
+
+        val parsedStatement = SQL_PLACEHOLDER_REGEX.replace(statement) { matchResult ->
+            val group = matchResult.groupValues.first()
+
+            // cast
+            if(group.startsWith("::")) {
+                group
+                // wrapped in text or something
+            } else if(SURROUNDING_QUOTES.any { it == group.first() && it == group.last() }) {
+                group
+            } else {
+                val name = matchResult.groupValues[1]
+                insertedValues.add(params[name])
+                "?"
+            }
+        }
+
+        return parsedStatement to insertedValues
+    }
+
+    private companion object {
+        /** The regex for SQL placeholders. */
+        val SQL_PLACEHOLDER_REGEX = "'(?:\\\\'|[^'])*'|\"(?:\\\\\"|[^\"])*\"|`(?:\\\\`|[^`])*`|::?(\\w+)".toRegex()
+
+        /** Quote characters that may wrap placeholders. */
+        val SURROUNDING_QUOTES = arrayOf('`', '\'', '"')
+    }
 }

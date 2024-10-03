@@ -2,9 +2,8 @@ package gg.ingot.iron.sql
 
 import gg.ingot.iron.Iron
 import gg.ingot.iron.serialization.ColumnDeserializer
-import gg.ingot.iron.serialization.JsonAdapter
+import java.io.Closeable
 import java.sql.ResultSet
-import kotlin.reflect.KClass
 
 /**
  * A wrapper over result set allowing for iron-specific operations
@@ -17,7 +16,10 @@ import kotlin.reflect.KClass
 class IronResultSet internal constructor(
     val resultSet: ResultSet?,
     val iron: Iron,
-) {
+): Closeable {
+
+//    Core Functions
+
     /**
      * Moves the cursor forward one row from its current position. A ResultSet cursor is initially positioned before
      * the first row; the first call to the method next makes the first row the current row; the second call makes the
@@ -30,35 +32,25 @@ class IronResultSet internal constructor(
     }
 
     /**
+     * Releases this ResultSet object's database and JDBC resources immediately instead of waiting for this to happen
+     * when it is automatically closed.
+     */
+    override fun close() {
+        resultSet?.close()
+    }
+
+//    Get Functions
+
+    /**
      * Gets the model from the result set at its current row.
      * @param clazz The class to transform the result to
      * @return The model in the result set, or null if there are no more results.
      * @since 1.0
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T: Any> get(clazz: Class<T>, columnLabel: String? = null): T? {
+    fun <T: Any> get(clazz: Class<T>, columnLabel: String? = null, json: Boolean = false): T? {
         requireNotNull(resultSet) { "The prepared statement did not return a result" }
-        return iron.valueTransformer.read(resultSet, columnLabel, clazz) as T?
-    }
-
-    /**
-     * Gets the model from the result set at its current row.
-     * @param clazz The kotlin class to transform the result to
-     * @return The model in the result set, or null if there are no more results.
-     * @since 1.0
-     */
-    @JvmOverloads
-    fun <T: Any> get(clazz: KClass<T>, columnLabel: String? = null): T? {
-        return get(clazz.java, columnLabel)
-    }
-
-    /**
-     * Gets the model from the result set at its current row.
-     * @return The model in the result set, or null if there are no more results.
-     * @since 1.0
-     */
-    inline fun <reified T: Any> get(): T? {
-        return this.get(T::class)
+        return iron.valueTransformer.read(resultSet, columnLabel, clazz, json) as T?
     }
 
     /**
@@ -66,9 +58,13 @@ class IronResultSet internal constructor(
      * @param columnLabel The column label to read from a value.
      * @return The model in the result set, or null if there are no more results.
      */
-    inline fun <reified T : Any> get(columnLabel: String): T? {
+    @JvmOverloads
+    inline fun <reified T : Any> get(
+        columnLabel: String? = null,
+        json: Boolean = false
+    ): T? {
         requireNotNull(resultSet) { "The prepared statement did not return a result" }
-        return get(T::class, columnLabel)
+        return get(T::class.java, columnLabel, json)
     }
 
     /**
@@ -76,44 +72,39 @@ class IronResultSet internal constructor(
      * @param index The index of the column to read from.
      * @return The model in the result set, or null if there are no more results.
      */
-    inline fun <reified T : Any> get(index: Int): T? {
-        requireNotNull(resultSet) { "The prepared statement did not return a result" }
-        return get(T::class, resultSet.metaData.getColumnLabel(index))
+    inline fun <reified T : Any> get(
+        index: Int,
+        json: Boolean = false
+    ): T? {
+        requireNotNull(resultSet) { "The result set did not return a result" }
+        return get(T::class.java, resultSet.metaData.getColumnLabel(index), json)
     }
+
+//    GetNext Functions
 
     /**
      * Moves the cursor to the next row in the result set and gets the model.
      * @param clazz The class to transform the result to
      * @return The model in the result set, or null if there are no more results.
      */
-    fun <T: Any> getNext(clazz: Class<T>): T? {
-        return if (next()) {
-            get(clazz)
-        } else {
-            null
-        }
-    }
-
-    /**
-     * Moves the cursor to the next row in the result set and gets the model.
-     * @param clazz The kotlin class to transform the result to
-     * @return The model in the result set, or null if there are no more results.
-     */
-    fun <T: Any> getNext(clazz: KClass<T>): T? {
-        return getNext(clazz.java)
+    fun <T: Any> getNext(
+        clazz: Class<T>,
+        json: Boolean = false
+    ): T? {
+        return if (next()) get(clazz = clazz, json = json) else null
     }
 
     /**
      * Moves the cursor to the next row in the result set and gets the model.
      * @return The model in the result set, or null if there are no more results.
      */
-    inline fun <reified T: Any> getNext(): T? {
-        return if (next()) {
-            get<T>()
-        } else {
-            null
-        }
+    inline fun <reified T: Any> getNext(
+        json: Boolean = false
+    ): T? {
+        return getNext(T::class.java, json)
     }
+
+//    SingleNullable Functions
 
     /**
      * Retrieve a single result from the result set.
@@ -124,9 +115,13 @@ class IronResultSet internal constructor(
      * @return The single result from the result set.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Any> singleNullable(clazz: Class<T>, deserializer: ColumnDeserializer<*, T>? = null): T? {
+    fun <T : Any> singleNullable(
+        clazz: Class<T>,
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): T? {
         if(deserializer != null) {
-            val value = getNext<Any>()
+            val value = getNext<Any>(json = json)
             if(next()) {
                 error("Expected a single or no result, but found more than one")
             }
@@ -136,7 +131,7 @@ class IronResultSet internal constructor(
             deserializer as ColumnDeserializer<Any, T>
             return deserializer.fromDatabaseValue(value)
         } else {
-            val value = getNext(clazz)
+            val value = getNext(clazz, json = json)
             if(next()) {
                 error("Expected a single or no result, but found more than one")
             }
@@ -152,32 +147,14 @@ class IronResultSet internal constructor(
      * @param deserializer The deserializer to use for the result.
      * @return The single result from the result set.
      */
-    fun <T : Any> singleNullable(clazz: KClass<T>, deserializer: ColumnDeserializer<*, T>? = null): T? {
-        return singleNullable(clazz.java, deserializer)
+    inline fun <reified T : Any> singleNullable(
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): T? {
+        return singleNullable(T::class.java, deserializer, json)
     }
 
-    /**
-     * Retrieve a single result from the result set.
-     * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
-     * If not then the first column will be returned as the result.
-     * @param deserializer The deserializer to use for the result.
-     * @return The single result from the result set.
-     */
-    inline fun <reified T : Any> singleNullable(deserializer: ColumnDeserializer<*, T>? = null): T? {
-        return singleNullable(T::class, deserializer)
-    }
-
-    /**
-     * Retrieve a single result from the result set.
-     * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
-     * If not then the first column will be returned as the result.
-     * @param deserializer The deserializer to use for the result.
-     * @return The single result from the result set.
-     */
-    @JvmOverloads
-    fun <T: Any> single(clazz: Class<T>, deserializer: ColumnDeserializer<*, T>? = null): T {
-        return singleNullable(clazz, deserializer) ?: error("Expected a single result, but found none.")
-    }
+//    Single Functions
 
     /**
      * Retrieve a single result from the result set.
@@ -187,8 +164,12 @@ class IronResultSet internal constructor(
      * @return The single result from the result set.
      */
     @JvmOverloads
-    fun <T: Any> single(clazz: KClass<T>, deserializer: ColumnDeserializer<*, T>? = null): T {
-        return single(clazz.java, deserializer)
+    fun <T: Any> single(
+        clazz: Class<T>,
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): T {
+        return singleNullable(clazz, deserializer, json) ?: error("Expected a single result, but found none.")
     }
 
     /**
@@ -198,30 +179,14 @@ class IronResultSet internal constructor(
      * @param deserializer The deserializer to use for the result.
      * @return The single result from the result set.
      */
-    inline fun <reified T : Any> single(deserializer: ColumnDeserializer<*, T>? = null): T {
-        return single(T::class, deserializer)
+    inline fun <reified T : Any> single(
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): T {
+        return single(T::class.java, deserializer, json)
     }
 
-    /**
-     * Retrieve a single result from the result set while deserializing the fields from json
-     * @return The single result from the result set.
-     */
-    inline fun <reified T: Any> singleJson(): T {
-        return singleJsonNullable<T>() ?: error("Expected a single result, but found none.")
-    }
-
-    /**
-     * Retrieve a single result from the result set while deserializing the fields from json
-     * @return The single result from the result set.
-     */
-    inline fun <reified T: Any> singleJsonNullable(): T? {
-        requireNotNull(iron.settings.serialization) { "A serializer adapter has not been passed through IronSettings, you will not be able to automatically deserialize JSON." }
-
-        return singleNullable<T>(JsonAdapter(
-            iron.settings.serialization!!,
-            T::class.java
-        ))
-    }
+//    AllNullable Functions
 
     /**
      * Retrieve all results from the result set.
@@ -231,12 +196,16 @@ class IronResultSet internal constructor(
      * @return The results from the result set.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T: Any> allNullable(clazz: KClass<T>, deserializer: ColumnDeserializer<*, T>? = null): List<T?> {
+    fun <T: Any> allNullable(
+        clazz: Class<T>,
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): List<T?> {
         val v = mutableListOf<T?>()
 
         while(next()) {
             if(deserializer != null) {
-                val value = get<Any>()
+                val value = get<Any>(json = json)
                 if(value != null) {
                     deserializer as ColumnDeserializer<Any, T>
                     v.add(deserializer.fromDatabaseValue(value))
@@ -244,7 +213,7 @@ class IronResultSet internal constructor(
                     v.add(null)
                 }
             } else {
-                v.add(get(clazz))
+                v.add(get(clazz, json = json))
             }
         }
 
@@ -258,9 +227,14 @@ class IronResultSet internal constructor(
      * @param deserializer The deserializer to use for the result.
      * @return The results from the result set.
      */
-    inline fun <reified T : Any> allNullable(deserializer: ColumnDeserializer<*, T>? = null): List<T?> {
-        return allNullable(T::class, deserializer)
+    inline fun <reified T : Any> allNullable(
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): List<T?> {
+        return allNullable(T::class.java, deserializer, json)
     }
+
+//    All Functions
 
     /**
      * Retrieve all results from the result set.
@@ -270,8 +244,12 @@ class IronResultSet internal constructor(
      * @return The results from the result set.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T: Any> all(clazz: KClass<T>, deserializer: ColumnDeserializer<*, T>? = null): List<T> {
-        val v = allNullable(clazz, deserializer)
+    fun <T: Any> all(
+        clazz: Class<T>,
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): List<T> {
+        val v = allNullable(clazz, deserializer, json)
         check(!v.any { it == null }) { "ResultSet contains null values" }
 
         return v as List<T>
@@ -284,40 +262,10 @@ class IronResultSet internal constructor(
      * @param deserializer The deserializer to use for the result.
      * @return The results from the result set.
      */
-    inline fun <reified T : Any> all(deserializer: ColumnDeserializer<*, T>? = null): List<T> {
-        return all(T::class, deserializer)
-    }
-
-    /**
-     * Retrieve all results from the result set while deserializing the fields from json
-     * @return The single result from the result set.
-     */
-    @Suppress("UNCHECKED_CAST")
-    inline fun <reified T: Any> allJson(): List<T> {
-        val v = allJsonNullable<T>()
-        check(!v.any { it == null }) { "ResultSet contains null values" }
-
-        return v as List<T>
-    }
-
-    /**
-     * Retrieve a single result from the result set while deserializing the fields from json
-     * @return The single result from the result set.
-     */
-    inline fun <reified T: Any> allJsonNullable(): List<T?> {
-        requireNotNull(iron.settings.serialization) { "A serializer adapter has not been passed through IronSettings, you will not be able to automatically deserialize JSON." }
-
-        return allNullable<T>(JsonAdapter(
-            iron.settings.serialization!!,
-            T::class.java
-        ))
-    }
-
-    /**
-    * Releases this ResultSet object's database and JDBC resources immediately instead of waiting for this to happen
-    * when it is automatically closed.
-    */
-    fun close() {
-        resultSet?.close()
+    inline fun <reified T : Any> all(
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): List<T> {
+        return all(T::class.java, deserializer, json)
     }
 }

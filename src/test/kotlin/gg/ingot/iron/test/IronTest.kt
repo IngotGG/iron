@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import gg.ingot.iron.Iron
 import gg.ingot.iron.IronSettings
 import gg.ingot.iron.serialization.SerializationAdapter
+import gg.ingot.iron.strategies.NamingStrategy
 import io.kotest.core.test.TestScope
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -16,11 +17,16 @@ import kotlin.time.Duration.Companion.seconds
  */
 object IronTest {
 
+    private val baseSettings = IronSettings().apply {
+        namingStrategy = NamingStrategy.SNAKE_CASE
+        connectionPollTimeout = 3.seconds
+    }
+
     /**
      * Build a new in-memory SQLite database.
      * @return The iron instance.
      */
-    fun sqlite(settings: IronSettings = IronSettings()): Iron {
+    fun sqlite(settings: IronSettings = baseSettings): Iron {
         return Iron("jdbc:sqlite::memory:", settings).connect()
     }
 
@@ -28,7 +34,7 @@ object IronTest {
      * Build a new in-memory H2 database.
      * @return The iron instance.
      */
-    fun h2(settings: IronSettings = IronSettings()): Iron {
+    fun h2(settings: IronSettings = baseSettings): Iron {
         return Iron("jdbc:h2:mem:test", settings).connect()
     }
 
@@ -36,7 +42,7 @@ object IronTest {
      * Build a new postgres database with TestContainers.
      * @return The iron instance.
      */
-    fun postgres(settings: IronSettings = IronSettings()): Iron {
+    fun postgres(settings: IronSettings = baseSettings): Iron {
         val postgres: PostgreSQLContainer<*> = PostgreSQLContainer("postgres:16-alpine")
         postgres.start()
 
@@ -64,6 +70,7 @@ object IronTest {
     fun pooled(): IronSettings {
         return IronSettings().apply {
             maximumConnections = 3
+            namingStrategy = NamingStrategy.SNAKE_CASE
             connectionPollTimeout = 3.seconds
         }
     }
@@ -75,6 +82,8 @@ object IronTest {
     fun json(): IronSettings {
         return IronSettings().apply {
             serialization = SerializationAdapter.Gson(Gson())
+            namingStrategy = NamingStrategy.SNAKE_CASE
+            connectionPollTimeout = 3.seconds
         }
     }
 }

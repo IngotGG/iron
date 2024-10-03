@@ -11,9 +11,6 @@ import kotlin.test.assertEquals
 @Model
 private data class TestModel(val id: Int, val name: String)
 
-@Model
-private data class NumberBox(val id: Int, val name: String)
-
 @AutoScan
 class BasicIronTests: DescribeSpec({
     describe("Basic Iron Tests") {
@@ -135,6 +132,18 @@ class BasicIronTests: DescribeSpec({
             } catch(ex: IllegalStateException) {
                 assert(true)
             }
+        }
+
+        it("handle json") {
+            data class NameHolder(val name: String)
+
+            val iron = IronTest.sqlite(IronTest.json())
+
+            iron.prepare("CREATE TABLE json (id INTEGER PRIMARY KEY, data TEXT)")
+            iron.prepare("INSERT INTO json VALUES (1, '{\"name\": \"test\"}')")
+
+            val result = iron.prepare("SELECT data FROM json").single<NameHolder>(json = true)
+            assert(result.name == "test")
         }
     }
 })

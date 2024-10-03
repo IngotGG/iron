@@ -8,6 +8,7 @@ import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.representation.EntityModel
 import gg.ingot.iron.sql.params.ColumnJsonField
 import gg.ingot.iron.sql.params.ColumnSerializedField
+import gg.ingot.iron.strategies.EnumTransformation
 import gg.ingot.iron.strategies.NamingStrategy
 import org.jetbrains.annotations.Nullable
 import java.util.concurrent.ConcurrentHashMap
@@ -85,12 +86,17 @@ class ModelReader(
             val deserializer = field.details?.retrieveDeserializer()
                 ?: iron.settings.adapters?.retrieveDeserializer(field.java.type)
 
+            val enumTransformation = field.details?.enum
+                ?.takeIf { it != EnumTransformation::class }
+                ?.objectInstance
+
             entityFields.add(EntityField(
                 field = field,
                 nullable = nullable,
                 isJson = field.details?.json ?: false,
                 serializer = serializer,
                 deserializer = deserializer,
+                enumTransformation = enumTransformation
             ))
         }
 

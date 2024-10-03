@@ -1,33 +1,27 @@
 package gg.ingot.iron.transformer.adapter
 
 import gg.ingot.iron.Iron
-import gg.ingot.iron.representation.EntityField
 
 internal object ArrayValueAdapter: ValueAdapter<Array<*>>() {
-    override fun fromDatabaseValue(value: Any, iron: Iron, field: EntityField): Array<*> {
-        val array = when (value) {
-            is Array<*> -> value
-            is Collection<*> -> value.toTypedArray()
-            else -> {
-                error("Field '${field.name}' is an array the database gave back ${value::class.java.name}")
-            }
-        }
+    override fun fromDatabaseValue(value: Any, iron: Iron): Array<*> {
+        if (value is Collection<*>) return CollectionValueAdapter.fromDatabaseValue(value, iron).toTypedArray()
+        if (value !is Array<*>) error("Expected an array, but the database gave back ${value::class.java.name}")
 
-        return convertListToArray(array.map {
-            iron.valueTransformer.deserialize(it, field.copy(
-                isArray = false,
-                isCollection = false,
-            ))
-        }, field.getUnderlyingType())
+        val underlyingType = value.getUnderlyingType()
+            ?: error("Failed to find the type parameters for ${value::class.java.name}")
+
+        return convertListToArray(value.map {
+            iron.valueTransformer.deserialize(it)
+        }, underlyingType)
     }
 
-    override fun toDatabaseValue(value: Array<*>, iron: Iron, field: EntityField): Any {
+    override fun toDatabaseValue(value: Array<*>, iron: Iron): Any {
+        val underlyingType = value.getUnderlyingType()
+            ?: error("Failed to find the type parameters for ${value::class.java.name}")
+
         return convertListToArray(value.map {
-            iron.valueTransformer.serialize(it, field.copy(
-                isArray = false,
-                isCollection = false,
-            ))
-        }, field.getUnderlyingType())
+            iron.valueTransformer.serialize(it)
+        }, underlyingType)
     }
 
     @Suppress("UNCHECKED_CAST")

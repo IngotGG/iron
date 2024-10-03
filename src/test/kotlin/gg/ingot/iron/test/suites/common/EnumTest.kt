@@ -1,6 +1,8 @@
 package gg.ingot.iron.test.suites.common
 import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Model
+import gg.ingot.iron.sql.binding.Bindings
+import gg.ingot.iron.sql.binding.bind
 import gg.ingot.iron.strategies.EnumTransformation
 import gg.ingot.iron.test.IronTest
 import io.kotest.core.annotation.AutoScan
@@ -11,7 +13,10 @@ private enum class Permission {
 }
 
 @Model
-private data class User(val id: Int, val permission: Permission)
+private data class User(
+    val id: Int,
+    val permission: Permission
+): Bindings
 
 @AutoScan
 class EnumTest: DescribeSpec({
@@ -22,7 +27,7 @@ class EnumTest: DescribeSpec({
             val user = User(1, Permission.B)
 
             iron.prepare("CREATE TABLE users(id INTEGER PRIMARY KEY, permission TEXT);")
-            iron.prepare("INSERT INTO users(id, permission) VALUES (:id, :permission);", user)
+            iron.prepare("INSERT INTO users(id, permission) VALUES (:id, :permission);", bind(user))
 
             val result = iron.prepare("SELECT * FROM users WHERE id = ?", user.id).single<User>()
             assert(result.permission == Permission.B)
@@ -36,7 +41,7 @@ class EnumTest: DescribeSpec({
             val user = User(1, Permission.B)
 
             iron.prepare("CREATE TABLE users(id INTEGER PRIMARY KEY, permission TEXT);")
-            iron.prepare("INSERT INTO users(id, permission) VALUES (:id, :permission);", user)
+            iron.prepare("INSERT INTO users(id, permission) VALUES (:id, :permission);", bind(user))
 
             val result = iron.prepare("SELECT * FROM users WHERE id = ?", user.id).single<User>()
             assert(result.permission == Permission.B)

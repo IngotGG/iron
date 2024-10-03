@@ -6,6 +6,7 @@ import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.transformer.adapter.*
+import gg.ingot.iron.transformer.models.ValueMetadata
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.util.*
@@ -17,6 +18,12 @@ import kotlin.reflect.typeOf
  * @since 2.0
  */
 internal class ValueTransformer(private val iron: Iron) {
+
+    /** The values which represent true in databases. */
+    private val trueValues = arrayOf(true, 1)
+
+    /** The values which represent false in databases. */
+    private val falseValues = arrayOf(false, 0)
 
     /**
      * Takes a value from a [ResultSet] and converts it's appropriate java type.
@@ -36,7 +43,7 @@ internal class ValueTransformer(private val iron: Iron) {
             value = (value as List<*>).toTypedArray()
         }
 
-        return deserialize(value, field)
+        return deserialize(value, ValueMetadata(field))
     }
 
     /**
@@ -48,8 +55,9 @@ internal class ValueTransformer(private val iron: Iron) {
      * @return The value from the result set.
      */
     @Suppress("UNCHECKED_CAST")
-    fun read(resultSet: ResultSet, label: String?, clazz: Class<*>): Any? {
+    fun read(resultSet: ResultSet, label: String?, clazz: Class<*>, json: Boolean = false): Any? {
         if (clazz.annotations.any { it is Model }) {
+            if (json) error("Tried to deserialize JSON for '${clazz.simpleName}', you passed in a model but requested JSON, please choose one or the other.")
             return iron.modelTransformer.readModel(resultSet, clazz)
         }
 
@@ -58,6 +66,14 @@ internal class ValueTransformer(private val iron: Iron) {
         else resultSet.getObject(label)
 
         if (value == null) return null
+
+        if (json && value is String) {
+            return iron.settings.serialization?.deserialize(value, clazz)
+                ?: error("Tried to deserialize JSON for '${clazz.simpleName}', but no deserializer was provided.")
+        } else if (json) {
+            error("Tried to deserialize JSON for '${clazz.simpleName}', but the value was not a string but '${value::class.java.name}'.")
+        }
+
         val supertypes = clazz.kotlin.supertypes
 
         return if (supertypes.contains(typeOf<java.sql.Array>())) {
@@ -79,82 +95,64 @@ internal class ValueTransformer(private val iron: Iron) {
         }
     }
 
-    private fun getValueAdapter(field: EntityField): ValueAdapter<*>? {
-        return if (field.isArray) {
-            ArrayValueAdapter
-        } else if (field.isSet) {
-            SetValueAdapter
-        } else if (field.isCollection) {
-            CollectionValueAdapter
-        } else if (field.isJson) {
-            JsonValueAdapter
-        } else if (box(field.field.java.type) == Boolean::class.java) {
-            BooleanValueAdapter
-        } else if (field.getUnderlyingType().isEnum) {
-            EnumValueAdapter
-        } else {
-            null
-        }
+    private fun getValueAdapter(value: Any): ValueAdapter<*>? = when {
+        value is Array<*> -> ArrayValueAdapter
+        value is Set<*> -> SetValueAdapter
+        value is Collection<*> -> CollectionValueAdapter
+        box(value::class.java) == Boolean::class.java -> BooleanValueAdapter
+        else -> null
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun deserialize(value: Any?, field: EntityField, wrapOptional: Boolean = true): Any? {
+    fun deserialize(value: Any?, metadata: ValueMetadata = ValueMetadata(value), wrapOptional: Boolean = true): Any? {
         // Handle null values
-        if (value == null && !field.nullable && !field.isOptional) {
-            error("Field '${field.name}' is not nullable but we received a null value.")
-        } else if (value == null && field.isOptional) {
+        if (value == null && !metadata.nullable && !metadata.isOptional) {
+            error("Expected a non-null value but received a null value.")
+        } else if (value == null && metadata.isOptional) {
             return Optional.empty<Any>()
         } else if (value == null) {
             return null
         }
 
         // Handle transformations
-        return if (field.isOptional && wrapOptional) {
-            Optional.ofNullable(deserialize(value, field, false))
-        } else if (field.deserializer != null) {
+        return if (metadata.isOptional && wrapOptional) {
+            Optional.ofNullable(deserialize(value, metadata, false))
+        } else if (metadata.deserializer != null) {
             // User provided deserializer
-            val deserializer = field.deserializer as ColumnDeserializer<Any, *>
+            val deserializer = metadata.deserializer as ColumnDeserializer<Any, *>
             deserializer.fromDatabaseValue(value)
         } else {
-            val adapter = getValueAdapter(field)
+            val adapter = getValueAdapter(value)
                 ?: return value
 
-            adapter.fromDatabaseValue(value, iron, field)
+            adapter.fromDatabaseValue(value, iron)
         }
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun serialize(value: Any?, field: EntityField): Any? {
+    fun serialize(value: Any?, metadata: ValueMetadata = ValueMetadata(value)): Any? {
         // Unwrap optionals
         if (value is Optional<*>) {
-            return serialize(value.orElse(null), field)
+            return serialize(value.orElse(null), metadata)
         }
 
         // Handle null values
-        if (value == null && !field.nullable) {
-            error("Field '${field.name}' is not nullable but we received a null value.")
+        if (value == null && !metadata.nullable) {
+            error("Expected a non-null value but received a null value.")
         } else if (value == null) {
             return null
         }
 
-        return if (field.serializer != null) {
+        return if (metadata.serializer != null) {
             // User provided serializer
-            val serializer = field.serializer as ColumnSerializer<Any, *>
+            val serializer = metadata.serializer as ColumnSerializer<Any, *>
             serializer.toDatabaseValue(value)
         } else {
-            val adapter = getValueAdapter(field) as ValueAdapter<Any>?
+            val adapter = getValueAdapter(value) as ValueAdapter<Any>?
                 ?: return value
 
-            adapter.toDatabaseValue(value, iron, field)
+            adapter.toDatabaseValue(value, iron)
         }
-    }
-
-    private companion object {
-        /** The values which represent true in databases. */
-        private val trueValues = arrayOf(true, 1)
-
-        /** The values which represent false in databases. */
-        private val falseValues = arrayOf(false, 0)
     }
 }
 

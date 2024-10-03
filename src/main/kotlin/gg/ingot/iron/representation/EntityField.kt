@@ -3,6 +3,7 @@ package gg.ingot.iron.representation
 import gg.ingot.iron.model.ModelField
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.ColumnSerializer
+import gg.ingot.iron.strategies.EnumTransformation
 import gg.ingot.iron.strategies.NamingStrategy
 import java.lang.reflect.ParameterizedType
 
@@ -18,6 +19,7 @@ data class EntityField(
     val isJson: Boolean,
     val serializer: ColumnSerializer<*, *>?,
     val deserializer: ColumnDeserializer<*, *>?,
+    val enumTransformation: EnumTransformation?,
 
     // Computed
     val isArray: Boolean = field.java.type.isArray,

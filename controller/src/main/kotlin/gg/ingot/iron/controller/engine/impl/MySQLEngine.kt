@@ -5,6 +5,7 @@ import gg.ingot.iron.controller.controller.TableController
 import gg.ingot.iron.controller.engine.DBMSEngine
 import gg.ingot.iron.controller.query.SQL
 import gg.ingot.iron.controller.query.SqlFilter
+import gg.ingot.iron.sql.binding.Bindings
 
 @Suppress("DuplicatedCode")
 class MySQLEngine<T: Any>(
@@ -21,10 +22,10 @@ class MySQLEngine<T: Any>(
 
         return if (predicate == null) {
             iron.prepare("SELECT * FROM ${controller.tableName}")
-                .all(controller.clazz.kotlin)
+                .all(controller.clazz)
         } else {
             iron.prepare("SELECT * FROM ${controller.tableName} WHERE $predicate", predicate.bindings())
-                .all(controller.clazz.kotlin)
+                .all(controller.clazz)
         }
     }
 
@@ -49,13 +50,13 @@ class MySQLEngine<T: Any>(
 
                 prepare(
                     "INSERT INTO ${controller.tableName} ($columns) VALUES ($variables)",
-                    entity
+                    Bindings.get(entity, iron)
                 )
 
                 if (fetch) {
                     val selector = controller.uniqueSelector(entity)
                     prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.bindings())
-                        .single(controller.clazz.kotlin)
+                        .single(controller.clazz)
                 } else {
                     entity
                 }
@@ -69,10 +70,10 @@ class MySQLEngine<T: Any>(
 
         return if (predicate == null) {
             iron.prepare("SELECT * FROM ${controller.tableName} LIMIT 1")
-                .singleNullable(controller.clazz.kotlin)
+                .singleNullable(controller.clazz)
         } else {
             iron.prepare("SELECT * FROM ${controller.tableName} WHERE $predicate", predicate.bindings())
-                .singleNullable(controller.clazz.kotlin)
+                .singleNullable(controller.clazz)
         }
     }
 
@@ -100,12 +101,12 @@ class MySQLEngine<T: Any>(
         return iron.transaction {
             prepare(
                 "UPDATE ${controller.tableName} SET $columns WHERE $selector",
-                selector.bindings(), entity
+                selector.bindings(), Bindings.get(entity, iron)
             )
 
             if (fetch) {
-                prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.bindings(), entity)
-                    .single(controller.clazz.kotlin)
+                prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.bindings(), Bindings.get(entity, iron))
+                    .single(controller.clazz)
             } else {
                 entity
             }
@@ -121,12 +122,12 @@ class MySQLEngine<T: Any>(
         return iron.transaction {
             prepare(
                 "INSERT INTO ${controller.tableName} ($columns) VALUES ($variables) ON DUPLICATE KEY UPDATE $updates",
-                entity
+                Bindings.get(entity, iron)
             )
 
             if (fetch) {
-                prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.bindings(), entity)
-                    .single(controller.clazz.kotlin)
+                prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.bindings(), Bindings.get(entity, iron))
+                    .single(controller.clazz)
             } else {
                 entity
             }

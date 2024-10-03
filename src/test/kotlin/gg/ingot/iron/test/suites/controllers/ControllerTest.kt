@@ -1,207 +1,186 @@
 package gg.ingot.iron.test.suites.controllers
-import gg.ingot.iron.Iron
+
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.controller.Controller
 import gg.ingot.iron.controller.controller.controller
-import gg.ingot.iron.strategies.NamingStrategy
-import kotlinx.coroutines.test.runTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.asserter
+import gg.ingot.iron.test.IronTest
+import gg.ingot.iron.test.models.User
+import io.kotest.core.spec.AutoScan
+import io.kotest.core.spec.style.DescribeSpec
 
-class ControllerTest {
-    private val iron = Iron("jdbc:sqlite::memory:") {
-        namingStrategy = NamingStrategy.SNAKE_CASE
-    }.connect()
+@AutoScan
+class ControllerTest: DescribeSpec({
+    describe("Controller Test") {
+        val iron = IronTest.sqlite()
 
-    @Model
-    @Controller
-    data class User(
-        @Column(primaryKey = true)
-        val name: String,
-        var age: Int,
-        val email: String?,
-    )
+        beforeEach {
+            iron.prepare(User.tableDefinition)
+        }
 
-    @Test
-    fun `test controller`() = runTest {
-        iron.prepare("CREATE TABLE users (name TEXT, age INTEGER, email TEXT)")
-        val controller = iron.controller<User>()
+        afterEach {
+            iron.prepare("DROP TABLE IF EXISTS users")
+        }
 
-        for (i in 0 until 10) {
-            val user = User("User $i", i + 18, "user${i + 1}@example.com")
+        it("have basic functionality") {
+            val controller = iron.controller<User>()
+
+            for (i in 0 until 10) {
+                val user = User(i, "User $i", i + 18, "user${i + 1}@example.com")
+                controller.insert(user)
+            }
+
+            val users = controller.all()
+            assert(users.size == 10)
+            assert(controller.count() == 10)
+
+            controller.drop()
+            try {
+                controller.all()
+                assert(false)
+            } catch (e: Exception) {
+                // Expected
+                assert(true)
+            }
+        }
+
+        it("filter") {
+            val controller = iron.controller<User>()
+
+            for (i in 0 until 10) {
+                val user = User(i, "User $i", i + 18, "user${i + 1}@example.com")
+                controller.insert(user)
+            }
+
+            val user = controller.first {
+                (User::age eq 25) and (User::name eq "User 7")
+            }
+
+            assert(user?.name == "User 7")
+            assert(user?.age == 25)
+        }
+
+        it("delete") {
+            val controller = iron.controller<User>()
+
+            for (i in 0 until 10) {
+                val user = User(i, "User $i", i + 18, "")
+                controller.insert(user)
+            }
+
+            controller.delete {
+                (User::age eq 18) or (User::age eq 19)
+            }
+
+            assert(controller.count() == 8)
+
+            controller.clear()
+
+            assert(controller.count() == 0)
+        }
+
+        it("update") {
+            val controller = iron.controller<User>()
+            var user = User(1, "User 1", 18)
+
             controller.insert(user)
+            user.age = 25
+
+            controller.update(user)
+            user = controller.first()!!
+
+            assert(user.age == 25)
         }
 
-        val users = controller.all()
-        assertEquals(10, users.size)
-        assertEquals(10, controller.count())
+        it("retrieve all") {
+            val controller = iron.controller<User>()
 
-        controller.drop()
-        try {
-            controller.all()
-            asserter.fail("Table should have been dropped")
-        } catch (e: Exception) {
-            // Expected
-            assert(true)
-        }
-    }
+            for (i in 0 until 10) {
+                val user = User(i, "User $i", i + 18, "")
+                controller.insert(user)
+            }
 
-    @Test
-    fun `test filter`() = runTest {
-        iron.prepare("CREATE TABLE users (name TEXT, age INTEGER, email TEXT)")
-        val controller = iron.controller<User>()
+            val users = controller.all {
+                (User::age gt 20) and (User::age lt 25)
+            }
 
-        for (i in 0 until 10) {
-            val user = User("User $i", i + 18, "user${i + 1}@example.com")
-            controller.insert(user)
+            assert(users.size == 4)
         }
 
-        val user = controller.first {
-            (User::age eq 25) and (User::name eq "User 7")
+        it("interceptors") {
+            val controller = iron.controller<User>()
+            var user = User(1, "User 1", 18)
+
+            controller.interceptor {
+                it.apply { it.age += 10 }
+            }
+
+            user = controller.insert(user, true)
+            assert(user.age == 28)
+
+            user.age = 30
+            user = controller.update(user, true)
+
+            assert(user.age == 40)
         }
 
-        assertEquals("User 7", user?.name)
-        assertEquals(25, user?.age)
-    }
+        it("insert many") {
+            val controller = iron.controller<User>()
+            var users = (0 until 10).map { User(it, "User $it", it + 18, "") }
 
-    @Test
-    fun `test deletion`() = runTest {
-        iron.prepare("CREATE TABLE users (name TEXT, age INTEGER, email TEXT)")
-        val controller = iron.controller<User>()
-
-        for (i in 0 until 10) {
-            val user = User("User $i", i + 18, "")
-            controller.insert(user)
+            users = controller.insertMany(users)
+            assert(controller.count() == 10)
+            assert(users.size == 10)
         }
 
-        controller.delete {
-            (User::age eq 18) or (User::age eq 19)
+        it("insert many then fetch") {
+            val controller = iron.controller<User>()
+            var users = (0 until 10).map { User(it, "User $it", it + 18, "") }
+
+            controller.interceptor {
+                it.apply { it.age += 10 }
+            }
+
+            users = controller.insertMany(users, true)
+            assert(controller.count() == 10)
+            assert(users.size == 10)
+
+            for (i in 0 until 10) {
+                assert(users[i].age == 28 + i)
+            }
         }
 
-        assertEquals(8, controller.count())
+        it("insert with reserved keyword") {
+            @Model
+            @Controller
+            class Table {
+                @Column(primaryKey = true)
+                val id: String = "name"
+                val default: Boolean = true
+            }
 
-        controller.clear()
+            iron.prepare("CREATE TABLE tables (id TEXT PRIMARY KEY, `default` INTEGER)")
+            val controller = iron.controller<Table>()
+            controller.insert(Table())
 
-        assertEquals(0, controller.count())
-    }
-
-    @Test
-    fun `test updating entities`() = runTest {
-        iron.prepare("CREATE TABLE users (name TEXT, age INTEGER, email TEXT)")
-        val controller = iron.controller<User>()
-        var user = User("User 1", 18, "")
-
-        controller.insert(user)
-        user.age = 25
-
-        controller.update(user)
-        user = controller.first()!!
-
-        assertEquals(25, user.age)
-    }
-
-    @Test
-    fun `test retrieving all entities with filter`() = runTest {
-        iron.prepare("CREATE TABLE users (name TEXT, age INTEGER, email TEXT)")
-        val controller = iron.controller<User>()
-
-        for (i in 0 until 10) {
-            val user = User("User $i", i + 18, "")
-            controller.insert(user)
+            val table = controller.first()
+            assert(table?.id == "name")
+            assert(table?.default == true)
         }
 
-        val users = controller.all {
-            (User::age gt 20) and (User::age lt 25)
-        }
+        it("upserting") {
+            val controller = iron.controller<User>()
+            val user = User(1, "User 1", 18)
 
-        assertEquals(4, users.size)
-    }
+            controller.upsert(user)
+            assert(controller.count() == 1)
 
-    @Test
-    fun `test interceptors`() = runTest {
-        iron.prepare("CREATE TABLE users (name TEXT, age INTEGER, email TEXT)")
-        val controller = iron.controller<User>()
-        var user = User("User 1", 18, "")
+            user.age = 25
+            controller.upsert(user)
+            assert(controller.count() == 1)
 
-        controller.interceptor {
-            it.apply { it.age += 10 }
-        }
-
-        user = controller.insert(user, true)
-        assertEquals(28, user.age)
-
-        user.age = 30
-        user = controller.update(user, true)
-
-        assertEquals(40, user.age)
-    }
-
-    @Test
-    fun `test inserting many entities`() = runTest {
-        iron.prepare("CREATE TABLE users (name TEXT, age INTEGER, email TEXT)")
-        val controller = iron.controller<User>()
-        var users = (0 until 10).map { User("User $it", it + 18, "") }
-
-        users = controller.insertMany(users)
-        assertEquals(10, controller.count())
-        assertEquals(10, users.size)
-    }
-
-    @Test
-    fun `test inserting many entities then fetching`() = runTest {
-        iron.prepare("CREATE TABLE users (name TEXT, age INTEGER, email TEXT)")
-        val controller = iron.controller<User>()
-        var users = (0 until 10).map { User("User $it", it + 18, "") }
-
-        controller.interceptor {
-            it.apply { it.age += 10 }
-        }
-
-        users = controller.insertMany(users, true)
-        assertEquals(10, controller.count())
-        assertEquals(10, users.size)
-
-        for (i in 0 until 10) {
-            assertEquals(28 + i, users[i].age)
+            val updatedUser = controller.first()!!
+            assert(updatedUser.age == 25)
         }
     }
-
-    @Test
-    fun `test inserting with reserved keyword`() = runTest {
-        @Model
-        @Controller
-        class Table {
-            @Column(primaryKey = true)
-            val id: String = "name"
-            val default: Boolean = true
-        }
-
-        iron.prepare("CREATE TABLE tables (id TEXT PRIMARY KEY, `default` INTEGER)")
-        val controller = iron.controller<Table>()
-        controller.insert(Table())
-
-        val table = controller.first()
-        assertEquals("name", table?.id)
-        assertEquals(true, table?.default)
-    }
-
-    @Test
-    fun `test upserting`() = runTest {
-        iron.prepare("CREATE TABLE users (name TEXT PRIMARY KEY, age INTEGER, email TEXT)")
-        val controller = iron.controller<User>()
-        val user = User("User 1", 18, "")
-
-        controller.upsert(user)
-        assertEquals(1, controller.count())
-
-        user.age = 25
-        controller.upsert(user)
-        assertEquals(1, controller.count())
-
-        val updatedUser = controller.first()!!
-        assertEquals(25, updatedUser.age)
-    }
-
-}
+})

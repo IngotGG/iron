@@ -2,13 +2,15 @@ package gg.ingot.iron.test.models
 
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.annotations.Model
+import gg.ingot.iron.controller.Controller
 
 @Model
+@Controller
 data class User(
     @Column(primaryKey = true)
     val id: Int,
     val name: String,
-    val age: Int,
+    var age: Int,
     val email: String = "test@example.com",
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
