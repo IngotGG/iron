@@ -2,6 +2,7 @@ package gg.ingot.iron.transformer
 
 import gg.ingot.iron.Iron
 import gg.ingot.iron.annotations.Model
+import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import kotlin.reflect.KClass
 import kotlin.reflect.full.primaryConstructor
@@ -39,6 +40,8 @@ internal class ResultTransformer(
      * @return The model from the result set.
      */
     private fun <T : Any> readModel(result: ResultSet, clazz: KClass<T>): T {
+        logger.trace("Reading {} as a model because it's annotated with the @Model annotation.", clazz.simpleName)
+
         val entity = modelTransformer.transform(clazz)
 
         val emptyConstructor = clazz.constructors.firstOrNull { it.parameters.isEmpty() }
@@ -94,21 +97,26 @@ internal class ResultTransformer(
         clazz: KClass<T>,
         columnLabel: String? = null
     ): T? {
+        logger.trace("Reading {} as a value because it's not annotated with the @Model annotation.", clazz.simpleName)
+
         val javaClass = clazz.java
         if(Collection::class.java.isAssignableFrom(javaClass))
             error("Use an Array instead of a Collection")
 
         if(javaClass.isArray) {
+            logger.trace("Reading value as an Array.")
             if(columnLabel != null) result.getArray(columnLabel)?.array as? T
             else result.getArray(1)?.array as? T
         }
 
         if(javaClass.isEnum) {
+            logger.trace("Reading value as an Enum.")
             val value = if(columnLabel != null) result.getString(columnLabel) else result.getString(1)
             return java.lang.Enum.valueOf(javaClass as Class<out Enum<*>>, value) as? T
         }
 
         try {
+            logger.trace("Reading value as an Object.")
             val obj = if(columnLabel != null) result.getObject(columnLabel) as? T
             else result.getObject(1) as? T
 
@@ -126,5 +134,9 @@ internal class ResultTransformer(
         } catch(ex: ClassCastException) {
             error("Could not cast the column to the desired type, if you're attempted to map to a model try annotating with @Model, if not try passing a custom deserializer.")
         }
+    }
+
+    private companion object {
+        val logger = LoggerFactory.getLogger(ResultTransformer::class.java)!!
     }
 }
