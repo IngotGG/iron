@@ -19,7 +19,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
-import java.io.Closeable
 import java.sql.Connection
 
 /**
@@ -32,7 +31,7 @@ import java.sql.Connection
 class Iron internal constructor(
     private val connectionString: String,
     val settings: IronSettings
-): Closeable {
+): AutoCloseable {
     /** The inflector used to transform names into their corresponding requested form. */
     val inflector = Inflector(this)
 

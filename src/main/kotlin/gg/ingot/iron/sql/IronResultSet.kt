@@ -2,7 +2,6 @@ package gg.ingot.iron.sql
 
 import gg.ingot.iron.Iron
 import gg.ingot.iron.serialization.ColumnDeserializer
-import java.io.Closeable
 import java.sql.ResultSet
 
 /**
@@ -16,7 +15,7 @@ import java.sql.ResultSet
 class IronResultSet internal constructor(
     val resultSet: ResultSet?,
     val iron: Iron,
-): Closeable {
+): AutoCloseable {
 
 //    Core Functions
 
@@ -110,6 +109,9 @@ class IronResultSet internal constructor(
      * Retrieve a single result from the result set.
      * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
      * If not then the first column will be returned as the result.
+     *
+     * Calling this function will close the result set.
+     *
      * @param clazz The class to transform the result to
      * @param deserializer The deserializer to use for the result.
      * @return The single result from the result set.
@@ -126,6 +128,7 @@ class IronResultSet internal constructor(
                 error("Expected a single or no result, but found more than one")
             }
 
+            close()
             if(value == null) return null
 
             deserializer as ColumnDeserializer<Any, T>
@@ -136,6 +139,7 @@ class IronResultSet internal constructor(
                 error("Expected a single or no result, but found more than one")
             }
 
+            close()
             return value
         }
     }
@@ -144,6 +148,9 @@ class IronResultSet internal constructor(
      * Retrieve a single result from the result set.
      * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
      * If not then the first column will be returned as the result.
+     *
+     * Calling this function will close the result set.
+     *
      * @param deserializer The deserializer to use for the result.
      * @return The single result from the result set.
      */
@@ -160,6 +167,9 @@ class IronResultSet internal constructor(
      * Retrieve a single result from the result set.
      * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
      * If not then the first column will be returned as the result.
+     *
+     * Calling this function will close the result set.
+     *
      * @param deserializer The deserializer to use for the result.
      * @return The single result from the result set.
      */
@@ -176,6 +186,9 @@ class IronResultSet internal constructor(
      * Retrieve a single result from the result set.
      * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
      * If not then the first column will be returned as the result.
+     *
+     * Calling this function will close the result set.
+     *
      * @param deserializer The deserializer to use for the result.
      * @return The single result from the result set.
      */
@@ -192,6 +205,9 @@ class IronResultSet internal constructor(
      * Retrieve all results from the result set.
      * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
      * If not then the first column will be returned as the result.
+     *
+     * Calling this function will close the result set.
+     *
      * @param deserializer The deserializer to use for the result.
      * @return The results from the result set.
      */
@@ -217,6 +233,7 @@ class IronResultSet internal constructor(
             }
         }
 
+        close()
         return v
     }
 
@@ -224,6 +241,9 @@ class IronResultSet internal constructor(
      * Retrieve all results from the result set.
      * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
      * If not then the first column will be returned as the result.
+     *
+     * Calling this function will close the result set.
+     *
      * @param deserializer The deserializer to use for the result.
      * @return The results from the result set.
      */
@@ -240,6 +260,9 @@ class IronResultSet internal constructor(
      * Retrieve all results from the result set.
      * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
      * If not then the first column will be returned as the result.
+     *
+     * Calling this function will close the result set.
+     *
      * @param deserializer The deserializer to use for the result.
      * @return The results from the result set.
      */
@@ -259,6 +282,9 @@ class IronResultSet internal constructor(
      * Retrieve all results from the result set.
      * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
      * If not then the first column will be returned as the result.
+     *
+     * Calling this function will close the result set.
+     *
      * @param deserializer The deserializer to use for the result.
      * @return The results from the result set.
      */
