@@ -1,6 +1,6 @@
 import gg.ingot.iron.Iron;
 import gg.ingot.iron.IronSettings;
-import gg.ingot.iron.strategies.NamingStrategy;
+import gg.ingot.iron.stratergies.NamingStrategy;
 import models.UserClass;
 import models.UserOptional;
 import models.UserRecord;
@@ -63,7 +63,7 @@ class JavaDatabaseTest {
     }
     
     @Test
-    void testJavaBlocking() throws Exception {
+    void testJavaBlocking() {
         final var iron = Iron.create(
             "jdbc:sqlite::memory:",
             new IronSettings.Builder()
@@ -83,7 +83,7 @@ class JavaDatabaseTest {
     }
     
     @Test
-    void testBlockingRecord() throws Exception {
+    void testBlockingRecord() {
         final var iron = Iron.create(
             "jdbc:sqlite::memory:",
             new IronSettings.Builder()
@@ -103,7 +103,7 @@ class JavaDatabaseTest {
     }
     
     @Test
-    void testOptionalRecord() throws Exception {
+    void testOptionalRecord() {
         final var iron = Iron.create(
             "jdbc:sqlite::memory:",
             new IronSettings.Builder()

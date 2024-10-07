@@ -17,9 +17,11 @@ with our SQL Databases.
 
 Feel free to read the [Contribution Guide](https://github.com/IngotGG/iron/blob/master/CONTRIBUTING.md) to learn how to contribute to Iron or report issues.
 
-## Importing
+## Installation
 
 Tags & Releases can be found on our [Jitpack](https://jitpack.io/#gg.ingot/iron).
+You will also need to add the JDBC driver of the DBMS you're using. For more information, see 
+the [Adding a JDBC Driver](docs/connecting.md#adding-a-jdbc-driver) documentation page.
 
 ### Gradle
 
@@ -29,7 +31,10 @@ repositories {
 }
 
 dependencies {
-    implementation("gg.ingot:iron:TAG")
+    implementation("gg.ingot.iron:iron:TAG")
+    
+    // Optional, if you want to use the controller module (Kotlin only)
+    implementation("gg.ingot.iron:controller:TAG")
 }
 ```
 ### Maven
@@ -40,104 +45,23 @@ dependencies {
 </repository>
 
 <dependency>
-    <groupId>gg.ingot</groupId>
+    <groupId>gg.ingot.iron</groupId>
     <artifactId>iron</artifactId>
+    <version>TAG</version>
+</dependency>
+
+<!-- Optional, if you want to use the controller module (Kotlin only) -->
+<dependency>
+    <groupId>gg.ingot.iron</groupId>
+    <artifactId>controller</artifactId>
     <version>TAG</version>
 </dependency>
 ```
 
-## Features
-* [Simple Connection Pooling](#pooled-connection)
-* [Query Model Mapping](#query-model-mapping)
-* [Built-in JSON Field Deserialization](#json-deserialization-support)
-* Kotlin Coroutines Support
+## Documentation
 
-## Basic Usage
+Check out the [documentation](docs/README.md) for more information on how to use Iron.
 
-### Connection
-```kotlin
-@Model // model annotations are required 
-data class User(val id: Int, val firstName: String, val lastName: String)
+## License
 
-suspend fun main() {
-    val connection = Iron("jdbc:sqlite:memory:").connect()
-
-    val user = connection.transaction {
-        execute("CREATE TABLE users (id INTEGER PRIMARY KEY, firstName TEXT NOT NULL, lastName TEXT NOT NULL)")
-        execute("INSERT INTO users (firstName, lastName) VALUES ('Ingot', 'Team')")
-        
-        query("SELECT * FROM users LIMIT 1;")
-            .single<User>()
-    }
-
-    println(user)
-}
-```
-
-### Pooled Connection
-
-```kotlin
-suspend fun main() {
-    val connection = Iron(
-        "jdbc:postgresql://localhost:5432/postgres",
-        /** Increasing maximum connections automatically makes it pooled. */
-        IronSettings(
-            minimumActiveConnections = 2,
-            maximumConnections = 8
-        )
-    ).connect()
-
-    // Pooled connections are identical to single connections
-    // in terms of how you interact with them, but more connections
-    // allow for more throughput in your application.
-    val sum = connection.query("SELECT 1+1;")
-        .columnSingle<Int>() // Gets the only value from the only column, throws if there's more than 1 value or column
-
-    println(sum)
-}
-```
-
-### Query Model Mapping
-```kotlin
-@Model
-data class PartialUser(val firstName: String, val lastName: String)
-
-suspend fun main() {
-    val connection = Iron("jdbc:sqlite:memory:").connect()
-
-    // we can easily map data from our queries to a model.
-    val user = connection.query("SELECT firstName, lastName FROM users LIMIT 1;")
-        .single<PartialUser>() // Enforces a row check, throws if more or less than 1 is returned
-    
-    // Or get all the users in the query
-    val users = connection.prepare("SELECT firstName, lastName FROM users WHERE age > ?", 18)
-        .all<PartialUser>()
-    
-    println(user)
-    println(users.size)
-}
-```
-
-### JSON Deserialization Support
-```kotlin
-data class Example(val field: String)
-@Model
-data class ExampleModel(
-    @Column(json = true)
-    val example: Example
-)
-
-suspend fun main() {
-    val connection = Iron(
-        "jdbc:sqlite:memory:",
-        IronSettings(
-            /** Built-in GSON & Kotlinx Serialization support. */
-            serialization = SerializationAdapter.Gson(Gson())
-        )
-    ).connect()
-
-    val model = connection.query("SELECT example FROM table LIMIT 1;")
-        .singleNullable<ExampleModel>()
-    println(model?.example)
-}
-```
+Iron is licensed under the [Apache License, Version 2.0](LICENCE).

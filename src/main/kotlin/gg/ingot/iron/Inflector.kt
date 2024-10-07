@@ -1,7 +1,7 @@
 package gg.ingot.iron
 
 import gg.ingot.iron.annotations.Column
-import gg.ingot.iron.strategies.NamingStrategy
+import gg.ingot.iron.stratergies.NamingStrategy
 import org.atteo.evo.inflector.English
 import java.lang.reflect.Field
 import kotlin.reflect.full.primaryConstructor

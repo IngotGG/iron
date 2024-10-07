@@ -5,17 +5,17 @@ import gg.ingot.iron.executor.impl.CompletableIronExecutor
 import gg.ingot.iron.executor.impl.CoroutineIronExecutor
 import gg.ingot.iron.executor.impl.DeferredIronExecutor
 import gg.ingot.iron.executor.transaction.Transaction
+import gg.ingot.iron.model.ModelReader
 import gg.ingot.iron.pool.ConnectionPool
 import gg.ingot.iron.pool.MultiConnectionPool
 import gg.ingot.iron.pool.SingleConnectionPool
-import gg.ingot.iron.representation.DBMS
-import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.sql.params.SqlParams
-import gg.ingot.iron.sql.params.SqlParamsBuilder
+import gg.ingot.iron.sql.binding.SqlBindings
 import gg.ingot.iron.transformer.ModelTransformer
-import gg.ingot.iron.transformer.ResultTransformer
+import gg.ingot.iron.transformer.PlaceholderTransformer
 import gg.ingot.iron.transformer.ValueTransformer
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.sql.Connection
@@ -30,24 +30,37 @@ import java.sql.Connection
 class Iron internal constructor(
     private val connectionString: String,
     val settings: IronSettings
-) {
+): AutoCloseable {
     /** The inflector used to transform names into their corresponding requested form. */
     val inflector = Inflector(this)
 
     /** The model transformer used to transform models into their corresponding entity representation. */
-    val modelTransformer = ModelTransformer(settings, inflector)
+    val modelReader = ModelReader(this)
 
     /** The connection pool used to manage connections to the database. */
     internal var pool: ConnectionPool? = null
 
+    /** The placeholder transformer used to transform values from the result set into their corresponding types. */
+    internal val placeholderTransformer = PlaceholderTransformer(this)
+
     /** The value transformer used to transform values from the result set into their corresponding types. */
-    internal val valueTransformer = ValueTransformer(settings.serialization)
+    internal val valueTransformer = ValueTransformer(this)
 
     /** The result transformer used to transform the result set into a model. */
-    internal val resultTransformer = ResultTransformer(modelTransformer, valueTransformer)
+    internal val modelTransformer = ModelTransformer(this)
 
     /** The default executor to use if one isn't specified */
     private val executor = CoroutineIronExecutor(this)
+
+    /** The mutex used to synchronize access to the pool. */
+    internal var mutex: Mutex? = null
+
+    /** Listeners to be notified of when Iron is closed to allow for additional cleanup. */
+    val onCloseListeners = mutableListOf<Runnable>()
+
+    /** Whether Iron is currently closed. */
+    val isClosed: Boolean
+        get() = pool == null
 
     /**
      * Establishes a connection to the database using the provided connection string.
@@ -74,10 +87,11 @@ class Iron internal constructor(
 
         pool = if(settings.isMultiConnectionPool) {
             logger.trace("Using multi connection pool.")
-            MultiConnectionPool(connectionString, settings)
+            MultiConnectionPool(connectionString, this)
         } else {
             logger.trace("Using single connection pool.")
-            SingleConnectionPool(connectionString, settings)
+            mutex = Mutex()
+            SingleConnectionPool(connectionString, this)
         }
 
         return this
@@ -114,11 +128,19 @@ class Iron internal constructor(
      * @since 1.0
      */
     suspend fun <T : Any?> use(block: suspend (Connection) -> T): T {
+        mutex?.lock()
+
         val connection = pool?.connection()
             ?: error("Connection is not open, call connect() before using the connection.")
 
-        return block(connection)
-            .also { pool?.release(connection) }
+        val response = try {
+            block(connection)
+        } finally {
+            pool?.release(connection)
+            mutex?.unlock()
+        }
+
+        return response
     }
 
     /**
@@ -126,20 +148,36 @@ class Iron internal constructor(
      * @param block The closure to execute with the connection.
      * @since 1.0
      */
-    fun <T : Any?> useBlocking(block: (Connection) -> T): T {
-        val connection = pool?.connection()
-            ?: error("Connection is not open, call connect() before using the connection.")
+    fun <T : Any?> useBlocking(block: (Connection) -> T): T = runBlocking {
+        this@Iron.use(block)
+    }
 
-        return block(connection)
-            .also { pool?.release(connection) }
+    /**
+     * Pass a listener to be notified when the connection is closed.
+     * @param listener The listener to be notified.
+     * @return The iron instance for chaining.
+     * @since 2.0
+     */
+    fun onClose(listener: Runnable): Iron {
+        onCloseListeners.add(listener)
+        return this
     }
 
     /**
      * Closes the connection to the database.
      * @since 1.0
      */
-    fun close() {
-        pool?.close()
+    override fun close() {
+        close(false)
+    }
+
+    /**
+     * Closes the connection to the database.
+     * @since 1.0
+     */
+    fun close(force: Boolean = false) {
+        pool?.close(force)
+        pool = null
     }
 
     /**
@@ -184,38 +222,21 @@ class Iron internal constructor(
      * @since 1.0
      */
     suspend fun prepare(@Language("SQL") statement: String, vararg values: Any?): IronResultSet {
+        println("values (2): ${values.joinToString(", ")}")
         return executor.prepare(statement, *values)
-    }
-
-    /**
-     * Prepares a statement on the database. This method should be preferred over [execute] for security reasons. This
-     * will take an [ExplodingModel] and extract the values from it and put them in the query for you.
-     * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
-     * the values, any values passed in through this parameter is not sanitized.
-     * @param model The model to get the data from
-     * @return The prepared statement.
-     * @since 1.0
-     */
-    @JvmName("prepareExplodingModel")
-    suspend fun prepare(@Language("SQL") statement: String, model: ExplodingModel): IronResultSet {
-        return executor.prepare(statement, model)
-    }
-
-    @JvmName("prepareBuilder")
-    suspend fun prepare(@Language("SQL") statement: String, params: SqlParamsBuilder): IronResultSet {
-        return executor.prepare(statement, params)
     }
 
     /**
      * Prepares a statement on the database. This method should be preferred over [execute] for security reasons.
      * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
      * the values, any values passed in through this parameter is not sanitized.
-     * @param values The values to bind to the statement.
+     * @param variable The variable to bind to the statement.
+     * @param variables The variables to bind to the statement.
      * @return The prepared statement.
      */
-    @JvmName("prepareSqlParams")
-    suspend fun prepare(@Language("SQL") statement: String, values: SqlParams): IronResultSet {
-        return executor.prepare(statement, values)
+    @JvmName("prepareBindings")
+    suspend fun prepare(@Language("SQL") statement: String, variable: SqlBindings, vararg variables: SqlBindings): IronResultSet {
+        return executor.prepare(statement, variable, *variables)
     }
 
     companion object {

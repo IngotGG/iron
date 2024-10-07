@@ -5,19 +5,22 @@ import gg.ingot.iron.serialization.ColumnAdapter
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.serialization.SerializationAdapter
-import gg.ingot.iron.strategies.NamingStrategy
+import gg.ingot.iron.stratergies.EnumTransformation
+import gg.ingot.iron.stratergies.NamingStrategy
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import java.util.*
 import kotlin.reflect.KClass
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toKotlinDuration
 
 /**
  * Settings for the Iron connection pool.
  * @author DebitCardz
  * @since 1.2
  */
+
 data class IronSettings internal constructor(
     /** Minimum active connections in the pool. */
     var minimumActiveConnections: Int = 1,
@@ -25,6 +28,8 @@ data class IronSettings internal constructor(
     var maximumConnections: Int = minimumActiveConnections,
     /** The timeout for connection polling. */
     var connectionPollTimeout: Duration = 30.seconds,
+    /** How long connections should last before being closed if above the minimum */
+    var connectionTTL: Duration = 10.seconds,
     /** The driver to use for the connection pool. */
     var driver: DatabaseDriver? = null,
     /** The serialization adapter to use for models. */
@@ -35,6 +40,10 @@ data class IronSettings internal constructor(
     var namingStrategy: NamingStrategy = NamingStrategy.NONE,
     /** The dispatcher to use when running coroutines. */
     var dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    /** How enums are handled when converting to and from the database. */
+    var enumTransformation: EnumTransformation = EnumTransformation.Name,
+    /** Whether booleans can only be read from the database as booleans and not strings (ex: yes, 1, true). */
+    var strictBooleans: Boolean = false,
 ) {
     var adapters: Adapters? = null
         private set
@@ -146,31 +155,40 @@ data class IronSettings internal constructor(
         private var minimumActiveConnections: Int = 1
         private var maximumConnections: Int = minimumActiveConnections
         private var connectionPollTimeout: Duration = 30.seconds
+        private var connectionTTL: Duration = 10.seconds
         private var driver: DatabaseDriver? = null
         private var serialization: SerializationAdapter? = null
         private var driverProperties: Properties? = null
         private var namingStrategy: NamingStrategy = NamingStrategy.NONE
         private var dispatcher: CoroutineDispatcher = Dispatchers.IO
+        private var enumTransformation: EnumTransformation = EnumTransformation.Name
+        private var strictBooleans: Boolean = false
 
         fun minimumActiveConnections(minimumActiveConnections: Int) = apply { this.minimumActiveConnections = minimumActiveConnections }
         fun maximumConnections(maximumConnections: Int) = apply { this.maximumConnections = maximumConnections }
-        fun connectionPollTimeout(connectionPollTimeout: Duration) = apply { this.connectionPollTimeout = connectionPollTimeout }
+        fun connectionPollTimeout(connectionPollTimeout: java.time.Duration) = apply { this.connectionPollTimeout = connectionPollTimeout.toKotlinDuration() }
+        fun connectionTTL(ttl: java.time.Duration) = apply { this.connectionTTL = ttl.toKotlinDuration() }
         fun driver(driver: DatabaseDriver) = apply { this.driver = driver }
         fun serialization(serialization: SerializationAdapter) = apply { this.serialization = serialization }
         fun driverProperties(driverProperties: Properties) = apply { this.driverProperties = driverProperties }
         fun namingStrategy(namingStrategy: NamingStrategy) = apply { this.namingStrategy = namingStrategy }
         fun dispatcher(dispatcher: CoroutineDispatcher) = apply { this.dispatcher = dispatcher }
+        fun enumTransformation(enumTransformation: EnumTransformation) = apply { this.enumTransformation = enumTransformation }
+        fun strictBooleans(strictBooleans: Boolean) = apply { this.strictBooleans = strictBooleans }
 
         fun build(): IronSettings {
             return IronSettings(
                 minimumActiveConnections,
                 maximumConnections,
                 connectionPollTimeout,
+                connectionTTL,
                 driver,
                 serialization,
                 driverProperties,
                 namingStrategy,
-                dispatcher
+                dispatcher,
+                enumTransformation,
+                strictBooleans
             )
         }
     }

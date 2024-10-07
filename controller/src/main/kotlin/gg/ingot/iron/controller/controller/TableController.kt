@@ -47,7 +47,7 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @return An entity model for the table
      */
     val model: EntityModel by lazy {
-        iron.modelTransformer.transform(clazz)
+        iron.modelReader.read(clazz)
     }
 
     /**
@@ -56,14 +56,14 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @return A unique selector for the entity
      */
     fun uniqueSelector(entity: T): SqlPredicate {
-        val primaryKey = model.fields.firstOrNull { it.isPrimaryKey }
+        val primaryKey = model.fields.firstOrNull { it.field.isPrimaryKey() }
         if (primaryKey == null) {
             throw IllegalStateException("No primary key found for ${clazz.simpleName}, mark one with @Column(primaryKey = true)")
         }
 
         return SqlPredicate.where(
-            "${primaryKey.columnName} = :${primaryKey.variableName}",
-            primaryKey.variableName to primaryKey.value(entity)
+            "${primaryKey.field.column} = :${primaryKey.field.variable}",
+            primaryKey.field.variable to primaryKey.value(entity)
         )
     }
 

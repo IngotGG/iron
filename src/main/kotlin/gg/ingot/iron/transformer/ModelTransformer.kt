@@ -1,182 +1,96 @@
 package gg.ingot.iron.transformer
 
-import gg.ingot.iron.Inflector
-import gg.ingot.iron.IronSettings
-import gg.ingot.iron.annotations.Column
-import gg.ingot.iron.annotations.Model
-import gg.ingot.iron.annotations.retrieveDeserializer
-import gg.ingot.iron.annotations.retrieveSerializer
-import gg.ingot.iron.representation.EntityField
+import gg.ingot.iron.Iron
 import gg.ingot.iron.representation.EntityModel
-import gg.ingot.iron.serialization.ColumnDeserializer
-import gg.ingot.iron.serialization.ColumnSerializer
-import gg.ingot.iron.sql.params.ColumnJsonField
-import gg.ingot.iron.sql.params.ColumnSerializedField
-import gg.ingot.iron.strategies.NamingStrategy
-import java.lang.reflect.Field
-import java.lang.reflect.Modifier
-import java.util.concurrent.ConcurrentHashMap
-import kotlin.reflect.KClass
-import kotlin.reflect.full.declaredMemberProperties
-import kotlin.reflect.full.findAnnotation
+import gg.ingot.iron.transformer.models.ConstructorDetails
+import java.sql.ResultSet
+import kotlin.jvm.internal.DefaultConstructorMarker
 import kotlin.reflect.full.primaryConstructor
-import kotlin.reflect.jvm.javaField
-import kotlin.reflect.jvm.kotlinProperty
+import kotlin.reflect.jvm.javaConstructor
 
 /**
- * Transforms a model to an entity representation which holds information about the class model, allowing
- * for the model to be easily built. This class interfaces with reflection to build the entity.
- * @author Santio
- * @since 1.0
+ * Converts a result set into a model representation, allowing for the model to be easily built.
+ * @author santio
+ * @since 2.0
  */
-class ModelTransformer(
-    private val settings: IronSettings,
-    private val inflector: Inflector
+internal class ModelTransformer(
+    private val iron: Iron
 ) {
 
     /**
-     * Transforms a class into an entity model, which holds information about the reflected class.
-     * @param clazz The class to transform into an entity model.
-     * @return The entity model representation of the class.
+     * Reads the result set and transforms it into a model.
+     * @param result The result set to read from.
+     * @param clazz The class to transform the result to.
+     * @return The model from the result set.
      */
-    fun transform(clazz: Class<*>): EntityModel {
-        return models.getOrPut(clazz) {
-            val fields = mutableListOf<EntityField>()
-            val modelAnnotation = clazz.annotations.find { it is Model } as Model?
+    @Suppress("UNCHECKED_CAST")
+    fun <T : Any> readModel(result: ResultSet, clazz: Class<T>): T {
+        val entity = iron.modelReader.read(clazz)
+        val details = getConstructor(clazz, entity)
 
-            val declaredFields = clazz.declaredFields.associateWith {
-                it.kotlinProperty?.name ?: it.name
+        val accessible = details.constructor.trySetAccessible()
+        if (!accessible) error("Failed to make constructor for '${clazz.simpleName}' accessible")
+
+        if (details.setParameters) {
+            val model: T = details.constructor.newInstance() as T
+
+            for (column in entity.fields) {
+                val value = iron.valueTransformer.fromResultSet(result, column)
+                column.field.java.set(model, value)
             }
 
-            val properties = if (clazz.kotlin.isData) {
-                // It's kotlin
-                val kotlin = clazz.kotlin
-                val members = kotlin.declaredMemberProperties
-                val parameters = kotlin.primaryConstructor?.parameters
-                    ?: error("Primary constructor not found for data class: $clazz")
-
-                parameters.associate { parameter ->
-                    val field = members.find { it.name == parameter.name }
-                        ?: error("Field not found for parameter: $parameter")
-
-                    field.javaField!! to field.findAnnotation<Column>()
-                }
-            } else {
-                declaredFields.keys.associateWith { it.annotations.find { it is Column } as Column? }
-            }
-
-            var hasPrimaryKey = false
-            for((field, annotation) in properties.entries) {
-                field.isAccessible = true
-
-                if (annotation?.ignore == true || field.isSynthetic || Modifier.isTransient(field.modifiers)) {
-                    continue
-                }
-
-                if (annotation?.primaryKey == true) {
-                    if (hasPrimaryKey) {
-                        throw IllegalArgumentException("Iron doesn't support having multiple primary keys in a model")
-                    }
-
-                    hasPrimaryKey = true
-                }
-
-                fields.add(EntityField(
-                    field = field,
-                    columnName = retrieveName(field, annotation),
-                    variableName = annotation?.variable?.takeIf { it.isNotBlank() } ?: field.name,
-                    nullable = field.kotlinProperty?.returnType?.isMarkedNullable ?: annotation?.nullable ?: false,
-                    isJson = annotation?.json ?: false,
-                    isPrimaryKey = annotation?.primaryKey ?: false,
-                    serializer = retrieveSerializer(field, annotation),
-                    deserializer = retrieveDeserializer(field, annotation)
-                ))
-            }
-
-            val strategy = modelAnnotation?.namingStrategy
-                .takeIf { it != NamingStrategy.NONE }
-                ?: settings.namingStrategy
-
-            EntityModel(
-                clazz,
-                fields,
-                strategy
-            )
-        }
-    }
-
-    /**
-     * Transforms a class into an entity model, which holds information about the reflected class.
-     * @param clazz The kotlin class to transform into an entity model.
-     * @return The entity model representation of the class.
-     */
-    fun transform(clazz: KClass<*>): EntityModel {
-        return transform(clazz.java)
-    }
-
-    /**
-     * Get the value of a field in an exploding model
-     * @param model The exploding model
-     * @param field The entity representing the reflection details of the field
-     * @return The value of the field
-     */
-    internal fun getModelValue(model: Any, field: EntityField): Any? {
-        if (!model.javaClass.isAnnotationPresent(Model::class.java)) {
-            throw IllegalArgumentException("Model must be annotated with @Model")
-        }
-
-        val value = field.field.get(model)
-            ?: return null
-
-        return if (field.serializer != null) {
-            ColumnSerializedField(value, field.serializer)
-        } else if (field.isJson) {
-            ColumnJsonField(value)
+            return model
         } else {
-            value
+            val arguments = entity.fields.map { field ->
+                iron.valueTransformer.fromResultSet(result, field)
+            }.toMutableList()
+
+            // Handle default constructor marker (for kotlin data classes)
+            val parameters = details.constructor.parameters
+            if (parameters.isNotEmpty() && parameters.last().type == DefaultConstructorMarker::class.java) {
+                arguments.add(null)
+            }
+
+            try {
+                return details.constructor.newInstance(*arguments.toTypedArray()) as T
+            } catch (ex: IllegalArgumentException) {
+
+                val expectedTypes = details.constructor.parameters.joinToString(", ") { it.type.simpleName }
+                val argTypes = arguments.joinToString(", ") { it?.javaClass?.simpleName ?: "null" }
+
+                throw RuntimeException("Invalid arguments passed for query, expected '[${expectedTypes}]' but got '[${argTypes}]'", ex)
+
+            } catch (ex: Exception) {
+                throw RuntimeException("Failed to create instance for model '${clazz.simpleName}'", ex)
+            }
         }
     }
 
     /**
-     * Retrieve the name for the given field.
-     * @param field The field to retrieve the name for.
-     * @param annotation The column annotation for the field.
-     * @return The name for the field.
+     * Gets the constructor to use for the model.
+     * @param clazz The class to get the constructor for.
+     * @return The constructor details.
      */
-    private fun retrieveName(
-        field: Field,
-        annotation: Column?
-    ): String {
-        return annotation?.name?.takeIf { it.isNotBlank() } ?: inflector.columnName(field)
-    }
+    private fun getConstructor(clazz: Class<*>, entity: EntityModel): ConstructorDetails {
+        // Try to use a constructor with all parameters, since that's the easiest to work with
+        val fullConstructor = if (clazz.isRecord) {
+            clazz.constructors.firstOrNull { it.parameters.size == entity.fields.size }
+        } else if (clazz.kotlin.isData) {
+            clazz.kotlin.primaryConstructor?.javaConstructor
+        } else {
+            clazz.constructors.firstOrNull { it.parameters.size == entity.fields.size }
+        }
 
-    /**
-     * Retrieve the deserializer for the given field.
-     * @param annotation The column annotation for the field.
-     * @return The deserializer for the field if it exists, otherwise null.
-     */
-    private fun retrieveDeserializer(
-        field: Field,
-        annotation: Column?
-    ): ColumnDeserializer<*, *>? {
-        return annotation?.retrieveDeserializer() ?: settings.adapters?.retrieveDeserializer(field.type)
-    }
+        if (fullConstructor != null) {
+            return ConstructorDetails(fullConstructor, false)
+        }
 
-    /**
-     * Retrieve the serializer for the given field.
-     * @param field The field to retrieve the serializer for.
-     * @param annotation The column annotation for the field.
-     * @return The serializer for the field if it exists, otherwise null.
-     */
-    private fun retrieveSerializer(
-        field: Field,
-        annotation: Column?
-    ): ColumnSerializer<*, *>? {
-        return annotation?.retrieveSerializer() ?: settings.adapters?.retrieveSerializer(field.type)
-    }
+        // Try to use an empty constructor, and we'll use reflection to set the parameters
+        val emptyConstructor = clazz.constructors.firstOrNull { it.parameters.isEmpty() }
+        if (emptyConstructor != null) {
+            return ConstructorDetails(emptyConstructor, true)
+        }
 
-    companion object {
-        /** Cached map of [EntityModel]. */
-        private val models = ConcurrentHashMap<Class<*>, EntityModel>()
+        error("Models require either a constructor with all parameters or an empty constructor, but found none for '${clazz.simpleName}'")
     }
 }

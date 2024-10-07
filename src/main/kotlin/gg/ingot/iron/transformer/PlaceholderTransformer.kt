@@ -1,5 +1,6 @@
 package gg.ingot.iron.transformer
 
+import gg.ingot.iron.Iron
 import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.serialization.SerializationAdapter
 import gg.ingot.iron.sql.params.ColumnJsonField
@@ -13,7 +14,7 @@ import java.util.*
  * @since 1.3
  * @author DebitCardz
  */
-internal object PlaceholderTransformer {
+internal class PlaceholderTransformer(private val iron: Iron) {
     private val logger = LoggerFactory.getLogger(PlaceholderTransformer::class.java)
 
     fun convert(
@@ -22,9 +23,11 @@ internal object PlaceholderTransformer {
     ): Any? {
         return when(value) {
             null -> null
+            is Collection<*> -> convert(value.toTypedArray(), serializationAdapter)
+            is Array<*> -> value.map { convert(it, serializationAdapter) }.toTypedArray()
             is ColumnSerializedField -> convertSerialized(value)
             is ColumnJsonField -> convertJson(value, serializationAdapter)
-            is Enum<*> -> value.name
+            is Enum<*> -> iron.settings.enumTransformation.serialize(value)
             is Optional<*> -> value.orElse(null)
             else -> value
         }
@@ -60,5 +63,41 @@ internal object PlaceholderTransformer {
             ?: return null
 
         return serializationAdapter.serialize(inner, value.value::class.java)
+    }
+
+    fun getVariables(statement: String): List<String> {
+        return SQL_PLACEHOLDER_REGEX.findAll(statement).map { it.groupValues[1] }
+            .filter { it.isNotBlank() }
+            .toList()
+    }
+
+    fun parseParams(statement: String, params: Map<String, Any?>): Pair<String, List<Any?>> {
+        val insertedValues = mutableListOf<Any?>()
+
+        val parsedStatement = SQL_PLACEHOLDER_REGEX.replace(statement) { matchResult ->
+            val group = matchResult.groupValues.first()
+
+            // cast
+            if(group.startsWith("::")) {
+                group
+                // wrapped in text or something
+            } else if(SURROUNDING_QUOTES.any { it == group.first() && it == group.last() }) {
+                group
+            } else {
+                val name = matchResult.groupValues[1]
+                insertedValues.add(params[name])
+                "?"
+            }
+        }
+
+        return parsedStatement to insertedValues
+    }
+
+    private companion object {
+        /** The regex for SQL placeholders. */
+        val SQL_PLACEHOLDER_REGEX = "'(?:\\\\'|[^'])*'|\"(?:\\\\\"|[^\"])*\"|`(?:\\\\`|[^`])*`|::?(\\w+)".toRegex()
+
+        /** Quote characters that may wrap placeholders. */
+        val SURROUNDING_QUOTES = arrayOf('`', '\'', '"')
     }
 }
