@@ -8,8 +8,8 @@ import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.representation.EntityModel
 import gg.ingot.iron.sql.params.ColumnJsonField
 import gg.ingot.iron.sql.params.ColumnSerializedField
-import gg.ingot.iron.strategies.EnumTransformation
-import gg.ingot.iron.strategies.NamingStrategy
+import gg.ingot.iron.stratergies.EnumTransformation
+import gg.ingot.iron.stratergies.NamingStrategy
 import org.jetbrains.annotations.Nullable
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass

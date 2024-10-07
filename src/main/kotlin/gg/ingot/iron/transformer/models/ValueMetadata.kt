@@ -4,7 +4,7 @@ import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.sql.binding.types.JsonType
-import gg.ingot.iron.strategies.EnumTransformation
+import gg.ingot.iron.stratergies.EnumTransformation
 import java.util.*
 
 data class ValueMetadata private constructor(

@@ -3,8 +3,8 @@ package gg.ingot.iron.representation
 import gg.ingot.iron.model.ModelField
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.ColumnSerializer
-import gg.ingot.iron.strategies.EnumTransformation
-import gg.ingot.iron.strategies.NamingStrategy
+import gg.ingot.iron.stratergies.EnumTransformation
+import gg.ingot.iron.stratergies.NamingStrategy
 import java.lang.reflect.ParameterizedType
 
 /**

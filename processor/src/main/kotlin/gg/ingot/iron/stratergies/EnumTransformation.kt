@@ -1,6 +1,4 @@
-package gg.ingot.iron.strategies
-
-import gg.ingot.iron.IronSettings
+package gg.ingot.iron.stratergies
 
 /**
  * Transforms an enum value into a string and vice versa.
@@ -10,7 +8,6 @@ import gg.ingot.iron.IronSettings
  * changing to use the [EnumTransformation.Ordinal] transformation. You can also implement your own transformation
  * by implementing the [EnumTransformation] interface.
  *
- * @see IronSettings.enumTransformation
  * @author santio
  * @since 2.0
  */

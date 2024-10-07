@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin)
     alias(libs.plugins.kotlinx.serialization)
+    alias(libs.plugins.ksp)
 
     `maven-publish`
 }
@@ -51,6 +52,9 @@ dependencies {
     implementation(kotlin("reflect"))
     compileOnly(libs.kotlinx.coroutines)
 
+    // core modules
+    api(project(":processor"))
+
     // serialization
     compileOnly(libs.kotlinx.serialization)
     compileOnly(libs.gson)
@@ -61,8 +65,8 @@ dependencies {
     // unit tests
     testImplementation(kotlin("test"))
     testImplementation(libs.bundles.testing)
-
     testImplementation(project(":controller"))
+    kspTest(rootProject)
 
     // serialization
     testImplementation(libs.kotlinx.serialization)

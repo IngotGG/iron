@@ -3,7 +3,7 @@ import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.sql.binding.Bindings
 import gg.ingot.iron.sql.binding.bind
-import gg.ingot.iron.strategies.EnumTransformation
+import gg.ingot.iron.stratergies.EnumTransformation
 import gg.ingot.iron.test.IronTest
 import io.kotest.core.annotation.AutoScan
 import io.kotest.core.spec.style.DescribeSpec

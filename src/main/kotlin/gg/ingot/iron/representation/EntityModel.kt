@@ -1,6 +1,6 @@
 package gg.ingot.iron.representation
 
-import gg.ingot.iron.strategies.NamingStrategy
+import gg.ingot.iron.stratergies.NamingStrategy
 
 /**
  * A representation of a class (of which that class is a database entity). This holds information retrieved from

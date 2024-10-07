@@ -1,7 +1,7 @@
 package gg.ingot.iron.annotations
 
 import gg.ingot.iron.serialization.*
-import gg.ingot.iron.strategies.EnumTransformation
+import gg.ingot.iron.stratergies.EnumTransformation
 import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance
 
@@ -53,7 +53,7 @@ annotation class Column(
     val serializer: KClass<out ColumnSerializer<*, *>> = EmptySerializer::class
 )
 
-internal fun Column.retrieveDeserializer(): ColumnDeserializer<*, *>? {
+fun Column.retrieveDeserializer(): ColumnDeserializer<*, *>? {
     if(adapter != EmptyAdapter::class) {
         return adapter.objectInstance
             ?: adapter.createInstance()
@@ -67,7 +67,7 @@ internal fun Column.retrieveDeserializer(): ColumnDeserializer<*, *>? {
     return null
 }
 
-internal fun Column.retrieveSerializer(): ColumnSerializer<*, *>? {
+fun Column.retrieveSerializer(): ColumnSerializer<*, *>? {
     if(adapter != EmptyAdapter::class) {
         return adapter.objectInstance
             ?: adapter.createInstance()
