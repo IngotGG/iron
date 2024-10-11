@@ -5,7 +5,7 @@ import gg.ingot.iron.controller.controller.TableController
 import gg.ingot.iron.controller.engine.DBMSEngine
 import gg.ingot.iron.controller.query.SQL
 import gg.ingot.iron.controller.query.SqlFilter
-import gg.ingot.iron.sql.binding.Bindings
+import gg.ingot.iron.bindings.Bindings
 
 @Suppress("DuplicatedCode")
 class PostgresEngine<T: Any>(

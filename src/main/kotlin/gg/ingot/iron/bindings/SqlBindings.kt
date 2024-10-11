@@ -1,4 +1,4 @@
-package gg.ingot.iron.sql.binding
+package gg.ingot.iron.bindings
 
 import gg.ingot.iron.Iron
 

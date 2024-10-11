@@ -3,7 +3,7 @@ package gg.ingot.iron.executor.transaction
 import gg.ingot.iron.Iron
 import gg.ingot.iron.executor.impl.BlockingIronExecutor
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.sql.binding.SqlBindings
+import gg.ingot.iron.bindings.SqlBindings
 import org.intellij.lang.annotations.Language
 import java.sql.Connection
 

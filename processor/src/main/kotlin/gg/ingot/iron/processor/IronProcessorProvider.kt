@@ -9,8 +9,8 @@ import com.google.devtools.ksp.processing.SymbolProcessorProvider
  * @author santio
  * @since 2.0
  */
-class IronProcessorProvider: SymbolProcessorProvider {
+internal class IronProcessorProvider: SymbolProcessorProvider {
     override fun create(environment: SymbolProcessorEnvironment): SymbolProcessor {
-        return IronProcessor(environment)
+        return IronKspProcessor(environment)
     }
 }

@@ -1,6 +1,6 @@
 package gg.ingot.iron
 
-import gg.ingot.iron.representation.DatabaseDriver
+import gg.ingot.iron.representation.DBMS
 import gg.ingot.iron.serialization.ColumnAdapter
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.ColumnSerializer
@@ -31,7 +31,7 @@ data class IronSettings internal constructor(
     /** How long connections should last before being closed if above the minimum */
     var connectionTTL: Duration = 10.seconds,
     /** The driver to use for the connection pool. */
-    var driver: DatabaseDriver? = null,
+    var driver: DBMS? = null,
     /** The serialization adapter to use for models. */
     var serialization: SerializationAdapter? = null,
     /** Additional properties to pass into the [java.sql.DriverManager] */
@@ -156,7 +156,7 @@ data class IronSettings internal constructor(
         private var maximumConnections: Int = minimumActiveConnections
         private var connectionPollTimeout: Duration = 30.seconds
         private var connectionTTL: Duration = 10.seconds
-        private var driver: DatabaseDriver? = null
+        private var driver: DBMS? = null
         private var serialization: SerializationAdapter? = null
         private var driverProperties: Properties? = null
         private var namingStrategy: NamingStrategy = NamingStrategy.NONE
@@ -168,7 +168,7 @@ data class IronSettings internal constructor(
         fun maximumConnections(maximumConnections: Int) = apply { this.maximumConnections = maximumConnections }
         fun connectionPollTimeout(connectionPollTimeout: java.time.Duration) = apply { this.connectionPollTimeout = connectionPollTimeout.toKotlinDuration() }
         fun connectionTTL(ttl: java.time.Duration) = apply { this.connectionTTL = ttl.toKotlinDuration() }
-        fun driver(driver: DatabaseDriver) = apply { this.driver = driver }
+        fun driver(driver: DBMS) = apply { this.driver = driver }
         fun serialization(serialization: SerializationAdapter) = apply { this.serialization = serialization }
         fun driverProperties(driverProperties: Properties) = apply { this.driverProperties = driverProperties }
         fun namingStrategy(namingStrategy: NamingStrategy) = apply { this.namingStrategy = namingStrategy }

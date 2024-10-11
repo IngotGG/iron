@@ -3,7 +3,7 @@ package gg.ingot.iron.executor.impl
 import gg.ingot.iron.Iron
 import gg.ingot.iron.executor.IronConnection
 import gg.ingot.iron.executor.transaction.Transaction
-import gg.ingot.iron.sql.binding.SqlBindings
+import gg.ingot.iron.bindings.SqlBindings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob

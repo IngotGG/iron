@@ -3,7 +3,7 @@ package gg.ingot.iron.transformer.models
 import gg.ingot.iron.representation.EntityField
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.serialization.ColumnSerializer
-import gg.ingot.iron.sql.binding.types.JsonType
+import gg.ingot.iron.bindings.types.JsonType
 import gg.ingot.iron.stratergies.EnumTransformation
 import java.util.*
 

@@ -1,7 +1,7 @@
 package gg.ingot.iron.controller.query
 
-import gg.ingot.iron.sql.binding.SqlBindings
-import gg.ingot.iron.sql.binding.bind
+import gg.ingot.iron.bindings.SqlBindings
+import gg.ingot.iron.bindings.bind
 
 class SqlPredicate internal constructor(
     val queries: List<String>,

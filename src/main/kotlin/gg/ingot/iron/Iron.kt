@@ -9,8 +9,9 @@ import gg.ingot.iron.model.ModelReader
 import gg.ingot.iron.pool.ConnectionPool
 import gg.ingot.iron.pool.MultiConnectionPool
 import gg.ingot.iron.pool.SingleConnectionPool
+import gg.ingot.iron.representation.DBMS
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.sql.binding.SqlBindings
+import gg.ingot.iron.bindings.SqlBindings
 import gg.ingot.iron.transformer.ModelTransformer
 import gg.ingot.iron.transformer.PlaceholderTransformer
 import gg.ingot.iron.transformer.ValueTransformer

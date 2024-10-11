@@ -5,7 +5,7 @@ import gg.ingot.iron.stratergies.EnumTransformation
 import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance
 
-@Target(AnnotationTarget.PROPERTY)
+@Target(AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER, AnnotationTarget.FIELD)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class Column(
     /**
@@ -40,6 +40,11 @@ annotation class Column(
      * controller module
      */
     val primaryKey: Boolean = false,
+
+    /**
+     * Whether this column auto increments in the database
+     */
+    val autoIncrement: Boolean = false,
 
     /**
      * The enum transformation to use for this column, defaults to Iron's default (EnumTransformation::class),

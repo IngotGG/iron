@@ -78,3 +78,7 @@ buildscript {
         classpath(kotlin("gradle-plugin", version = libs.versions.kotlin.get()))
     }
 }
+
+ksp {
+    arg("ksp.incremental", "false")
+}

@@ -1,8 +1,8 @@
 package gg.ingot.iron.test.suites.common
 import gg.ingot.iron.IronSettings
 import gg.ingot.iron.annotations.Model
-import gg.ingot.iron.sql.binding.Bindings
-import gg.ingot.iron.sql.binding.bind
+import gg.ingot.iron.bindings.Bindings
+import gg.ingot.iron.bindings.bind
 import gg.ingot.iron.stratergies.EnumTransformation
 import gg.ingot.iron.test.IronTest
 import io.kotest.core.annotation.AutoScan

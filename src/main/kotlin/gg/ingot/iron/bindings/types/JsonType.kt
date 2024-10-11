@@ -1,4 +1,4 @@
-package gg.ingot.iron.sql.binding.types
+package gg.ingot.iron.bindings.types
 
 import kotlin.reflect.KClass
 

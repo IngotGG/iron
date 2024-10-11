@@ -38,6 +38,7 @@ internal class PlaceholderTransformer(private val iron: Iron) {
      * @param value The serialized field to convert.
      * @return The converted serialized field.
      */
+    @Suppress("UNCHECKED_CAST")
     private fun convertSerialized(value: ColumnSerializedField): Any? {
         logger.trace("Deserializing parameter as a serialized field {}.", value.serializer::class.simpleName)
 
