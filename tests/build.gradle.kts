@@ -3,6 +3,8 @@ plugins {
 }
 
 dependencies {
+    implementation(libs.test.driver.sqlite)
+    implementation(libs.test.logback)
     implementation(rootProject)
     ksp(rootProject)
 }

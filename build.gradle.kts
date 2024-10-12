@@ -50,7 +50,10 @@ allprojects {
 dependencies {
     // kotlin
     implementation(kotlin("reflect"))
-    compileOnly(libs.kotlinx.coroutines)
+    implementation(libs.kotlinx.coroutines)
+
+    // database
+    implementation(libs.hikari)
 
     // core modules
     api(project(":processor"))

@@ -69,7 +69,7 @@ object IronTest {
      */
     fun pooled(): IronSettings {
         return IronSettings().apply {
-            maximumConnections = 3
+            maxConnections = 3
             namingStrategy = NamingStrategy.SNAKE_CASE
             connectionPollTimeout = 3.seconds
         }

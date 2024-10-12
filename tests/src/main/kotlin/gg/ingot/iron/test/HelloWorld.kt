@@ -1,24 +1,35 @@
 package gg.ingot.iron.test
 
+import gg.ingot.iron.Iron
 import gg.ingot.iron.annotations.Model
-import gg.ingot.iron.generated.Tables.table
 
 //import gg.ingot.iron.generated.Tables
 
 @Model(table = "users")
 data class User(
-    val id: Int,
     val name: String?,
-    val age: Int = 20
-)
-
-@Model(table = "my_users_a")
-data class User2(
-    val id: Int,
-    val name: String?,
-    val age: Int = 20
+    val age: Int = 20,
+    val active: Boolean = true
 )
 
 fun main() {
-    val user2Table = User2::class.table
+    val iron = Iron("jdbc:sqlite::memory:").connect()
+    val db = iron.blocking()
+    db.prepare("CREATE TABLE IF NOT EXISTS users (name TEXT PRIMARY KEY, age INTEGER, active BOOLEAN)")
+    db.prepare("INSERT INTO users (name, age, active) VALUES (?, ?, ?)", "John Doe", 30, true)
+
+    // Debug to make sure the row is there
+    iron.useBlocking {
+        val result = it.prepareStatement("SELECT * FROM users").executeQuery()
+
+        result.next()
+        println("name: ${result.getString(1)}") // works
+        it.close()
+    }
+
+    val names = db.prepare("SELECT name FROM users").all<String>()
+    println(names)
+
+    val user = db.prepare("SELECT * FROM users").all<User>()
+    println(user)
 }

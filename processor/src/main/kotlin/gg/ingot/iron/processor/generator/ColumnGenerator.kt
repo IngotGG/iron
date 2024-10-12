@@ -20,6 +20,7 @@ internal object ColumnGenerator {
             .add("%T(\n", SqlColumn::class)
             .add("  name = %S,\n", column.name)
             .add("  variable = %S,\n", column.variable)
+            .add("  field = %S,\n", column.field)
             .add("  clazz = %S,\n", column.clazz)
             .add("  nullable = %L,\n", column.nullable)
             .add("  primaryKey = %L,\n", column.primaryKey)

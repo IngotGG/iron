@@ -15,6 +15,7 @@ kotlinpoet = "1.18.1"
 kotest = "5.9.1"
 kotest-testcontainers = "2.0.2"
 testcontainers-postgresql = "1.20.1"
+hikari = "6.0.0"
 
 [plugins]
 kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
@@ -30,6 +31,7 @@ evo = { module = "org.atteo:evo-inflector", version.ref = "evo" }
 ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 kotlinpoet-jvm = { module = "com.squareup:kotlinpoet-jvm", version.ref = "kotlinpoet" }
 kotlinpoet-ksp = { module = "com.squareup:kotlinpoet-ksp", version.ref = "kotlinpoet" }
+hikari = { module = "com.zaxxer:HikariCP", version.ref = "hikari" }
 
 test-kotlinx-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 test-driver-sqlite = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite" }

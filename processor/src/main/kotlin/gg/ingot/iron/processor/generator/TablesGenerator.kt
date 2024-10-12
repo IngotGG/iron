@@ -53,13 +53,6 @@ internal object TablesGenerator {
                 .initializer("mapOf(\n${tableProperties.entries.joinToString(", \n") { "    ${it.key}::class.java to ${it.value}" }}\n)")
                 .build())
 
-        type.addProperty(PropertySpec.builder("table", typeNameOf<SqlTable?>())
-            .receiver(KClass::class.asTypeName().parameterizedBy(STAR))
-            .getter(FunSpec.getterBuilder()
-                .addStatement("return ALL[this.java]")
-                .build())
-            .build())
-
         val file = FileSpec.builder("gg.ingot.iron.generated", "Tables")
             .addType(type.build())
             .build()

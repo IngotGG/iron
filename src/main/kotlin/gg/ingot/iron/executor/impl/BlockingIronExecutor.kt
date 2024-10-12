@@ -1,10 +1,10 @@
 package gg.ingot.iron.executor.impl
 
 import gg.ingot.iron.Iron
+import gg.ingot.iron.bindings.SqlBindings
 import gg.ingot.iron.executor.IronConnection
 import gg.ingot.iron.executor.transaction.Transaction
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.bindings.SqlBindings
 import kotlinx.coroutines.runBlocking
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
@@ -13,7 +13,7 @@ import java.util.function.Consumer
 
 open class BlockingIronExecutor(
     private val iron: Iron,
-    private val connection: Connection? = null
+    private var connection: Connection? = null
 ): IronConnection {
     internal suspend fun <T> transaction(connection: Connection, block: suspend Transaction.() -> T): T {
         val transactionController = Transaction(iron, connection)
@@ -52,11 +52,8 @@ open class BlockingIronExecutor(
     }
 
     internal fun <T> use(block: (Connection) -> T): T {
-        return if (connection != null) {
-            block(connection)
-        } else {
-            iron.useBlocking(block)
-        }
+        return if (connection?.isClosed == false) block(connection!!)
+        else iron.useBlocking(block)
     }
 
     fun query(@Language("SQL") query: String): IronResultSet {
@@ -65,7 +62,8 @@ open class BlockingIronExecutor(
         return use {
             val resultSet = it.createStatement()
                 .executeQuery(query)
-            return@use IronResultSet(resultSet, iron)
+
+            return@use IronResultSet(it, resultSet, iron)
         }
     }
 
@@ -95,10 +93,12 @@ open class BlockingIronExecutor(
             val resultSet = if (preparedStatement.execute()) {
                 preparedStatement.resultSet
             } else {
+                it.close()
+                connection = null
                 null
             }
 
-            return@use IronResultSet(resultSet, iron)
+            return@use IronResultSet(it, resultSet, iron)
         }
     }
 
@@ -114,9 +114,9 @@ open class BlockingIronExecutor(
     fun execute(@Language("SQL") statement: String): Boolean {
         logger.trace("Executing Statement\n{}", statement)
 
-        return use {
-            return@use it.createStatement()
-                .execute(statement)
+        return use { connection ->
+            return@use connection.createStatement().execute(statement)
+                .also { connection.close() }
         }
     }
 

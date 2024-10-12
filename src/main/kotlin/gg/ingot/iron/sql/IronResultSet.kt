@@ -2,6 +2,7 @@ package gg.ingot.iron.sql
 
 import gg.ingot.iron.Iron
 import gg.ingot.iron.serialization.ColumnDeserializer
+import java.sql.Connection
 import java.sql.ResultSet
 
 /**
@@ -13,6 +14,7 @@ import java.sql.ResultSet
  */
 @Suppress("MemberVisibilityCanBePrivate")
 class IronResultSet internal constructor(
+    val connection: Connection,
     val resultSet: ResultSet?,
     val iron: Iron,
 ): AutoCloseable {
@@ -35,6 +37,7 @@ class IronResultSet internal constructor(
      * when it is automatically closed.
      */
     override fun close() {
+        connection.close()
         resultSet?.close()
     }
 
@@ -47,9 +50,14 @@ class IronResultSet internal constructor(
      * @since 1.0
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T: Any> get(clazz: Class<T>, columnLabel: String? = null, json: Boolean = false): T? {
+    fun <T: Any> get(
+        clazz: Class<T>,
+        columnLabel: String? = null,
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): T? {
         requireNotNull(resultSet) { "The prepared statement did not return a result" }
-        return iron.valueTransformer.read(resultSet, columnLabel, clazz, json) as T?
+        return iron.resultMapper.read(resultSet, columnLabel, clazz, deserializer,  json) as T?
     }
 
     /**
@@ -60,11 +68,9 @@ class IronResultSet internal constructor(
     @JvmOverloads
     inline fun <reified T : Any> get(
         columnLabel: String? = null,
+        deserializer: ColumnDeserializer<*, T>? = null,
         json: Boolean = false
-    ): T? {
-        requireNotNull(resultSet) { "The prepared statement did not return a result" }
-        return get(T::class.java, columnLabel, json)
-    }
+    ): T? = get(T::class.java, columnLabel, deserializer, json)
 
     /**
      * Gets the model from the result set at its current row.
@@ -73,11 +79,9 @@ class IronResultSet internal constructor(
      */
     inline fun <reified T : Any> get(
         index: Int,
+        deserializer: ColumnDeserializer<*, T>? = null,
         json: Boolean = false
-    ): T? {
-        requireNotNull(resultSet) { "The result set did not return a result" }
-        return get(T::class.java, resultSet.metaData.getColumnLabel(index), json)
-    }
+    ): T? = get(T::class.java, resultSet?.metaData?.getColumnLabel(index), deserializer, json)
 
 //    GetNext Functions
 
@@ -88,9 +92,10 @@ class IronResultSet internal constructor(
      */
     fun <T: Any> getNext(
         clazz: Class<T>,
+        deserializer: ColumnDeserializer<*, T>? = null,
         json: Boolean = false
     ): T? {
-        return if (next()) get(clazz = clazz, json = json) else null
+        return if (next()) get(clazz = clazz, deserializer = deserializer, json = json) else null
     }
 
     /**
@@ -98,10 +103,9 @@ class IronResultSet internal constructor(
      * @return The model in the result set, or null if there are no more results.
      */
     inline fun <reified T: Any> getNext(
+        deserializer: ColumnDeserializer<*, T>? = null,
         json: Boolean = false
-    ): T? {
-        return getNext(T::class.java, json)
-    }
+    ): T? = getNext(T::class.java, deserializer, json)
 
 //    SingleNullable Functions
 
@@ -116,32 +120,19 @@ class IronResultSet internal constructor(
      * @param deserializer The deserializer to use for the result.
      * @return The single result from the result set.
      */
-    @Suppress("UNCHECKED_CAST")
     fun <T : Any> singleNullable(
         clazz: Class<T>,
         deserializer: ColumnDeserializer<*, T>? = null,
         json: Boolean = false
     ): T? {
-        if(deserializer != null) {
-            val value = getNext<Any>(json = json)
-            if(next()) {
-                error("Expected a single or no result, but found more than one")
-            }
+        val value = getNext(clazz, deserializer = deserializer, json = json)
 
-            close()
-            if(value == null) return null
-
-            deserializer as ColumnDeserializer<Any, T>
-            return deserializer.fromDatabaseValue(value)
-        } else {
-            val value = getNext(clazz, json = json)
-            if(next()) {
-                error("Expected a single or no result, but found more than one")
-            }
-
-            close()
-            return value
+        if(next()) {
+            error("Expected a single or no result, but found more than one")
         }
+
+        close()
+        return value
     }
 
     /**
@@ -157,9 +148,7 @@ class IronResultSet internal constructor(
     inline fun <reified T : Any> singleNullable(
         deserializer: ColumnDeserializer<*, T>? = null,
         json: Boolean = false
-    ): T? {
-        return singleNullable(T::class.java, deserializer, json)
-    }
+    ): T? = singleNullable(T::class.java, deserializer, json)
 
 //    Single Functions
 
@@ -195,9 +184,7 @@ class IronResultSet internal constructor(
     inline fun <reified T : Any> single(
         deserializer: ColumnDeserializer<*, T>? = null,
         json: Boolean = false
-    ): T {
-        return single(T::class.java, deserializer, json)
-    }
+    ): T = single(T::class.java, deserializer, json)
 
 //    AllNullable Functions
 
@@ -211,7 +198,6 @@ class IronResultSet internal constructor(
      * @param deserializer The deserializer to use for the result.
      * @return The results from the result set.
      */
-    @Suppress("UNCHECKED_CAST")
     fun <T: Any> allNullable(
         clazz: Class<T>,
         deserializer: ColumnDeserializer<*, T>? = null,
@@ -219,18 +205,9 @@ class IronResultSet internal constructor(
     ): List<T?> {
         val v = mutableListOf<T?>()
 
+        println("Current row: ${resultSet!!.row}")
         while(next()) {
-            if(deserializer != null) {
-                val value = get<Any>(json = json)
-                if(value != null) {
-                    deserializer as ColumnDeserializer<Any, T>
-                    v.add(deserializer.fromDatabaseValue(value))
-                } else {
-                    v.add(null)
-                }
-            } else {
-                v.add(get(clazz, json = json))
-            }
+            v.add(get(clazz, deserializer = deserializer, json = json))
         }
 
         close()
@@ -250,9 +227,7 @@ class IronResultSet internal constructor(
     inline fun <reified T : Any> allNullable(
         deserializer: ColumnDeserializer<*, T>? = null,
         json: Boolean = false
-    ): List<T?> {
-        return allNullable(T::class.java, deserializer, json)
-    }
+    ): List<T?> = allNullable(T::class.java, deserializer, json)
 
 //    All Functions
 
@@ -291,7 +266,5 @@ class IronResultSet internal constructor(
     inline fun <reified T : Any> all(
         deserializer: ColumnDeserializer<*, T>? = null,
         json: Boolean = false
-    ): List<T> {
-        return all(T::class.java, deserializer, json)
-    }
+    ): List<T> =  all(T::class.java, deserializer, json)
 }

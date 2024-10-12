@@ -1,29 +1,57 @@
 package gg.ingot.iron
 
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
+import gg.ingot.iron.bindings.SqlBindings
 import gg.ingot.iron.executor.impl.BlockingIronExecutor
 import gg.ingot.iron.executor.impl.CompletableIronExecutor
 import gg.ingot.iron.executor.impl.CoroutineIronExecutor
 import gg.ingot.iron.executor.impl.DeferredIronExecutor
 import gg.ingot.iron.executor.transaction.Transaction
-import gg.ingot.iron.model.ModelReader
-import gg.ingot.iron.pool.ConnectionPool
-import gg.ingot.iron.pool.MultiConnectionPool
-import gg.ingot.iron.pool.SingleConnectionPool
-import gg.ingot.iron.representation.DBMS
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.bindings.SqlBindings
-import gg.ingot.iron.transformer.ModelTransformer
 import gg.ingot.iron.transformer.PlaceholderTransformer
-import gg.ingot.iron.transformer.ValueTransformer
+import gg.ingot.iron.transformer.ResultMapper
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Mutex
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.sql.Connection
 
 /**
- * The entry point for the Iron database library, which allows for easy database connections and queries.
+ * The entry point for the Iron database library.
+ *
+ * Iron by default is designed to simply be a wrapper around HikariCP and provide an easy API for mapping
+ * ResultSets to models and executing queries. Iron also provides some utilities for binding models to queries
+ * but at the end of the day, Iron is purely a mapper.
+ *
+ * If you would like to work with a more type-safe API, you can see the Controller module for a more
+ * ORM-like experience, however with more restrictions on who can use the API.
+ *
+ * To get started, you need to first connect to the database, you also need to shade the JDBC driver for your
+ * database type into your project. (You can shade multiple drivers if you want to support multiple databases)
+ *
+ * Once you have shaded the driver, you can connect to the database using the `connect()` method. Depending
+ * on the DBMS you are using, Iron will prefer pooling connections rather than using a single connection, for
+ * some DBMS' this isn't possible and Iron will default to a single connection. This can be changed by modifying
+ * the settings passed into iron.
+ *
+ * ```kotlin
+ * val iron = Iron.create("jdbc:sqlite:data.db")
+ *     .connect()
+ * ```
+ *
+ * To change settings, you can use the `settings` property.
+ *
+ * ```kotlin
+ * val iron = Iron.create("jdbc:postgresql://localhost:5432/mydb") {
+ *     maxConnections = 10 # Pools the connections
+ *     serialization = SerializationAdapter.Gson(Gson()) # Allows Iron to support JSON
+ *     username = "root"
+ *     password = "password"
+ * }.connect()
+ * ```
+ *
  * @param connectionString The connection string to the database, which should be in the format of `jdbc:<dbms>:<connection>`.
+ * @param settings The settings to use for the connection pool.
  * @since 1.0
  * @author santio
  */
@@ -32,29 +60,17 @@ class Iron internal constructor(
     private val connectionString: String,
     val settings: IronSettings
 ): AutoCloseable {
-    /** The inflector used to transform names into their corresponding requested form. */
-    val inflector = Inflector(this)
-
-    /** The model transformer used to transform models into their corresponding entity representation. */
-    val modelReader = ModelReader(this)
-
-    /** The connection pool used to manage connections to the database. */
-    internal var pool: ConnectionPool? = null
+    /** The connection pool used to manage connections to the database. We wrap over Hikari */
+    internal var pool: HikariDataSource? = null
 
     /** The placeholder transformer used to transform values from the result set into their corresponding types. */
     internal val placeholderTransformer = PlaceholderTransformer(this)
 
     /** The value transformer used to transform values from the result set into their corresponding types. */
-    internal val valueTransformer = ValueTransformer(this)
-
-    /** The result transformer used to transform the result set into a model. */
-    internal val modelTransformer = ModelTransformer(this)
+    internal val resultMapper = ResultMapper(this)
 
     /** The default executor to use if one isn't specified */
     private val executor = CoroutineIronExecutor(this)
-
-    /** The mutex used to synchronize access to the pool. */
-    internal var mutex: Mutex? = null
 
     /** Listeners to be notified of when Iron is closed to allow for additional cleanup. */
     val onCloseListeners = mutableListOf<Runnable>()
@@ -84,16 +100,19 @@ class Iron internal constructor(
             logger.warn("No DBMS found for value $dbmsValue, make sure you load the driver manually before calling connect().")
         } else settings.driver = dbms
 
+        // Load the driver
         dbms?.load()
 
-        pool = if(settings.isMultiConnectionPool) {
-            logger.trace("Using multi connection pool.")
-            MultiConnectionPool(connectionString, this)
-        } else {
-            logger.trace("Using single connection pool.")
-            mutex = Mutex()
-            SingleConnectionPool(connectionString, this)
-        }
+        pool = HikariDataSource(HikariConfig().apply {
+            jdbcUrl = connectionString
+            maximumPoolSize = settings.maxConnections
+            minimumIdle = settings.minConnections
+            connectionTimeout = settings.connectionPollTimeout.inWholeMilliseconds
+            idleTimeout = settings.connectionTTL.inWholeMilliseconds
+            settings.username?.let { username = it }
+            settings.password?.let { password = it }
+            settings.properties?.let { dataSourceProperties = it }
+        })
 
         return this
     }
@@ -125,23 +144,18 @@ class Iron internal constructor(
 
     /**
      * Use the connection to perform operations on the database.
+     *
+     * Notice: This method does not close the connection, you must close the connection yourself, or use
+     * either single() or all() (or their variants) in [IronResultSet] to close the connection for you.
+     *
      * @param block The closure to execute with the connection.
      * @since 1.0
      */
     suspend fun <T : Any?> use(block: suspend (Connection) -> T): T {
-        mutex?.lock()
-
-        val connection = pool?.connection()
+        val connection = pool?.connection
             ?: error("Connection is not open, call connect() before using the connection.")
 
-        val response = try {
-            block(connection)
-        } finally {
-            pool?.release(connection)
-            mutex?.unlock()
-        }
-
-        return response
+        return block(connection)
     }
 
     /**
@@ -169,15 +183,7 @@ class Iron internal constructor(
      * @since 1.0
      */
     override fun close() {
-        close(false)
-    }
-
-    /**
-     * Closes the connection to the database.
-     * @since 1.0
-     */
-    fun close(force: Boolean = false) {
-        pool?.close(force)
+        pool?.close()
         pool = null
     }
 
@@ -223,7 +229,6 @@ class Iron internal constructor(
      * @since 1.0
      */
     suspend fun prepare(@Language("SQL") statement: String, vararg values: Any?): IronResultSet {
-        println("values (2): ${values.joinToString(", ")}")
         return executor.prepare(statement, *values)
     }
 
@@ -252,8 +257,47 @@ class Iron internal constructor(
     }
 }
 
+/**
+ * The entry point for the Iron database library.
+ *
+ * Iron by default is designed to simply be a wrapper around HikariCP and provide an easy API for mapping
+ * ResultSets to models and executing queries. Iron also provides some utilities for binding models to queries
+ * but at the end of the day, Iron is purely a mapper.
+ *
+ * If you would like to work with a more type-safe API, you can see the Controller module for a more
+ * ORM-like experience, however with more restrictions on who can use the API.
+ *
+ * To get started, you need to first connect to the database, you also need to shade the JDBC driver for your
+ * database type into your project. (You can shade multiple drivers if you want to support multiple databases)
+ *
+ * Once you have shaded the driver, you can connect to the database using the `connect()` method. Depending
+ * on the DBMS you are using, Iron will prefer pooling connections rather than using a single connection, for
+ * some DBMS' this isn't possible and Iron will default to a single connection. This can be changed by modifying
+ * the settings passed into iron.
+ *
+ * ```kotlin
+ * val iron = Iron.create("jdbc:sqlite:data.db")
+ *     .connect()
+ * ```
+ *
+ * To change settings, you can use the `settings` property.
+ *
+ * ```kotlin
+ * val iron = Iron.create("jdbc:postgresql://localhost:5432/mydb") {
+ *     maxConnections = 10 # Pools the connections
+ *     serialization = SerializationAdapter.Gson(Gson()) # Allows Iron to support JSON
+ *     username = "root"
+ *     password = "password"
+ * }.connect()
+ * ```
+ *
+ * @param connectionString The connection string to the database, which should be in the format of `jdbc:<dbms>:<connection>`.
+ * @param settings The settings to use for the connection pool.
+ * @since 1.0
+ * @author santio
+ */
 @JvmOverloads
 @JvmName("create")
-fun Iron(connectionString: String, block: IronSettings.() -> Unit = {}): Iron {
-    return Iron(connectionString, IronSettings().apply(block))
+fun Iron(connectionString: String, settings: IronSettings.() -> Unit = {}): Iron {
+    return Iron(connectionString, IronSettings().apply(settings))
 }

@@ -44,7 +44,7 @@ internal object ModelReader {
             error("Table name cannot contain spaces, please remove spaces from model '${model.qualifiedName?.asString()}'.")
         }
 
-        val columns = ColumnReader.read(model)
+        val columns = ColumnReader.read(annotation, model)
 
         // digest the name and column hashCode() to get a unique hash for the table
         val columnBytes = columns.joinToString("") { column -> column.hash() }.toByteArray()
@@ -85,7 +85,7 @@ internal object ModelReader {
             error("Table name cannot contain spaces, please remove spaces from model '${model.qualifiedName}'.")
         }
 
-        val columns = ColumnReader.read(model)
+        val columns = ColumnReader.read(annotation, model)
 
         // digest the name and column hashCode() to get a unique hash for the table
         val columnBytes = columns.joinToString("") { column -> column.hash() }.toByteArray()

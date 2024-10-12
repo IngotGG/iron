@@ -1,4 +1,4 @@
-package gg.ingot.iron.representation
+package gg.ingot.iron
 
 /**
  * Represents a database management system, which is used to determine the driver to load.
