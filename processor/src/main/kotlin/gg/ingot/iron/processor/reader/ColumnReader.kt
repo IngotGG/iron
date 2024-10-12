@@ -12,9 +12,13 @@ import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.models.bundles.ColumnBundle
 import gg.ingot.iron.strategies.EnumTransformation
 import org.jetbrains.annotations.Nullable
+import javax.lang.model.element.Element
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.TypeElement
 import javax.lang.model.element.VariableElement
+import javax.lang.model.type.MirroredTypeException
+import javax.lang.model.type.TypeMirror
+import kotlin.reflect.KClass
 import javax.lang.model.element.Modifier as JavaModifier
 
 /**
@@ -125,14 +129,16 @@ internal object ColumnReader {
                 ?: modelAnnotation?.namingStrategy?.transform(fieldName)
                 ?: fieldName
 
-            val enumTransformation = annotation?.enum?.takeIf { it != EnumTransformation::class }
+            val enumTransformation = field.getAnnotationClassValue<Column> { enum }
+                ?.asTypeName()
+                ?.takeIf { it != EnumTransformation::class.asTypeName() }
 
             ColumnBundle(
                 name = name,
                 variable = annotation?.variable?.takeIf { it.isNotBlank() } ?: field.simpleName.toString(),
                 field = fieldName,
                 clazz = field.asType().asTypeName().toString(),
-                enum = enumTransformation?.qualifiedName,
+                enum = enumTransformation?.toString(),
                 nullable = annotation?.nullable
                     ?: (field.getAnnotation(Nullable::class.java) != null),
                 primaryKey = annotation?.primaryKey ?: false,
@@ -163,6 +169,24 @@ internal object ColumnReader {
 
             else -> true
         }
+    }
+
+    /**
+     * Gets the value of the annotation class.
+     * Reference: https://stackoverflow.com/a/58448607
+     * @param f The function to get the value from.
+     * @return The value of the annotation class.
+     */
+    inline fun <reified T : Annotation> Element.getAnnotationClassValue(
+        clazz: Class<T> = T::class.java,
+        f: T.() -> KClass<*>
+    ): TypeMirror? = try {
+        getAnnotation(clazz).f()
+        throw Exception("Expected to get a MirroredTypeException")
+    } catch (e: MirroredTypeException) {
+        e.typeMirror
+    } catch (e: NullPointerException) {
+        null
     }
 
     private fun getKSAnnotation(type: Class<out Annotation>,annotated: KSAnnotated): KSAnnotation? {
