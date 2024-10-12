@@ -7,7 +7,7 @@ import gg.ingot.iron.controller.engine.impl.PostgresEngine
 import gg.ingot.iron.controller.engine.impl.SqliteEngine
 import gg.ingot.iron.controller.exceptions.NoEngineException
 import gg.ingot.iron.controller.query.SqlFilter
-import gg.ingot.iron.representation.DBMS
+import gg.ingot.iron.DBMS
 import org.slf4j.LoggerFactory
 
 /**

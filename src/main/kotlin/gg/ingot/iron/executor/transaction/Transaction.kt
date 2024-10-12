@@ -2,11 +2,10 @@ package gg.ingot.iron.executor.transaction
 
 import gg.ingot.iron.Iron
 import gg.ingot.iron.executor.impl.BlockingIronExecutor
-import gg.ingot.iron.representation.ExplodingModel
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.sql.params.SqlParams
-import gg.ingot.iron.sql.params.SqlParamsBuilder
+import gg.ingot.iron.bindings.SqlBindings
 import org.intellij.lang.annotations.Language
+import java.sql.Connection
 
 /**
  * A wrapper around a transaction that can execute actions after the transaction is committed or rolled back.
@@ -14,10 +13,11 @@ import org.intellij.lang.annotations.Language
  * @author santio
  */
 class Transaction internal constructor(
-    iron: Iron
+    iron: Iron,
+    connection: Connection? = null
 ) {
     /** The executor to use for the transaction. */
-    private val executor = BlockingIronExecutor(iron)
+    private val executor = BlockingIronExecutor(iron, connection)
 
     /** The action to execute after the transaction is committed. */
     private var afterCommit: TransactionAction? = null
@@ -84,34 +84,16 @@ class Transaction internal constructor(
     }
 
     /**
-     * Prepares a statement on the database. This method should be preferred over [execute] for security reasons. This
-     * will take an [ExplodingModel] and extract the values from it and put them in the query for you.
-     * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
-     * the values, any values passed in through this parameter is not sanitized.
-     * @param model The model to get the data from
-     * @return The prepared statement.
-     * @since 1.0
-     */
-    @JvmName("prepareExplodingModel")
-    fun prepare(@Language("SQL") statement: String, model: ExplodingModel): IronResultSet {
-        return executor.prepare(statement, model)
-    }
-
-    @JvmName("prepareBuilder")
-    fun prepare(@Language("SQL") statement: String, params: SqlParamsBuilder): IronResultSet {
-        return executor.prepare(statement, params)
-    }
-
-    /**
      * Prepares a statement on the database. This method should be preferred over [execute] for security reasons.
      * @param statement The statement to prepare on the database. This statement should contain `?` placeholders for
      * the values, any values passed in through this parameter is not sanitized.
-     * @param values The values to bind to the statement.
+     * @param variable The variable to bind to the statement.
+     * @param variables The variables to bind to the statement.
      * @return The prepared statement.
      */
-    @JvmName("prepareSqlParams")
-    fun prepare(@Language("SQL") statement: String, values: SqlParams): IronResultSet {
-        return executor.prepare(statement, values)
+    @JvmName("prepareBindings")
+    fun prepare(@Language("SQL") statement: String, variable: SqlBindings, vararg variables: SqlBindings): IronResultSet {
+        return executor.prepare(statement, variable, *variables)
     }
 }
 

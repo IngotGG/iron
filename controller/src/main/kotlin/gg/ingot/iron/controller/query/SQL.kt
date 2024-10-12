@@ -23,8 +23,8 @@ class SQL<@OnlyInputTypes C: Any?>(
     }
 
     private fun columnName(property: KProperty<*>): String {
-        val field = model.fields.find { it.field == property.javaField }!!
-        return engine.column(field.columnName)
+        val field = model.fields.find { it.field.java == property.javaField }!!
+        return engine.column(field.field.column)
     }
 
     infix fun <@OnlyInputTypes T: Any?> KProperty1<C, T>.eq(value: T): SqlPredicate {

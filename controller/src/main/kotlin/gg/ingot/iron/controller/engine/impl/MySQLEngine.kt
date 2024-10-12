@@ -5,6 +5,7 @@ import gg.ingot.iron.controller.controller.TableController
 import gg.ingot.iron.controller.engine.DBMSEngine
 import gg.ingot.iron.controller.query.SQL
 import gg.ingot.iron.controller.query.SqlFilter
+import gg.ingot.iron.bindings.Bindings
 
 @Suppress("DuplicatedCode")
 class MySQLEngine<T: Any>(
@@ -21,10 +22,10 @@ class MySQLEngine<T: Any>(
 
         return if (predicate == null) {
             iron.prepare("SELECT * FROM ${controller.tableName}")
-                .all(controller.clazz.kotlin)
+                .all(controller.clazz)
         } else {
-            iron.prepare("SELECT * FROM ${controller.tableName} WHERE $predicate", predicate.params())
-                .all(controller.clazz.kotlin)
+            iron.prepare("SELECT * FROM ${controller.tableName} WHERE $predicate", predicate.bindings())
+                .all(controller.clazz)
         }
     }
 
@@ -44,18 +45,18 @@ class MySQLEngine<T: Any>(
     override suspend fun insertMany(entities: List<T>, fetch: Boolean): List<T> {
         return iron.transaction {
             return@transaction entities.map { entity ->
-                val columns = controller.model.fields.joinToString(",") { column(it.columnName) }
-                val variables = controller.model.fields.joinToString(",") { ":${it.variableName}" }
+                val columns = controller.model.fields.joinToString(",") { column(it.field.column) }
+                val variables = controller.model.fields.joinToString(",") { ":${it.field.variable}" }
 
                 prepare(
                     "INSERT INTO ${controller.tableName} ($columns) VALUES ($variables)",
-                    entity
+                    Bindings.get(entity, iron)
                 )
 
                 if (fetch) {
                     val selector = controller.uniqueSelector(entity)
-                    prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.params())
-                        .single(controller.clazz.kotlin)
+                    prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.bindings())
+                        .single(controller.clazz)
                 } else {
                     entity
                 }
@@ -69,10 +70,10 @@ class MySQLEngine<T: Any>(
 
         return if (predicate == null) {
             iron.prepare("SELECT * FROM ${controller.tableName} LIMIT 1")
-                .singleNullable(controller.clazz.kotlin)
+                .singleNullable(controller.clazz)
         } else {
-            iron.prepare("SELECT * FROM ${controller.tableName} WHERE $predicate", predicate.params())
-                .singleNullable(controller.clazz.kotlin)
+            iron.prepare("SELECT * FROM ${controller.tableName} WHERE $predicate", predicate.bindings())
+                .singleNullable(controller.clazz)
         }
     }
 
@@ -85,27 +86,27 @@ class MySQLEngine<T: Any>(
         val scope = SQL<T>(iron, controller.model, this)
         val predicate = filter.invoke(scope)
 
-        iron.prepare("DELETE FROM ${controller.tableName} WHERE $predicate", predicate.params())
+        iron.prepare("DELETE FROM ${controller.tableName} WHERE $predicate", predicate.bindings())
     }
 
     override suspend fun delete(entity: T) {
         val selector = controller.uniqueSelector(entity)
-        iron.prepare("DELETE FROM ${controller.tableName} WHERE $selector", selector.params())
+        iron.prepare("DELETE FROM ${controller.tableName} WHERE $selector", selector.bindings())
     }
 
     override suspend fun update(entity: T, fetch: Boolean): T {
         val selector = controller.uniqueSelector(entity)
-        val columns = controller.model.fields.joinToString(", ") { "${column(it.columnName)} = :${it.variableName}" }
+        val columns = controller.model.fields.joinToString(", ") { "${column(it.field.column)} = :${it.field.variable}" }
 
         return iron.transaction {
             prepare(
                 "UPDATE ${controller.tableName} SET $columns WHERE $selector",
-                selector.params(), entity
+                selector.bindings(), Bindings.get(entity, iron)
             )
 
             if (fetch) {
-                prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.params(), entity)
-                    .single(controller.clazz.kotlin)
+                prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.bindings(), Bindings.get(entity, iron))
+                    .single(controller.clazz)
             } else {
                 entity
             }
@@ -114,19 +115,19 @@ class MySQLEngine<T: Any>(
 
     override suspend fun upsert(entity: T, fetch: Boolean): T {
         val selector = controller.uniqueSelector(entity)
-        val columns = controller.model.fields.joinToString(", ") { column(it.columnName) }
-        val variables = controller.model.fields.joinToString(", ") { ":${it.variableName}" }
-        val updates = controller.model.fields.joinToString(", ") { "${column(it.columnName)} = :${it.variableName}" }
+        val columns = controller.model.fields.joinToString(", ") { column(it.field.column) }
+        val variables = controller.model.fields.joinToString(", ") { ":${it.field.variable}" }
+        val updates = controller.model.fields.joinToString(", ") { "${column(it.field.column)} = :${it.field.variable}" }
 
         return iron.transaction {
             prepare(
                 "INSERT INTO ${controller.tableName} ($columns) VALUES ($variables) ON DUPLICATE KEY UPDATE $updates",
-                entity
+                Bindings.get(entity, iron)
             )
 
             if (fetch) {
-                prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.params(), entity)
-                    .single(controller.clazz.kotlin)
+                prepare("SELECT * FROM ${controller.tableName} WHERE $selector", selector.bindings(), Bindings.get(entity, iron))
+                    .single(controller.clazz)
             } else {
                 entity
             }
