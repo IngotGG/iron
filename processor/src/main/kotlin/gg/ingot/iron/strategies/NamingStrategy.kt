@@ -1,4 +1,4 @@
-package gg.ingot.iron.stratergies
+package gg.ingot.iron.strategies
 
 /**
  * Naming strategy for transforming field names, since the string we're given is a field name we'll assume it's

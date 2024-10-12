@@ -1,4 +1,4 @@
-package gg.ingot.iron.stratergies
+package gg.ingot.iron.strategies
 
 /**
  * Transforms an enum value into a string and vice versa.

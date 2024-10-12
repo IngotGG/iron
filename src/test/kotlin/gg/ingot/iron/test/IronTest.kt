@@ -3,7 +3,7 @@ package gg.ingot.iron.test
 import com.google.gson.Gson
 import gg.ingot.iron.Iron
 import gg.ingot.iron.IronSettings
-import gg.ingot.iron.stratergies.NamingStrategy
+import gg.ingot.iron.strategies.NamingStrategy
 import gg.ingot.iron.serialization.SerializationAdapter
 import io.kotest.core.test.TestScope
 import org.slf4j.Logger

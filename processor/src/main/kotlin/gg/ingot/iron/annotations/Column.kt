@@ -1,7 +1,7 @@
 package gg.ingot.iron.annotations
 
 import gg.ingot.iron.serialization.*
-import gg.ingot.iron.stratergies.EnumTransformation
+import gg.ingot.iron.strategies.EnumTransformation
 import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance
 
@@ -47,9 +47,8 @@ annotation class Column(
     val autoIncrement: Boolean = false,
 
     /**
-     * The enum transformation to use for this column, defaults to Iron's default (EnumTransformation::class),
-     * you can specify a custom enum transformation by providing a KClass<out EnumTransformation> here, such as
-     * EnumTransformation.Ordinal::class.
+     * The enum transformation to use for this column, you can specify a custom enum transformation by providing
+     * a KClass<out EnumTransformation> here, such as EnumTransformation.Ordinal::class.
      */
     val enum: KClass<out EnumTransformation> = EnumTransformation::class,
 

@@ -1,6 +1,6 @@
 import gg.ingot.iron.Iron;
 import gg.ingot.iron.IronSettings;
-import gg.ingot.iron.stratergies.NamingStrategy;
+import gg.ingot.iron.strategies.NamingStrategy;
 import models.UserClass;
 import models.UserOptional;
 import models.UserRecord;

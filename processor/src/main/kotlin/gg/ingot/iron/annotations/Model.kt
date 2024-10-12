@@ -1,6 +1,6 @@
 package gg.ingot.iron.annotations
 
-import gg.ingot.iron.stratergies.NamingStrategy
+import gg.ingot.iron.strategies.NamingStrategy
 
 /**
  * Represents a class that is a model for a database entity.

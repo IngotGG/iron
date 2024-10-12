@@ -3,7 +3,7 @@ package gg.ingot.iron.processor.generator
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import gg.ingot.iron.models.SqlTable
-import kotlin.reflect.KClass
+import gg.ingot.iron.models.bundles.TableBundle
 
 /**
  * Generates a repository for all models in the project.
@@ -17,7 +17,7 @@ internal object TablesGenerator {
      * @param models The models to generate the repository for.
      * @param response The callback to call when the file is made.
      */
-    fun generate(models: List<SqlTable>, response: (FileSpec) -> Unit = {}) {
+    fun generate(models: List<TableBundle>, response: (FileSpec) -> Unit = {}) {
         val tableProperties = mutableMapOf<String, String>()
         val tables = models.map {
             tableProperties[it.clazz] = it.name.uppercase()
@@ -68,7 +68,7 @@ internal object TablesGenerator {
      * Finds any duplicate table names in the list of tables and throws an error.
      * @param tables The tables to check for duplicates.
      */
-    fun findDuplicates(tables: List<SqlTable>) {
+    fun findDuplicates(tables: List<TableBundle>) {
         // Check for duplicate table names
         val duplicates = tables.groupBy { it.name }.filter { it.value.size > 1 }
         if (duplicates.isNotEmpty()) {

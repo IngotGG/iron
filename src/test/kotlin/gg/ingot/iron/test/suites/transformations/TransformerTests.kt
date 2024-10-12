@@ -1,6 +1,6 @@
 package gg.ingot.iron.test.suites.transformations
 
-import gg.ingot.iron.stratergies.NamingStrategy
+import gg.ingot.iron.strategies.NamingStrategy
 import gg.ingot.iron.test.IronTest
 import gg.ingot.iron.test.models.User
 import io.kotest.core.annotation.AutoScan

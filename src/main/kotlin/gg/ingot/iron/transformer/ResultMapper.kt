@@ -2,11 +2,13 @@ package gg.ingot.iron.transformer
 
 import gg.ingot.iron.Iron
 import gg.ingot.iron.annotations.Model
+import gg.ingot.iron.models.SqlColumn
 import gg.ingot.iron.models.SqlTable
 import gg.ingot.iron.serialization.ColumnDeserializer
 import java.lang.reflect.ParameterizedType
 import java.sql.ResultSet
 import java.util.*
+import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.primaryConstructor
 
 /**
@@ -34,7 +36,8 @@ internal class ResultMapper(private val iron: Iron) {
         label: String?,
         clazz: Class<*>,
         deserializer: ColumnDeserializer<*, *>? = null,
-        json: Boolean = false
+        json: Boolean = false,
+        column: SqlColumn? = null
     ): Any? {
         // If no label is provided, see if we were given one column back, if not we'll map to a model
         if (label == null) {
@@ -90,10 +93,24 @@ internal class ResultMapper(private val iron: Iron) {
         }
 
         // Parse booleans
-        if (clazz == Boolean::class.java) {
+        if (clazz == java.lang.Boolean::class.java) {
             return if (trueValues.contains(value.toString())) true
             else if (falseValues.contains(value.toString())) false
             else error("Failed to convert boolean value for field '$label', found '$value'")
+        }
+
+        // Handle model specific parsing
+        if (column != null) {
+            val type = column.clazz
+
+            // Parse enums
+            if (type.isEnum) {
+                val transformation = column.enum.kotlin
+                val instance = transformation.objectInstance
+                    ?: transformation.createInstance()
+
+                return instance.deserialize(value, type)
+            }
         }
 
         // Otherwise return the value
@@ -105,8 +122,7 @@ internal class ResultMapper(private val iron: Iron) {
             ?: error("Failed to get table data for class '${clazz.name}', make sure your annotation processor is setup correctly.")
 
         val mapping = table.columns.associate {
-            val columnClass = it.boxedClass()
-            it.field to read(resultSet, it.name, columnClass)
+            it.field to read(resultSet, it.name, it.clazz, column = it)
         }
 
         // Instantiate the model
@@ -125,6 +141,13 @@ internal class ResultMapper(private val iron: Iron) {
 
                     parameter to value
                 }.toMap())
+            } catch (e: IllegalArgumentException) {
+                val requiredTypes = primaryConstructor.parameters.map { it.type.toString() }
+                val providedTypes = mapping.map {
+                    if (it.value == null) "null" else it.value!!::class.java.name
+                }
+
+                throw RuntimeException("Failed to instantiate model '${clazz.name}' with primary/full constructor, expected types: $requiredTypes, but provided: $providedTypes", e)
             } catch (e: Exception) {
                 throw RuntimeException("Failed to instantiate model '${clazz.name}' with primary/full constructor", e)
             }

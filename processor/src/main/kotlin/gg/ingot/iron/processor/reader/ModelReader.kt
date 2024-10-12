@@ -5,7 +5,7 @@ import com.google.devtools.ksp.getAnnotationsByType
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import gg.ingot.iron.annotations.Model
-import gg.ingot.iron.models.SqlTable
+import gg.ingot.iron.models.bundles.TableBundle
 import java.security.MessageDigest
 import javax.lang.model.element.TypeElement
 
@@ -16,7 +16,7 @@ import javax.lang.model.element.TypeElement
  */
 internal object ModelReader {
 
-    private val md5 = MessageDigest.getInstance("MD5")
+    val md5 = MessageDigest.getInstance("MD5")
         ?: throw IllegalStateException("Could not create MD5 instance.")
 
     /**
@@ -25,7 +25,7 @@ internal object ModelReader {
      * @return The table representation of the model.
      */
     @OptIn(KspExperimental::class)
-    fun read(environment: SymbolProcessorEnvironment, model: KSClassDeclaration): SqlTable {
+    fun read(environment: SymbolProcessorEnvironment, model: KSClassDeclaration): TableBundle {
         val annotation = model.getAnnotationsByType(Model::class).firstOrNull()
             ?: error("Models must be annotated with @Model, this is an internal error and should be reported.")
 
@@ -53,7 +53,7 @@ internal object ModelReader {
         val hash = md5.digest(input)
             .joinToString("") { "%02x".format(it) }
 
-        return SqlTable(
+        return TableBundle(
             name = tableName,
             columns = columns,
             clazz = model.qualifiedName!!.asString(),
@@ -66,7 +66,7 @@ internal object ModelReader {
      * @param model The class to read the model from.
      * @return The table representation of the model.
      */
-    fun read(model: TypeElement): SqlTable {
+    fun read(model: TypeElement): TableBundle {
         val annotation = model.getAnnotationsByType(Model::class.java).firstOrNull()
             ?: error("Models must be annotated with @Model, this is an internal error and should be reported.")
 
@@ -94,7 +94,7 @@ internal object ModelReader {
         val hash = md5.digest(input)
             .joinToString("") { "%02x".format(it) }
 
-        return SqlTable(
+        return TableBundle(
             name = tableName,
             columns = columns,
             clazz = model.qualifiedName.toString(),

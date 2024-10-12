@@ -2,6 +2,7 @@ package gg.ingot.iron.processor.generator
 
 import com.squareup.kotlinpoet.CodeBlock
 import gg.ingot.iron.models.SqlColumn
+import gg.ingot.iron.models.bundles.ColumnBundle
 
 /**
  * Generates kotlinpoet code for columns in a table.
@@ -15,16 +16,21 @@ internal object ColumnGenerator {
      * @param column The column to generate the code for.
      * @return The property spec for the column.
      */
-    fun generate(column: SqlColumn): CodeBlock {
+    fun generate(column: ColumnBundle): CodeBlock {
         return CodeBlock.builder()
             .add("%T(\n", SqlColumn::class)
             .add("  name = %S,\n", column.name)
             .add("  variable = %S,\n", column.variable)
             .add("  field = %S,\n", column.field)
-            .add("  clazz = %S,\n", column.clazz)
+            .add("  clazz = %L::class.java,\n", column.boxedClass())
             .add("  nullable = %L,\n", column.nullable)
             .add("  primaryKey = %L,\n", column.primaryKey)
-            .add("  autoIncrement = %L\n", column.autoIncrement)
+            .add("  autoIncrement = %L,\n", column.autoIncrement)
+            .apply {
+                // Nullable options
+                if (column.enum != null) add("  enum = %L::class.java,\n", column.enum)
+            }
+            .add("  hash = %S\n", column.hash())
             .add(")")
             .build()
     }

@@ -1,22 +1,30 @@
 package gg.ingot.iron.test
 
 import gg.ingot.iron.Iron
+import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.annotations.Model
+import gg.ingot.iron.strategies.EnumTransformation
 
 //import gg.ingot.iron.generated.Tables
+
+enum class TestEnum {
+    A, B, C
+}
 
 @Model(table = "users")
 data class User(
     val name: String?,
     val age: Int = 20,
-    val active: Boolean = true
+    val active: Boolean = true,
+    @Column(enum = EnumTransformation.Ordinal::class)
+    val test: TestEnum = TestEnum.A
 )
 
 fun main() {
     val iron = Iron("jdbc:sqlite::memory:").connect()
     val db = iron.blocking()
-    db.prepare("CREATE TABLE IF NOT EXISTS users (name TEXT PRIMARY KEY, age INTEGER, active BOOLEAN)")
-    db.prepare("INSERT INTO users (name, age, active) VALUES (?, ?, ?)", "John Doe", 30, true)
+    db.prepare("CREATE TABLE IF NOT EXISTS users (name TEXT PRIMARY KEY, age INTEGER, active BOOLEAN, test INT)")
+    db.prepare("INSERT INTO users (name, age, active, test) VALUES (?, ?, ?, ?)", "John Doe", 30, true, 0)
 
     // Debug to make sure the row is there
     iron.useBlocking {

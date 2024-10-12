@@ -1,5 +1,6 @@
 package gg.ingot.iron.models
 
+import gg.ingot.iron.annotations.Model
 import org.slf4j.LoggerFactory
 import java.lang.reflect.Field
 import kotlin.reflect.KClass
@@ -10,9 +11,13 @@ import kotlin.reflect.KClass
  * @since 2.0
  */
 data class SqlTable(
+    /** The name of the table in the database. */
     val name: String,
+    /** The class which is annotated with [Model] to represent this table. */
     val clazz: String,
+    /** The column bundles which need to be generated for this table. */
     val columns: List<SqlColumn>,
+    /** The hash of the table which changes when any details of the table change. */
     val hash: String,
 ) {
     companion object {

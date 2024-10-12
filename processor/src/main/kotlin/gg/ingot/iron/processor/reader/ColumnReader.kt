@@ -9,7 +9,8 @@ import com.squareup.kotlinpoet.asTypeName
 import com.squareup.kotlinpoet.ksp.toClassName
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.annotations.Model
-import gg.ingot.iron.models.SqlColumn
+import gg.ingot.iron.models.bundles.ColumnBundle
+import gg.ingot.iron.strategies.EnumTransformation
 import org.jetbrains.annotations.Nullable
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.TypeElement
@@ -29,13 +30,13 @@ internal object ColumnReader {
      * @return The table representation of the model.
      */
     @OptIn(KspExperimental::class)
-    fun read(modelAnnotation: Model?, model: KSClassDeclaration): List<SqlColumn> {
+    fun read(modelAnnotation: Model?, model: KSClassDeclaration): List<ColumnBundle> {
         if (model.classKind != ClassKind.CLASS) {
             error("Models must be classes, please make sure you unmark '${model.simpleName}' as a model or make it a class.")
         }
 
         // Based on the kind of model, we'll pull the columns from different sources
-        val columns: List<SqlColumn> = if (model.modifiers.contains(Modifier.DATA)) {
+        val columns: List<ColumnBundle> = if (model.modifiers.contains(Modifier.DATA)) {
             val constructor = model.primaryConstructor
                 ?: error("Data classes must have a primary constructor, please give '${model.simpleName}' a primary constructor.")
 
@@ -49,11 +50,17 @@ internal object ColumnReader {
                         ?: modelAnnotation?.namingStrategy?.transform(field)
                         ?: field
 
-                    return@map SqlColumn(
+                    val ksAnnotation = getKSAnnotation(Column::class.java, parameter)
+                    val enumTransformationType = ksAnnotation?.getKClass("enum")
+                    val enumTransformation = enumTransformationType?.declaration
+                        ?.qualifiedName?.asString()
+
+                    return@map ColumnBundle(
                         name = name,
                         variable = annotation?.variable?.takeIf { it.isNotBlank() } ?: parameter.name!!.asString(),
                         clazz = type.toClassName().canonicalName,
                         field = field,
+                        enum = enumTransformation,
                         nullable = annotation?.nullable
                             ?: type.isMarkedNullable.takeIf { it }
                             ?: parameter.isAnnotationPresent(Nullable::class),
@@ -73,11 +80,17 @@ internal object ColumnReader {
                         ?: modelAnnotation?.namingStrategy?.transform(field)
                         ?: field
 
-                    return@map SqlColumn(
+                    val ksAnnotation = getKSAnnotation(Column::class.java, property)
+                    val enumTransformationType = ksAnnotation?.getKClass("enum")
+                    val enumTransformation = enumTransformationType?.declaration
+                        ?.qualifiedName?.asString()
+
+                    return@map ColumnBundle(
                         name = name,
                         variable = annotation?.variable?.takeIf { it.isNotBlank() } ?: property.simpleName.asString(),
                         field = field,
                         clazz = type.toClassName().canonicalName,
+                        enum = enumTransformation,
                         nullable = annotation?.nullable
                             ?: type.isMarkedNullable.takeIf { it }
                             ?: property.isAnnotationPresent(Nullable::class),
@@ -96,7 +109,7 @@ internal object ColumnReader {
      * @return The table representation of the model.
      */
     @OptIn(DelicateKotlinPoetApi::class)
-    fun read(modelAnnotation: Model?, model: TypeElement): List<SqlColumn> {
+    fun read(modelAnnotation: Model?, model: TypeElement): List<ColumnBundle> {
         val fields = if (model.kind == ElementKind.RECORD) {
             model.enclosedElements
                 .filterIsInstance<VariableElement>()
@@ -112,11 +125,14 @@ internal object ColumnReader {
                 ?: modelAnnotation?.namingStrategy?.transform(fieldName)
                 ?: fieldName
 
-            SqlColumn(
+            val enumTransformation = annotation?.enum?.takeIf { it != EnumTransformation::class }
+
+            ColumnBundle(
                 name = name,
                 variable = annotation?.variable?.takeIf { it.isNotBlank() } ?: field.simpleName.toString(),
                 field = fieldName,
                 clazz = field.asType().asTypeName().toString(),
+                enum = enumTransformation?.qualifiedName,
                 nullable = annotation?.nullable
                     ?: (field.getAnnotation(Nullable::class.java) != null),
                 primaryKey = annotation?.primaryKey ?: false,
@@ -147,6 +163,19 @@ internal object ColumnReader {
 
             else -> true
         }
+    }
+
+    private fun getKSAnnotation(type: Class<out Annotation>,annotated: KSAnnotated): KSAnnotation? {
+        return annotated.annotations
+            .firstOrNull {
+                it.annotationType.resolve().declaration.qualifiedName?.asString() == type.name
+            }
+    }
+
+    private fun KSAnnotation.getKClass(field: String): KSType? {
+        return this.arguments
+            .firstOrNull { it.name?.asString() == field }
+            ?.value as KSType?
     }
 
 }

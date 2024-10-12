@@ -7,6 +7,9 @@ dependencies {
     implementation(libs.test.logback)
     implementation(rootProject)
     ksp(rootProject)
+
+    //gson
+    implementation("com.google.code.gson:gson:2.9.0")
 }
 
 sourceSets {
