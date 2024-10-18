@@ -53,7 +53,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines)
 
     // database
-    implementation(libs.hikari)
+    api(libs.hikari)
 
     // core modules
     api(project(":processor"))
