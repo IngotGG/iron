@@ -1,40 +1,23 @@
 package gg.ingot.iron.executor.impl
 
 import gg.ingot.iron.Iron
+import gg.ingot.iron.bindings.SqlBindings
 import gg.ingot.iron.executor.IronConnection
 import gg.ingot.iron.executor.transaction.Transaction
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.sql.params.SqlParams
-import gg.ingot.iron.sql.params.SqlParamsBuilder
-import kotlinx.coroutines.*
+import kotlinx.coroutines.withContext
 import org.intellij.lang.annotations.Language
-import org.slf4j.LoggerFactory
 import java.util.function.Consumer
 
 open class CoroutineIronExecutor(private val iron: Iron): IronConnection {
     private val blockingExecutor = BlockingIronExecutor(iron)
 
+    @Suppress("DuplicatedCode")
     @JvmName("transactionCoroutine")
     suspend fun <T> transaction(block: suspend Transaction.() -> T): T {
-        val transactionController = Transaction(iron)
-
         return iron.use {
-            return@use try {
-                it.autoCommit = false
-
-                val result = block(transactionController)
-
-                it.commit()
-                transactionController.commit()
-
-                result
-            } catch (ex: Exception) {
-                it.rollback()
-                transactionController.rollback()
-
-                throw ex
-            } finally {
-                it.autoCommit = true
+            return@use withContext(iron.settings.dispatcher) {
+                return@withContext blockingExecutor.transaction(it, block)
             }
         }
     }
@@ -57,15 +40,9 @@ open class CoroutineIronExecutor(private val iron: Iron): IronConnection {
         }
     }
 
-    suspend fun prepare(@Language("SQL") statement: String, model: SqlParamsBuilder): IronResultSet {
+    suspend fun prepare(@Language("SQL") statement: String, variable: SqlBindings, vararg variables: SqlBindings): IronResultSet {
         return withContext(iron.settings.dispatcher) {
-            return@withContext blockingExecutor.prepare(statement, model)
-        }
-    }
-
-    suspend fun prepare(@Language("SQL") statement: String, values: SqlParams): IronResultSet {
-        return withContext(iron.settings.dispatcher) {
-            return@withContext blockingExecutor.prepare(statement, values)
+            return@withContext blockingExecutor.prepare(statement, variable, *variables)
         }
     }
 

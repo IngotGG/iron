@@ -11,4 +11,4 @@ data class ColumnJsonField internal constructor(val value: Any?)
  * @param value The value of the JSON field.
  * @return The wrapped JSON field.
  */
-fun jsonField(value: Any?) = ColumnJsonField(value)
+fun json(value: Any?) = ColumnJsonField(value)

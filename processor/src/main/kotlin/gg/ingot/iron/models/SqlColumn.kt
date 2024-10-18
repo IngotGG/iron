@@ -1,0 +1,61 @@
+package gg.ingot.iron.models
+
+import gg.ingot.iron.strategies.EnumTransformation
+
+/**
+ * Represents a column a table, this should contain all possible information about the column.
+ * This is built during the compile-time using information from [ColumnBundle].
+ * @author santio
+ * @since 2.0
+ */
+data class SqlColumn(
+    /** The name of the column in the database. */
+    val name: String,
+    /** The named variable to reference this column in the model. (ex: 'id' will replace :id in queries) */
+    val variable: String,
+    /** The name of the field in the model. */
+    val field: String,
+    /** The original type of the column. References a class name. */
+    val originalClass: String,
+    /** The (boxed) type of the column. References a class name. */
+    val clazz: String,
+    /** How enums are stored in the database. References a class name. If not specified, the Iron defaults are used. */
+    val enum: Class<out EnumTransformation> = EnumTransformation.Name::class.java,
+    /** Whether the column is nullable. */
+    val nullable: Boolean,
+    /** Whether the column is a primary key. */
+    val primaryKey: Boolean,
+    /** Whether the column is an auto increment. */
+    val autoIncrement: Boolean,
+    /** Whether the column stores json */
+    val json: Boolean = false,
+    /** The hash of the column which changes when any details of the column change. */
+    val hash: String,
+    /** Whether the column is a timestamp and should be serialized into a java.sql.Timestamp */
+    val timestamp: Boolean = false
+) {
+
+    fun originalClass(): Class<*> {
+        return Class.forName(originalClass)
+    }
+
+    fun clazz(): Class<*> {
+        return Class.forName(clazz)
+    }
+
+    /**
+     * Get the value of the column from the instance.
+     *
+     * This will transform the value to a database-acceptable value.
+     * (Ex: EmptyMap -> Array)
+     *
+     * @param instance The instance to get the value from.
+     * @return The value of the column.
+     */
+    fun value(instance: Any): Any? {
+        val field = instance::class.java.getDeclaredField(variable)
+        field.isAccessible = true
+
+        return field.get(instance)
+    }
+}

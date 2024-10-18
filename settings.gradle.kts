@@ -4,3 +4,4 @@ plugins {
 
 rootProject.name = "iron"
 include("controller")
+include("processor")

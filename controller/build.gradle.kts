@@ -1,8 +1,6 @@
 dependencies {
     implementation(kotlin("reflect"))
-    compileOnly(rootProject)
+    implementation(libs.jooq)
 
-    testImplementation(kotlin("test"))
-    testImplementation(rootProject)
-    testImplementation(libs.bundles.testing)
+    compileOnly(rootProject)
 }

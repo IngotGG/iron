@@ -1,24 +1,24 @@
 package gg.ingot.iron.sql
 
+import gg.ingot.iron.Iron
 import gg.ingot.iron.serialization.ColumnDeserializer
-import gg.ingot.iron.serialization.JsonAdapter
-import gg.ingot.iron.serialization.SerializationAdapter
-import gg.ingot.iron.transformer.ResultTransformer
 import java.sql.ResultSet
-import kotlin.reflect.KClass
 
 /**
  * A wrapper over result set allowing for iron-specific operations
  * @param resultSet The underlying result set
- * @param transformer The result transformer that iron uses
+ * @param iron The iron instance
  * @author Santio, DebitCardz
+ * @since 1.0
  */
 @Suppress("MemberVisibilityCanBePrivate")
-class IronResultSet internal constructor(
+class IronResultSet(
     val resultSet: ResultSet?,
-    val serializationAdapter: SerializationAdapter?,
-    private val transformer: ResultTransformer
+    val iron: Iron,
 ) {
+
+//    Core Functions
+
     /**
      * Moves the cursor forward one row from its current position. A ResultSet cursor is initially positioned before
      * the first row; the first call to the method next makes the first row the current row; the second call makes the
@@ -27,227 +27,164 @@ class IronResultSet internal constructor(
      */
     fun next(): Boolean {
         requireNotNull(resultSet) { "The prepared statement did not return a result" }
-
         return resultSet.next()
     }
+
+//    Get Functions
 
     /**
      * Gets the model from the result set at its current row.
      * @param clazz The class to transform the result to
-     * @return The last model in the result set.
+     * @return The model in the result set, or null if there are no more results.
      * @since 1.0
      */
-    @JvmOverloads
-    fun <T: Any> get(clazz: Class<T>, columnLabel: String? = null): T? {
+    @Suppress("UNCHECKED_CAST")
+    fun <T: Any> get(
+        clazz: Class<T>,
+        columnLabel: String? = null,
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): T? {
         requireNotNull(resultSet) { "The prepared statement did not return a result" }
-
-        return transformer.read(resultSet, clazz, columnLabel)
-    }
-
-    /**
-     * Gets the model from the result set at its current row.
-     * @param clazz The kotlin class to transform the result to
-     * @return The last model in the result set.
-     * @since 1.0
-     */
-    @JvmOverloads
-    fun <T: Any> get(clazz: KClass<T>, columnLabel: String? = null): T? {
-        return get(clazz.java, columnLabel)
-    }
-
-    /**
-     * Gets the model from the result set at its current row.
-     * @return The last model in the result set.
-     * @since 1.0
-     */
-    inline fun <reified T: Any> get(): T? {
-        return this.get(T::class)
+        return iron.resultMapper.read(resultSet, columnLabel, clazz, deserializer,  json) as T?
     }
 
     /**
      * Gets the model from the result set at its current row.
      * @param columnLabel The column label to read from a value.
-     * @return The last model in the result set.
+     * @return The model in the result set, or null if there are no more results.
      */
-    inline fun <reified T : Any> get(columnLabel: String): T? {
-        requireNotNull(resultSet) { "The prepared statement did not return a result" }
-        return get(T::class, columnLabel)
-    }
+    @JvmOverloads
+    inline fun <reified T : Any> get(
+        columnLabel: String? = null,
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): T? = get(T::class.java, columnLabel, deserializer, json)
 
     /**
      * Gets the model from the result set at its current row.
      * @param index The index of the column to read from.
-     * @return The last model in the result set.
+     * @return The model in the result set, or null if there are no more results.
      */
-    inline fun <reified T : Any> get(index: Int): T? {
-        requireNotNull(resultSet) { "The prepared statement did not return a result" }
-        return get(T::class, resultSet.metaData.getColumnLabel(index))
+    inline fun <reified T : Any> get(
+        index: Int,
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): T? = get(T::class.java, resultSet?.metaData?.getColumnLabel(index), deserializer, json)
+
+//    GetNext Functions
+
+    /**
+     * Moves the cursor to the next row in the result set and gets the model.
+     * @param clazz The class to transform the result to
+     * @return The model in the result set, or null if there are no more results.
+     */
+    fun <T: Any> getNext(
+        clazz: Class<T>,
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): T? {
+        return if (next()) get(clazz = clazz, deserializer = deserializer, json = json) else null
     }
 
     /**
      * Moves the cursor to the next row in the result set and gets the model.
-     * @return The last model in the result set or null if there are no rows.
-     * @since 1.0
+     * @return The model in the result set, or null if there are no more results.
      */
-    fun <T: Any> getNext(clazz: Class<T>): T? {
-        return if (next()) {
-            get(clazz)
-        } else {
-            null
-        }
-    }
+    inline fun <reified T: Any> getNext(
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): T? = getNext(T::class.java, deserializer, json)
 
-    /**
-     * Moves the cursor to the next row in the result set and gets the model.
-     * @return The last model in the result set or null if there are no rows.
-     * @since 1.0
-     */
-    fun <T: Any> getNext(clazz: KClass<T>): T? {
-        return getNext(clazz.java)
-    }
-
-    /**
-     * Moves the cursor to the next row in the result set and gets the model.
-     * @return The last model in the result set or null if there are no rows.
-     * @since 1.0
-     */
-    inline fun <reified T: Any> getNext(): T? {
-        return if (next()) {
-            get<T>()
-        } else {
-            null
-        }
-    }
+//    SingleNullable Functions
 
     /**
      * Retrieve a single result from the result set.
      * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
      * If not then the first column will be returned as the result.
+     *
+     * @param clazz The class to transform the result to
      * @param deserializer The deserializer to use for the result.
      * @return The single result from the result set.
      */
-    fun <T : Any> singleNullable(clazz: Class<T>, deserializer: ColumnDeserializer<*, T>? = null): T? {
-        if(deserializer != null) {
-            val value = getNext<Any>()
-            if(next()) {
-                error("Expected a single or no result, but found more than one")
-            }
+    fun <T : Any> singleNullable(
+        clazz: Class<T>,
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): T? {
+        val value = getNext(clazz, deserializer = deserializer, json = json)
 
-            if(value == null) return null
-
-            deserializer as ColumnDeserializer<Any, T>
-            return deserializer.fromDatabaseValue(value)
-        } else {
-            val value = getNext(clazz)
-            if(next()) {
-                error("Expected a single or no result, but found more than one")
-            }
-
-            return value
+        if(next()) {
+            error("Expected a single or no result, but found more than one")
         }
+
+        return value
     }
 
     /**
      * Retrieve a single result from the result set.
      * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
      * If not then the first column will be returned as the result.
+     *
      * @param deserializer The deserializer to use for the result.
      * @return The single result from the result set.
      */
-    fun <T : Any> singleNullable(clazz: KClass<T>, deserializer: ColumnDeserializer<*, T>? = null): T? {
-        return singleNullable(clazz.java, deserializer)
-    }
+    inline fun <reified T : Any> singleNullable(
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): T? = singleNullable(T::class.java, deserializer, json)
+
+//    Single Functions
 
     /**
      * Retrieve a single result from the result set.
      * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
      * If not then the first column will be returned as the result.
-     * @param deserializer The deserializer to use for the result.
-     * @return The single result from the result set.
-     */
-    inline fun <reified T : Any> singleNullable(deserializer: ColumnDeserializer<*, T>? = null): T? {
-        return singleNullable(T::class, deserializer)
-    }
-
-    /**
-     * Retrieve a single result from the result set.
-     * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
-     * If not then the first column will be returned as the result.
+     *
      * @param deserializer The deserializer to use for the result.
      * @return The single result from the result set.
      */
     @JvmOverloads
-    fun <T: Any> single(clazz: Class<T>, deserializer: ColumnDeserializer<*, T>? = null): T {
-        return singleNullable(clazz, deserializer) ?: error("Expected a single result, but found none.")
+    fun <T: Any> single(
+        clazz: Class<T>,
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): T {
+        return singleNullable(clazz, deserializer, json) ?: error("Expected a single result, but found none.")
     }
 
     /**
      * Retrieve a single result from the result set.
      * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
      * If not then the first column will be returned as the result.
+     *
      * @param deserializer The deserializer to use for the result.
      * @return The single result from the result set.
      */
-    @JvmOverloads
-    fun <T: Any> single(clazz: KClass<T>, deserializer: ColumnDeserializer<*, T>? = null): T {
-        return single(clazz.java, deserializer)
-    }
+    inline fun <reified T : Any> single(
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): T = single(T::class.java, deserializer, json)
 
-    /**
-     * Retrieve a single result from the result set.
-     * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
-     * If not then the first column will be returned as the result.
-     * @param deserializer The deserializer to use for the result.
-     * @return The single result from the result set.
-     */
-    inline fun <reified T : Any> single(deserializer: ColumnDeserializer<*, T>? = null): T {
-        return single(T::class, deserializer)
-    }
-
-    /**
-     * Retrieve a single result from the result set while deserializing the fields from json
-     * @return The single result from the result set.
-     */
-    inline fun <reified T: Any> singleJson(): T {
-        return singleJsonNullable<T>() ?: error("Expected a single result, but found none.")
-    }
-
-    /**
-     * Retrieve a single result from the result set while deserializing the fields from json
-     * @return The single result from the result set.
-     */
-    inline fun <reified T: Any> singleJsonNullable(): T? {
-        requireNotNull(serializationAdapter) { "A serializer adapter has not been passed through IronSettings, you will not be able to automatically deserialize JSON." }
-
-        return singleNullable<T>(JsonAdapter(
-            serializationAdapter,
-            T::class.java
-        ))
-    }
+//    AllNullable Functions
 
     /**
      * Retrieve all results from the result set.
      * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
      * If not then the first column will be returned as the result.
+     *
      * @param deserializer The deserializer to use for the result.
      * @return The results from the result set.
      */
-    @Suppress("UNCHECKED_CAST")
-    fun <T: Any> allNullable(clazz: KClass<T>, deserializer: ColumnDeserializer<*, T>? = null): List<T?> {
+    fun <T: Any> allNullable(
+        clazz: Class<T>,
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): List<T?> {
         val v = mutableListOf<T?>()
 
         while(next()) {
-            if(deserializer != null) {
-                val value = get<Any>()
-                if(value != null) {
-                    deserializer as ColumnDeserializer<Any, T>
-                    v.add(deserializer.fromDatabaseValue(value))
-                } else {
-                    v.add(null)
-                }
-            } else {
-                v.add(get(clazz))
-            }
+            v.add(get(clazz, deserializer = deserializer, json = json))
         }
 
         return v
@@ -257,23 +194,32 @@ class IronResultSet internal constructor(
      * Retrieve all results from the result set.
      * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
      * If not then the first column will be returned as the result.
+     *
      * @param deserializer The deserializer to use for the result.
      * @return The results from the result set.
      */
-    inline fun <reified T : Any> allNullable(deserializer: ColumnDeserializer<*, T>? = null): List<T?> {
-        return allNullable(T::class, deserializer)
-    }
+    inline fun <reified T : Any> allNullable(
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): List<T?> = allNullable(T::class.java, deserializer, json)
+
+//    All Functions
 
     /**
      * Retrieve all results from the result set.
      * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
      * If not then the first column will be returned as the result.
+     *
      * @param deserializer The deserializer to use for the result.
      * @return The results from the result set.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T: Any> all(clazz: KClass<T>, deserializer: ColumnDeserializer<*, T>? = null): List<T> {
-        val v = allNullable(clazz, deserializer)
+    fun <T: Any> all(
+        clazz: Class<T>,
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): List<T> {
+        val v = allNullable(clazz, deserializer, json)
         check(!v.any { it == null }) { "ResultSet contains null values" }
 
         return v as List<T>
@@ -283,43 +229,12 @@ class IronResultSet internal constructor(
      * Retrieve all results from the result set.
      * If a class annotated with [gg.ingot.iron.annotations.Model] is passed, it will be transformed into a model.
      * If not then the first column will be returned as the result.
+     *
      * @param deserializer The deserializer to use for the result.
      * @return The results from the result set.
      */
-    inline fun <reified T : Any> all(deserializer: ColumnDeserializer<*, T>? = null): List<T> {
-        return all(T::class, deserializer)
-    }
-
-    /**
-     * Retrieve all results from the result set while deserializing the fields from json
-     * @return The single result from the result set.
-     */
-    @Suppress("UNCHECKED_CAST")
-    inline fun <reified T: Any> allJson(): List<T> {
-        val v = allJsonNullable<T>()
-        check(!v.any { it == null }) { "ResultSet contains null values" }
-
-        return v as List<T>
-    }
-
-    /**
-     * Retrieve a single result from the result set while deserializing the fields from json
-     * @return The single result from the result set.
-     */
-    inline fun <reified T: Any> allJsonNullable(): List<T?> {
-        requireNotNull(serializationAdapter) { "A serializer adapter has not been passed through IronSettings, you will not be able to automatically deserialize JSON." }
-
-        return allNullable<T>(JsonAdapter(
-            serializationAdapter,
-            T::class.java
-        ))
-    }
-
-    /**
-    * Releases this ResultSet object's database and JDBC resources immediately instead of waiting for this to happen
-    * when it is automatically closed.
-    */
-    fun close() {
-        resultSet?.close()
-    }
+    inline fun <reified T : Any> all(
+        deserializer: ColumnDeserializer<*, T>? = null,
+        json: Boolean = false
+    ): List<T> =  all(T::class.java, deserializer, json)
 }
