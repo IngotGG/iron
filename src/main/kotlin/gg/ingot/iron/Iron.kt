@@ -62,7 +62,8 @@ class Iron internal constructor(
     val settings: IronSettings
 ): AutoCloseable {
     /** The connection pool used to manage connections to the database. We wrap over Hikari */
-    internal var pool: HikariDataSource? = null
+    var pool: HikariDataSource? = null
+        private set
 
     /** The value transformer used to transform values from the result set into their corresponding types. */
     val resultMapper = ResultMapper(this)
