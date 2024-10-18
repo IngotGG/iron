@@ -15,8 +15,8 @@ drivers at [soapui.org](https://www.soapui.org/docs/jdbc/reference/jdbc-drivers/
 
 > [!NOTE]  
 > Iron by default attempts to support every database management system (DBMS) that has a JDBC driver 
-> available. While we unit test against SQLite and use Iron in a production environment with Postgres,
-> it is possible that some issues may arise, please open a GitHub issue if you encounter any problems.
+> available. While we unit test against SQLite, Postgres, and H2, it is possible that some issues may
+> arise, please open a GitHub issue if you encounter any problems.
 
 ## Connecting to a Database
 
@@ -38,7 +38,7 @@ val iron = Iron("jdbc:sqlite::memory:").connect()
 // return types (blocking, completable, etc.)
 final var iron = Iron.create("jdbc:sqlite::memory:")
         .connect()
-        .blocking(); // Use the blocking executor
+        .blocking(); // Uses the blocking executor
 ```
 
 ## Configuring Iron

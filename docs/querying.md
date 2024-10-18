@@ -4,6 +4,7 @@
 - [Querying a single result](#querying-a-single-result)
 - [Querying a multiple results](#querying-multiple-results)
 - [Querying with a filter (passing in arguments)](#querying-with-a-filter-passing-in-arguments)
+- [Binding models](#binding-models)
 - [Grabbing a connection](#grabbing-a-connection)
 
 > [!WARNING]  
@@ -18,7 +19,12 @@ Iron at its core is a mapper for JDBC, meaning that you will need a class or dat
 results to. For our examples, we'll be using a simple `User` class. In java, you can either use a
 record or a class to map the results to. The `@Model` annotation is required! For our examples we'll be using the following class.
 
+> [!NOTE]  
+> For the annotation processor to pick up the class, make sure you make the class in the root
+> scope. For example, do not nest the class inside a function.
+
 ```kotlin
+@Model
 data class User(
     val id: Int,
     val name: String,
@@ -31,7 +37,8 @@ Here is how you would query a single result using `prepare`.
 ### Kotlin
 ```kotlin
 val iron = Iron("jdbc:sqlite::memory:").connect()
-val user: User? = iron.prepare("SELECT * FROM users").single<User>()
+// singeNullable<User>() for a nullable User 
+val user: User = iron.prepare("SELECT * FROM users").single<User>()
 ```
 
 ### Java
@@ -50,7 +57,9 @@ final User user = iron.prepare("SELECT * FROM users").single(User.class);
 
 Querying multiple results is very similar to querying a single result, the only difference is that
 you'll need to use `all` instead of `single`, and no exception will be thrown if the result set is
-empty or more than one result. Limiting rows is recommended inside the `prepare` statement.
+empty or more than one result. Limiting rows is recommended inside the `prepare` statement. This call
+by default will throw if any of the results are null, you can however use `allNullable` to get a list
+of possibly-null results.
 
 ### Kotlin
 ```kotlin
@@ -92,14 +101,62 @@ won't be the last time we'll use named parameters.
 val iron = Iron("jdbc:sqlite::memory:").connect()
 val users: List<User> = iron.prepare(
     "SELECT * FROM users WHERE id = :id", 
-    sqlParams(
+    bind {
         "id" to 1
-    )
+    }
+    // Alternatively you can: bind(mapOf("id" to 1)), or bind("id" to 1)
 ).all<User>()
 ```
 
 ### Java
 Not currently supported in Java.
+
+## Binding Models
+
+If you want to write a complex query and take in bindings from a model, you can extend the `Bindings`
+interface and implement it in your model. This will allow you to bind the model to the query. Only
+models can have bindings and this interface can't be applied to regular classes.
+
+### Kotlin
+```kotlin
+@Model
+data class User(
+    val id: Int,
+    val name: String,
+    val age: Int
+): Bindings
+```
+
+### Java
+```java
+@Model
+@Model
+record User(
+    int id,
+    String name,
+    int age
+) implements Bindings { // Java is a bit stricter with interfaces
+    @Override
+    public @NotNull SqlBindings bindings() {
+        return Bindings.super.bindings();
+    }
+}
+```
+
+Using the `bindings()` method, you can now include bindings from the model in the query.
+
+```kotlin
+val iron = Iron("jdbc:sqlite::memory:").connect()
+val user = User(1, "John Doe", 30)
+
+val users: List<User> = iron.prepare(
+    "SELECT * FROM users WHERE id = :id AND deleted = :deleted",
+    user.bindings(),
+    bind {
+        "deleted" to false
+    }
+).all<User>()
+```
 
 ## Grabbing a Connection
 
@@ -120,4 +177,12 @@ iron.useBlocking { connection ->
 ```
 
 ### Java
-Not currently supported in Java.
+```java
+final var iron = Iron.create("jdbc:sqlite::memory:").connect().blocking();
+
+// Java is unable to call the suspending #use() method
+
+iron.useBlocking(connection -> {
+    // This is a blocking lambda
+});
+```

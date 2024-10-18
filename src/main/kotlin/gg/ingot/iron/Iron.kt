@@ -15,6 +15,7 @@ import kotlinx.coroutines.runBlocking
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.sql.Connection
+import java.util.function.Function
 
 /**
  * The entry point for the Iron database library.
@@ -162,8 +163,8 @@ class Iron internal constructor(
      * @param block The closure to execute with the connection.
      * @since 1.0
      */
-    fun <T : Any?> useBlocking(block: (Connection) -> T): T = runBlocking {
-        this@Iron.use(block)
+    fun <T : Any?> useBlocking(block: Function<Connection, T>): T = runBlocking {
+        this@Iron.use(block::apply)
     }
 
     /**

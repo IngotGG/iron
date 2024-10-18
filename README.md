@@ -23,7 +23,11 @@ Tags & Releases can be found on our [Jitpack](https://jitpack.io/#gg.ingot/iron)
 You will also need to add the JDBC driver of the DBMS you're using. For more information, see 
 the [Adding a JDBC Driver](docs/connecting.md#adding-a-jdbc-driver) documentation page.
 
-### Gradle
+Iron uses annotation processors to automatically generate SQL representations of your models.
+If you are using Kotlin, you will need to use KSP, for Java you can use the gradle annotation processor.
+Please take a look below to see details, please keep in mind you only need to use one of the two.
+
+### Gradle (Kotlin DSL)
 
 ```kts
 plugins {
@@ -44,26 +48,6 @@ dependencies {
     // Optional, if you want to use the controller module (Kotlin only)
     implementation("gg.ingot.iron:controller:TAG")
 }
-```
-### Maven
-```xml
-<repository>
-    <id>jitpack.io</id>
-    <url>https://jitpack.io</url>
-</repository>
-
-<dependency>
-    <groupId>gg.ingot.iron</groupId>
-    <artifactId>iron</artifactId>
-    <version>TAG</version>
-</dependency>
-
-<!-- Optional, if you want to use the controller module (Kotlin only) -->
-<dependency>
-    <groupId>gg.ingot.iron</groupId>
-    <artifactId>controller</artifactId>
-    <version>TAG</version>
-</dependency>
 ```
 
 ## Documentation

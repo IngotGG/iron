@@ -13,6 +13,9 @@ import kotlinx.serialization.json.put
 @Model
 private data class TransformModel(val a: Int, val b: Int): Bindings
 
+@Model
+private data class RegularModel(val a: Int, val b: Int)
+
 @AutoScan
 class BindingsTest: DescribeSpec({
     describe("Bindings") {
@@ -120,6 +123,16 @@ class BindingsTest: DescribeSpec({
             val model = TransformModel(2, 4)
 
             val result = iron.prepare("SELECT :a + :b", bind(model))
+                .single<Int>()
+
+            result shouldBe 6
+        }
+
+        it("generate bindings for models dynamically") {
+            val iron = IronTest.sqlite()
+            val model = RegularModel(2, 4)
+
+            val result = iron.prepare("SELECT :a + :b", model)
                 .single<Int>()
 
             result shouldBe 6

@@ -80,6 +80,12 @@ open class BlockingIronExecutor(
 
         val mappedValues = values.map { iron.resultMapper.serialize(null, it) }
 
+        // If we have bindings, run them through the other method
+        if (mappedValues.isNotEmpty() && mappedValues.all { it is SqlBindings }) {
+            val first = mappedValues.first() as SqlBindings
+            return prepare(statement, first, *mappedValues.drop(1).map { it as SqlBindings }.toTypedArray())
+        }
+
         // Check to see if we have any remaining variables
         val variables = PlaceholderParser.getVariables(statement)
         if (variables.isNotEmpty()) {

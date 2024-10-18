@@ -23,6 +23,11 @@ data class User(
 )
 ```
 
+> [!TIP]
+> Iron will dynamically generate bindings for models in prepare statements even if they are missing
+> the `Bindings` interface. This is useful for when you want to use the model as a parameter to a
+> query. You will however no longer be able to call `bindings()` on the model.
+
 Inserting data is very simple, and we'll use the `prepare` method to insert data in this example. 
 Alongside that we'll create a table into the in-memory database to make this a working example. We
 recommend using [Flyway](https://github.com/flyway/flyway) for production environments.

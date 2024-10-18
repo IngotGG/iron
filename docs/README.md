@@ -2,8 +2,8 @@
 
 ## Introduction
 
-Iron is a opinionated database library for Kotlin that aims to make it easy to interact with databases.
-It internally wraps over the JDBC API and provides a fluent API for interacting with the database.
+Iron is an opinionated database library for Kotlin that aims to make it easy to interact with databases.
+It internally wraps over the JDBC API and Hikari and provides a fluent API for interacting with the database.
 
 > [!NOTE]  
 > Iron is developed by [Ingot](https://ingot.gg), and is designed to be used in a Kotlin environment. While

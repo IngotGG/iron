@@ -2,9 +2,11 @@ package gg.ingot.iron.transformer
 
 import gg.ingot.iron.Iron
 import gg.ingot.iron.annotations.Model
+import gg.ingot.iron.bindings.Bindings
 import gg.ingot.iron.helper.ReflectionHelper.box
 import gg.ingot.iron.models.SqlColumn
 import gg.ingot.iron.models.SqlTable
+import gg.ingot.iron.models.SqlTable.Companion.table
 import gg.ingot.iron.serialization.ColumnDeserializer
 import gg.ingot.iron.strategies.EnumTransformation
 import gg.ingot.iron.strategies.EnumTransformation.Companion.instance
@@ -322,6 +324,11 @@ class ResultMapper internal constructor(private val iron: Iron) {
         // Handle Optionals
         if (value is Optional<*>) {
             return serialize(column, value.orElse(null))
+        }
+
+        // Handle models
+        if (value::class.table() != null) {
+            return Bindings.of(value, iron)
         }
 
         // Handle enums
