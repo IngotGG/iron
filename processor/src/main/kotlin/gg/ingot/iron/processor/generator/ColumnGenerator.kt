@@ -22,6 +22,7 @@ internal object ColumnGenerator {
             .add("  name = %S,\n", column.name)
             .add("  variable = %S,\n", column.variable)
             .add("  field = %S,\n", column.field)
+            .add("  originalClass = %S,\n", column.clazz)
             .add("  clazz = %S,\n", column.boxedClass())
             .add("  nullable = %L,\n", column.nullable)
             .add("  primaryKey = %L,\n", column.primaryKey)

@@ -17,7 +17,7 @@ internal data class ColumnBundle(
     val variable: String,
     /** The name of the field in the model. */
     val field: String,
-    /** The (boxed) type of the column. References a class name. */
+    /** The non-boxed type of the column. References a class name. */
     val clazz: String,
     /**
      * The literal pointing to the qualified name of a [EnumTransformation] to use for this column.

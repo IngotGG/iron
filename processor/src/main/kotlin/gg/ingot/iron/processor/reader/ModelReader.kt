@@ -6,6 +6,7 @@ import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import gg.ingot.iron.annotations.Model
 import gg.ingot.iron.models.bundles.TableBundle
+import org.slf4j.LoggerFactory
 import java.security.MessageDigest
 import javax.lang.model.element.TypeElement
 
@@ -16,6 +17,8 @@ import javax.lang.model.element.TypeElement
  */
 internal object ModelReader {
 
+    private val logger = LoggerFactory.getLogger(ModelReader::class.java)
+
     val md5 = MessageDigest.getInstance("MD5")
         ?: throw IllegalStateException("Could not create MD5 instance.")
 
@@ -25,7 +28,7 @@ internal object ModelReader {
      * @return The table representation of the model.
      */
     @OptIn(KspExperimental::class)
-    fun read(environment: SymbolProcessorEnvironment, model: KSClassDeclaration): TableBundle {
+    fun read(environment: SymbolProcessorEnvironment, model: KSClassDeclaration): TableBundle? {
         val annotation = model.getAnnotationsByType(Model::class).firstOrNull()
             ?: error("Models must be annotated with @Model, this is an internal error and should be reported.")
 
@@ -45,6 +48,11 @@ internal object ModelReader {
         }
 
         val columns = ColumnReader.read(annotation, model)
+        if (columns.isEmpty()) {
+            environment.logger.warn("No columns found for model '${model.qualifiedName?.asString()}', please specify at least one column, model will be skipped.")
+            environment.logger.warn("If you are using a java record, please keep in mind that KSP isn't able to read details and you will need to use a regular class instead.")
+            return null
+        }
 
         // digest the name and column hashCode() to get a unique hash for the table
         val columnBytes = columns.joinToString("") { column -> column.hash() }.toByteArray()
@@ -66,7 +74,7 @@ internal object ModelReader {
      * @param model The class to read the model from.
      * @return The table representation of the model.
      */
-    fun read(model: TypeElement): TableBundle {
+    fun read(model: TypeElement): TableBundle? {
         val annotation = model.getAnnotationsByType(Model::class.java).firstOrNull()
             ?: error("Models must be annotated with @Model, this is an internal error and should be reported.")
 
@@ -86,6 +94,11 @@ internal object ModelReader {
         }
 
         val columns = ColumnReader.read(annotation, model)
+
+        if (columns.isEmpty()) {
+            logger.warn("No columns found for model '${model.qualifiedName}', please specify at least one column, model will be skipped.")
+            return null
+        }
 
         // digest the name and column hashCode() to get a unique hash for the table
         val columnBytes = columns.joinToString("") { column -> column.hash() }.toByteArray()

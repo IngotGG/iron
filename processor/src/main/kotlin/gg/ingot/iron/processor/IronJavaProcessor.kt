@@ -21,7 +21,7 @@ internal class IronJavaProcessor: AbstractProcessor() {
         val annotatedElements: Set<Element?> = env.getElementsAnnotatedWith(annotation)
         val classes = annotatedElements.filterIsInstance<TypeElement>()
 
-        val tables = classes.map { ModelReader.read(it) }
+        val tables = classes.mapNotNull { ModelReader.read(it) }
         TablesGenerator.findDuplicates(tables)
 
         // Generate the tables

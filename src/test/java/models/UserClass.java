@@ -24,6 +24,8 @@ public class UserClass {
         this.active = active;
     }
     
+    public UserClass() {}
+    
     public String name() {
         return name;
     }

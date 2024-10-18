@@ -15,6 +15,8 @@ data class SqlColumn(
     val variable: String,
     /** The name of the field in the model. */
     val field: String,
+    /** The original type of the column. References a class name. */
+    val originalClass: String,
     /** The (boxed) type of the column. References a class name. */
     val clazz: String,
     /** How enums are stored in the database. References a class name. If not specified, the Iron defaults are used. */
@@ -32,6 +34,10 @@ data class SqlColumn(
     /** Whether the column is a timestamp and should be serialized into a java.sql.Timestamp */
     val timestamp: Boolean = false
 ) {
+
+    fun originalClass(): Class<*> {
+        return Class.forName(originalClass)
+    }
 
     fun clazz(): Class<*> {
         return Class.forName(clazz)

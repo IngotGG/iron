@@ -19,7 +19,7 @@ internal class IronKspProcessor(private val environment: SymbolProcessorEnvironm
             .takeIf { it.isNotEmpty() }
             ?: return emptyList()
 
-        val tables = annotated.map { ModelReader.read(environment, it) }
+        val tables = annotated.mapNotNull { ModelReader.read(environment, it) }
         TablesGenerator.findDuplicates(tables)
 
         // Generate the tables

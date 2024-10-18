@@ -21,7 +21,6 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.*
 import kotlin.reflect.KClass
-import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.isAccessible
 
@@ -69,11 +68,14 @@ class ResultMapper internal constructor(private val iron: Iron) {
 
         // Check if we're requesting an Optional, if so we'll parse with the type we want inside
         // the optional, and then wrap it in an Optional
-        if (clazz.isAssignableFrom(Optional::class.java)) {
-            val type = clazz.genericSuperclass as ParameterizedType
-            val innerType = type.getUnderlyingType() ?: error("Could not get the underlying type of optional")
+        if (Optional::class.java.isAssignableFrom(clazz)) {
+            val type = clazz.getUnderlyingType()
+                ?: Object::class.java
 
-            return Optional.ofNullable(read(resultSet, label, innerType, deserializer, json))
+            val value = read(resultSet, label, type, deserializer, json)
+                ?: return Optional.empty<Any>()
+
+            return Optional.ofNullable(value)
         }
 
         // Get the value from the result set
@@ -121,16 +123,21 @@ class ResultMapper internal constructor(private val iron: Iron) {
             it.field to read(resultSet, it.name, it.clazz(), column = it)
         }.toMutableMap()
 
+        // If we're using java, we want to opt for only a no-arg constructor because the names of the parameters
+        // are not the same as the backing field
+        val isKotlin = clazz.declaredAnnotations.any { it is Metadata }
+
         // We want to prefer the primary constructor, if it exists, otherwise we'll use the no-arg constructor
-        val primaryConstructor = clazz.kotlin.primaryConstructor
-            ?.takeIf { it.parameters.isNotEmpty() }
-            ?: clazz.kotlin.constructors.firstOrNull { it.parameters.size == mapping.size }
+        val primaryConstructor = if (!isKotlin) null else {
+            clazz.kotlin.primaryConstructor
+                ?.takeIf { it.parameters.isNotEmpty() }
+                ?: clazz.kotlin.constructors.firstOrNull { it.parameters.size == mapping.size }
+        }
 
         if (primaryConstructor != null) {
             primaryConstructor.isAccessible = true
 
             try {
-                // todo: java support
                 return primaryConstructor.callBy(mapping.map { (field, value) ->
                     val parameter = primaryConstructor.parameters.firstOrNull { it.name == field }
                         ?: error("Failed to find parameter for field '$field' in primary constructor of '${clazz.name}', make sure parameter names match the backing field name.")
@@ -151,22 +158,41 @@ class ResultMapper internal constructor(private val iron: Iron) {
                     }.associateWith { mapping[it.name]!! }
 
                 if (missingParameters.isNotEmpty()) {
-                    throw RuntimeException("Failed to instantiate model '${clazz.name}' with primary/full constructor, " +
-                        "missing parameters: ${missingParameters.joinToString { "${it.type} ${it.name}" }}", e
+                    throw RuntimeException(
+                        "Failed to instantiate model '${clazz.name}' with primary/full constructor, " +
+                            "missing parameters: ${missingParameters.joinToString { "${it.type} ${it.name}" }}", e
                     )
                 } else if (mismatchedParameters.isNotEmpty()) {
-                    throw RuntimeException("Failed to instantiate model '${clazz.name}' with primary/full constructor, " +
-                        "mismatched parameters: ${mismatchedParameters.map { "${it.key.type} ${it.key.name} (was ${it.value::class.java})" }}", e
+                    throw RuntimeException(
+                        "Failed to instantiate model '${clazz.name}' with primary/full constructor, " +
+                            "mismatched parameters: ${mismatchedParameters.map { "${it.key.type} ${it.key.name} (was ${it.value::class.java})" }}",
+                        e
                     )
                 } else {
-                    throw RuntimeException("Failed to instantiate model '${clazz.name}' with primary/full constructor", e)
+                    throw RuntimeException(
+                        "Failed to instantiate model '${clazz.name}' with primary/full constructor",
+                        e
+                    )
                 }
             } catch (e: Exception) {
                 throw RuntimeException("Failed to instantiate model '${clazz.name}' with primary/full constructor", e)
             }
+        } else if (clazz.isRecord) {
+            try {
+                val constructor = clazz.getDeclaredConstructor(
+                    *table.columns.map { it.originalClass() }.toTypedArray()
+                )
+
+                constructor.isAccessible = true
+                return constructor.newInstance(*mapping.values.toTypedArray())
+            } catch (e: NoSuchMethodException) {
+                throw RuntimeException("Failed to instantiate model '${clazz.name}' with record constructor, this is an internal error and should be reported", e)
+            } catch (e: Exception) {
+                throw RuntimeException("Failed to instantiate model '${clazz.name}' with record constructor", e)
+            }
         } else {
             try {
-                val instance = clazz.kotlin.createInstance()
+                val instance = clazz.getDeclaredConstructor().newInstance()
 
                 mapping.forEach { (name, value) ->
                     val field = instance::class.java.getDeclaredField(name)
@@ -176,6 +202,8 @@ class ResultMapper internal constructor(private val iron: Iron) {
                 }
 
                 return instance
+            } catch (e: NoSuchMethodException) {
+                throw RuntimeException("Failed to instantiate model '${clazz.name}' with no-arg constructor, make sure you have a no-arg constructor", e)
             } catch (e: Exception) {
                 throw RuntimeException("Failed to instantiate model '${clazz.name}' with no-arg constructor", e)
             }
@@ -290,6 +318,11 @@ class ResultMapper internal constructor(private val iron: Iron) {
     fun serialize(column: SqlColumn?, value: Any?): Any? {
         if (value == null) return null
         if (value is Byte) return value
+
+        // Handle Optionals
+        if (value is Optional<*>) {
+            return serialize(column, value.orElse(null))
+        }
 
         // Handle enums
         if (value is Enum<*>) {
