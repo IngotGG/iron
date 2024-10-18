@@ -12,7 +12,7 @@ private enum class Permission {
     A, B, C
 }
 
-@Model
+@Model(table = "simple_users")
 private data class User(
     val id: Int,
     val permission: Permission
@@ -26,10 +26,10 @@ class EnumTest: DescribeSpec({
             val iron = IronTest.sqlite()
             val user = User(1, Permission.B)
 
-            iron.prepare("CREATE TABLE users(id INTEGER PRIMARY KEY, permission TEXT);")
-            iron.prepare("INSERT INTO users(id, permission) VALUES (:id, :permission);", bind(user))
+            iron.prepare("CREATE TABLE simple_users(id INTEGER PRIMARY KEY, permission TEXT);")
+            iron.prepare("INSERT INTO simple_users(id, permission) VALUES (:id, :permission);", bind(user))
 
-            val result = iron.prepare("SELECT * FROM users WHERE id = ?", user.id).single<User>()
+            val result = iron.prepare("SELECT * FROM simple_users WHERE id = ?", user.id).single<User>()
             assert(result.permission == Permission.B)
         }
 
@@ -40,10 +40,10 @@ class EnumTest: DescribeSpec({
 
             val user = User(1, Permission.B)
 
-            iron.prepare("CREATE TABLE users(id INTEGER PRIMARY KEY, permission TEXT);")
-            iron.prepare("INSERT INTO users(id, permission) VALUES (:id, :permission);", bind(user))
+            iron.prepare("CREATE TABLE simple_users(id INTEGER PRIMARY KEY, permission TEXT);")
+            iron.prepare("INSERT INTO simple_users(id, permission) VALUES (:id, :permission);", bind(user))
 
-            val result = iron.prepare("SELECT * FROM users WHERE id = ?", user.id).single<User>()
+            val result = iron.prepare("SELECT * FROM simple_users WHERE id = ?", user.id).single<User>()
             assert(result.permission == Permission.B)
         }
     }

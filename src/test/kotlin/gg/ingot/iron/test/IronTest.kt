@@ -3,8 +3,8 @@ package gg.ingot.iron.test
 import com.google.gson.Gson
 import gg.ingot.iron.Iron
 import gg.ingot.iron.IronSettings
-import gg.ingot.iron.strategies.NamingStrategy
 import gg.ingot.iron.serialization.SerializationAdapter
+import gg.ingot.iron.strategies.NamingStrategy
 import io.kotest.core.test.TestScope
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -19,6 +19,7 @@ object IronTest {
 
     private val baseSettings = IronSettings().apply {
         namingStrategy = NamingStrategy.SNAKE_CASE
+        serialization = SerializationAdapter.Gson(Gson())
         connectionPollTimeout = 3.seconds
     }
 
@@ -70,18 +71,6 @@ object IronTest {
     fun pooled(): IronSettings {
         return IronSettings().apply {
             maxConnections = 3
-            namingStrategy = NamingStrategy.SNAKE_CASE
-            connectionPollTimeout = 3.seconds
-        }
-    }
-
-    /**
-     * Build a setting configuration with json serialization enabled.
-     * @return The iron settings required for a json iron instance.
-     */
-    fun json(): IronSettings {
-        return IronSettings().apply {
-            serialization = SerializationAdapter.Gson(Gson())
             namingStrategy = NamingStrategy.SNAKE_CASE
             connectionPollTimeout = 3.seconds
         }

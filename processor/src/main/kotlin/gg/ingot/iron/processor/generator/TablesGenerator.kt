@@ -50,7 +50,7 @@ internal object TablesGenerator {
                     .build())
                 .addAnnotation(AnnotationSpec.builder(JvmStatic::class)
                     .build())
-                .initializer("mapOf(\n${tableProperties.entries.joinToString(", \n") { "    ${it.key}::class.java to ${it.value}" }}\n)")
+                .initializer("mapOf(\n${tableProperties.entries.joinToString(", \n") { "    Class.forName(\"${it.key}\") to ${it.value}" }}\n)")
                 .build())
 
         val file = FileSpec.builder("gg.ingot.iron.generated", "Tables")

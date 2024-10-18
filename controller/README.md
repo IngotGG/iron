@@ -5,9 +5,8 @@ By default, controllers come with a set of methods that provide basic CRUD opera
 functionality can be extended with extension functions.
 
 > [!WARNING]  
-> It's important to note that Iron Controllers is relatively new, support for different DBMS' is limited and may not work as expected.
-> As of this moment, only Sqlite, MySQL and PostgreSQL are supported. Please [open a pull request](https://github.com/ingotgg/iron/pull) to help add support for
-> other DBMS'. You can additionally register your own [`DBMSEngine` implementation](#registering-an-engine) to add support for a DBMS not supported by default.
+> Iron uses JOOQ for dynamically generating queries, this however means that the available DBMS's are limited to those
+> that JOOQ supports. If you wish to see what DBMS's are supported, check out the [JOOQ Support Matrix](https://www.jooq.org/download/support-matrix).
 
 # Installation
 
@@ -16,6 +15,7 @@ Installing Iron Controllers is as simple as adding the dependency to your projec
 dependencies {
     // Base Iron
     implementation("gg.ingot.iron:iron:VERSION")
+    ksp("gg.ingot.iron:processor:VERSION")
 
     // Iron Controllers
     implementation("gg.ingot.iron:controller:VERSION")

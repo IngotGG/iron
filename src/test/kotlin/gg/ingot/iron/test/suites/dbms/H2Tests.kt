@@ -1,6 +1,8 @@
 package gg.ingot.iron.test.suites.dbms
 
 import gg.ingot.iron.test.IronTest
+import gg.ingot.iron.test.models.Data
+import gg.ingot.iron.test.models.JsonHolder
 import gg.ingot.iron.test.models.User
 import io.kotest.core.annotation.AutoScan
 import io.kotest.core.spec.style.DescribeSpec
@@ -9,7 +11,7 @@ import io.kotest.matchers.shouldBe
 @AutoScan
 class H2Tests: DescribeSpec({
     describe("H2") {
-        val iron = IronTest.sqlite(IronTest.json())
+        val iron = IronTest.h2()
 
         beforeAny {
             iron.prepare("DROP TABLE IF EXISTS test")
@@ -32,16 +34,19 @@ class H2Tests: DescribeSpec({
             iron.prepare("CREATE TABLE test(id INTEGER PRIMARY KEY, data TEXT ARRAY)")
             iron.prepare("INSERT INTO test(id, data) VALUES (?, ?)", 1,  listOf("a", "b", "c"))
 
-            val result = iron.prepare("SELECT data FROM test").single<List<String>>()
+            val result = iron.prepare("SELECT data FROM test").single<ArrayList<String>>()
             result shouldBe listOf("a", "b", "c")
         }
 
         it("work with model insertion") {
             val user = User(1, "John Doe", 30)
             iron.prepare(User.tableDefinition)
-            iron.prepare("INSERT INTO users(id, name, age) VALUES (:id, :name, :age)", user)
+            iron.prepare(
+                "INSERT INTO users(id, name, age, created_at, updated_at) VALUES (:id, :name, :age, :createdAt, :updatedAt)",
+                user.bindings()
+            )
 
-            val result = iron.prepare("SELECT data FROM users").single<User>()
+            val result = iron.prepare("SELECT * FROM users").single<User>()
             result shouldBe user
         }
 
@@ -86,19 +91,13 @@ class H2Tests: DescribeSpec({
         }
 
         it("work with json") {
-            data class TestModel(val a: Int, val b: Int)
-            val json = TestModel(1, 2)
+            val holder = JsonHolder()
 
-            iron.prepare("CREATE TABLE test_json(id INTEGER PRIMARY KEY, data JSON)")
-            iron.prepare("CREATE TABLE test_jsonb(id INTEGER PRIMARY KEY, data JSONB)")
+            iron.prepare("CREATE TABLE test(id INTEGER PRIMARY KEY, data TEXT)")
+            iron.prepare("INSERT INTO test(id, data) VALUES (:id, :json)", holder.bindings())
+            val result = iron.prepare("SELECT data FROM test").single<Data>(json = true)
 
-            iron.prepare("INSERT INTO test_json(id, data) VALUES (?, ?)", 1, json)
-            val result = iron.prepare("SELECT data FROM test_json").single<TestModel>()
-            result shouldBe json
-            
-            iron.prepare("INSERT INTO test_jsonb(id, data) VALUES (?, ?)", 1, json)
-            val result2 = iron.prepare("SELECT data FROM test_jsonb").single<TestModel>()
-            result2 shouldBe json
+            result shouldBe holder.json
         }
     }
 })

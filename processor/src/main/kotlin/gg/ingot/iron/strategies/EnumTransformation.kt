@@ -1,5 +1,7 @@
 package gg.ingot.iron.strategies
 
+import kotlin.reflect.full.createInstance
+
 /**
  * Transforms an enum value into a string and vice versa.
  *
@@ -50,6 +52,15 @@ abstract class EnumTransformation {
                     error("Failed to deserialize enum value, expected an int but got ${value::class.java.name} (value: $value)")
                 }
             }
+        }
+    }
+
+    companion object {
+        fun Class<out EnumTransformation>.instance(): EnumTransformation {
+            val instance = this.kotlin.objectInstance
+                ?: this.kotlin.createInstance()
+
+            return instance
         }
     }
 }

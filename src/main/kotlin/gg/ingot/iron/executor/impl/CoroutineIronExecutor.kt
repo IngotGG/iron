@@ -1,10 +1,10 @@
 package gg.ingot.iron.executor.impl
 
 import gg.ingot.iron.Iron
+import gg.ingot.iron.bindings.SqlBindings
 import gg.ingot.iron.executor.IronConnection
 import gg.ingot.iron.executor.transaction.Transaction
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.bindings.SqlBindings
 import kotlinx.coroutines.withContext
 import org.intellij.lang.annotations.Language
 import java.util.function.Consumer

@@ -15,7 +15,6 @@ internal class IronKspProcessor(private val environment: SymbolProcessorEnvironm
     override fun process(resolver: Resolver): List<KSAnnotated> {
         val annotated = resolver.getSymbolsWithAnnotation(Model::class.qualifiedName!!)
             .filterIsInstance<KSClassDeclaration>()
-            .also { println(it) }
             .toList()
             .takeIf { it.isNotEmpty() }
             ?: return emptyList()

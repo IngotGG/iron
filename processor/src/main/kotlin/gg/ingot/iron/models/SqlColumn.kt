@@ -16,7 +16,7 @@ data class SqlColumn(
     /** The name of the field in the model. */
     val field: String,
     /** The (boxed) type of the column. References a class name. */
-    val clazz: Class<*>,
+    val clazz: String,
     /** How enums are stored in the database. References a class name. If not specified, the Iron defaults are used. */
     val enum: Class<out EnumTransformation> = EnumTransformation.Name::class.java,
     /** Whether the column is nullable. */
@@ -25,11 +25,24 @@ data class SqlColumn(
     val primaryKey: Boolean,
     /** Whether the column is an auto increment. */
     val autoIncrement: Boolean,
+    /** Whether the column stores json */
+    val json: Boolean = false,
     /** The hash of the column which changes when any details of the column change. */
-    val hash: String
+    val hash: String,
+    /** Whether the column is a timestamp and should be serialized into a java.sql.Timestamp */
+    val timestamp: Boolean = false
 ) {
+
+    fun clazz(): Class<*> {
+        return Class.forName(clazz)
+    }
+
     /**
      * Get the value of the column from the instance.
+     *
+     * This will transform the value to a database-acceptable value.
+     * (Ex: EmptyMap -> Array)
+     *
      * @param instance The instance to get the value from.
      * @return The value of the column.
      */

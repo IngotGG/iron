@@ -5,11 +5,16 @@ import gg.ingot.iron.bindings.SqlBindings
 import gg.ingot.iron.executor.IronConnection
 import gg.ingot.iron.executor.transaction.Transaction
 import gg.ingot.iron.sql.IronResultSet
+import gg.ingot.iron.transformer.PlaceholderParser
 import kotlinx.coroutines.runBlocking
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.util.function.Consumer
+import javax.sql.rowset.CachedRowSet
+import javax.sql.rowset.RowSetFactory
+import javax.sql.rowset.RowSetProvider
+
 
 open class BlockingIronExecutor(
     private val iron: Iron,
@@ -63,15 +68,20 @@ open class BlockingIronExecutor(
             val resultSet = it.createStatement()
                 .executeQuery(query)
 
-            return@use IronResultSet(it, resultSet, iron)
+            val cached = factory.createCachedRowSet()
+            cached.populate(resultSet)
+
+            return@use IronResultSet(cached, iron)
         }
     }
 
     fun prepare(@Language("SQL") statement: String, vararg values: Any?): IronResultSet {
         logger.trace("Preparing Statement\n{}", statement)
 
+        val mappedValues = values.map { iron.resultMapper.serialize(null, it) }
+
         // Check to see if we have any remaining variables
-        val variables = iron.placeholderTransformer.getVariables(statement)
+        val variables = PlaceholderParser.getVariables(statement)
         if (variables.isNotEmpty()) {
             error("The statement contains variables that are not bound, make sure to bind all variables before executing the statement. Missing variables: ${variables.joinToString(", ")}")
         }
@@ -79,26 +89,27 @@ open class BlockingIronExecutor(
         return use {
             val preparedStatement = it.prepareStatement(statement)
 
-            require(preparedStatement.parameterMetaData.parameterCount == values.size) {
+            require(preparedStatement.parameterMetaData.parameterCount == mappedValues.size) {
                 "The number of parameters provided does not match the number of parameters in the prepared statement."
             }
 
-            for((index, value) in values.withIndex()) {
+            for((index, value) in mappedValues.withIndex()) {
                 preparedStatement.setObject(
                     index + 1,
-                    iron.placeholderTransformer.convert(value, iron.settings.serialization)
+                    value
                 )
             }
 
             val resultSet = if (preparedStatement.execute()) {
-                preparedStatement.resultSet
+                val resultSet = preparedStatement.resultSet
+                val cached = factory.createCachedRowSet()
+                cached.populate(resultSet)
+                cached
             } else {
-                it.close()
-                connection = null
                 null
             }
 
-            return@use IronResultSet(it, resultSet, iron)
+            return@use IronResultSet(resultSet, iron)
         }
     }
 
@@ -106,7 +117,7 @@ open class BlockingIronExecutor(
         val concatenated = variable.concat(variables.fold(variable) { acc, binding -> acc.concat(binding) })
         val parsed = concatenated.parse(iron)
 
-        return iron.placeholderTransformer.parseParams(statement, parsed).let { (stmt, params) ->
+        return PlaceholderParser.parseParams(statement, parsed).let { (stmt, params) ->
             prepare(stmt, *params.toTypedArray())
         }
     }
@@ -116,12 +127,14 @@ open class BlockingIronExecutor(
 
         return use { connection ->
             return@use connection.createStatement().execute(statement)
-                .also { connection.close() }
         }
     }
 
     private companion object {
         /** The logger for this class. */
         private val logger = LoggerFactory.getLogger(BlockingIronExecutor::class.java)
+
+        /** The factory to use for creating [CachedRowSet]. */
+        var factory: RowSetFactory = RowSetProvider.newFactory()
     }
 }

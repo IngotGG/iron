@@ -26,12 +26,20 @@ the [Adding a JDBC Driver](docs/connecting.md#adding-a-jdbc-driver) documentatio
 ### Gradle
 
 ```kts
+plugins {
+    // Make sure you use the correct version, the version below is the one Iron is using.
+    // Required only if opting for Kotlin and not the java annotation processor
+    id("com.google.devtools.ksp") version "2.0.10-1.0.24"
+}
+
 repositories {
   maven("https://jitpack.io")
 }
 
 dependencies {
     implementation("gg.ingot.iron:iron:TAG")
+    ksp("gg.ingot.iron:processor:TAG") // Use for kotlin (java records are not supported)
+    annotationProcessor("gg.ingot.iron:processor:TAG") // Use for java only (records supported, kotlin models are not)
     
     // Optional, if you want to use the controller module (Kotlin only)
     implementation("gg.ingot.iron:controller:TAG")

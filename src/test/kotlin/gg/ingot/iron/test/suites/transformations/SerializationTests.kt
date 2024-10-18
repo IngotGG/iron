@@ -5,23 +5,26 @@ import gg.ingot.iron.Iron
 import gg.ingot.iron.IronSettings
 import gg.ingot.iron.serialization.SerializationAdapter
 import gg.ingot.iron.test.IronTest
+import gg.ingot.iron.test.models.Data
 import gg.ingot.iron.test.models.JsonHolder
 import io.kotest.core.annotation.AutoScan
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json
 
 private suspend fun runDeserializationTest(iron: Iron) {
+    val data = JsonHolder()
+
     iron.prepare(
-        "INSERT INTO test(id, json) VALUES (:id, :json);",
-        1, """{"name": "John Doe", "age": 30}"""
+        "INSERT INTO test(id, json) VALUES (:id, :json)",
+        data.bindings()
     )
 
     val result = iron.prepare("SELECT json FROM test LIMIT 1;")
-        .single<Map<String, Any?>>()
+        .single<Data>(json = true)
 
-    assert(result["json"] is Map<*, *>)
-    assert((result["json"] as Map<*, *>)["name"] as String == "John Doe")
-    assert((result["json"] as Map<*, *>)["age"] as Int == 30)
+    assert(result.name == data.json.name)
+    assert(result.age == data.json.age)
 }
 
 @AutoScan
@@ -51,12 +54,11 @@ class SerializationTests: DescribeSpec({
             iron.prepare("CREATE TABLE test(id INTEGER PRIMARY KEY, json TEXT);")
 
             val holder = JsonHolder()
-            iron.prepare("INSERT INTO test(id, json) VALUES (:id, :json);", holder)
+            iron.prepare("INSERT INTO test(id, json) VALUES (:id, :json);", holder.bindings())
             val result = iron.prepare("SELECT * FROM test LIMIT 1;")
                 .single<JsonHolder>()
 
-            assert(result.json.name == holder.json.name)
-            assert(result.json.age == holder.json.age)
+            result shouldBe holder
         }
     }
 
@@ -85,12 +87,11 @@ class SerializationTests: DescribeSpec({
             iron.prepare("CREATE TABLE test(id INTEGER PRIMARY KEY, json TEXT);")
 
             val holder = JsonHolder()
-            iron.prepare("INSERT INTO test(id, json) VALUES (:id, :json);", holder)
+            iron.prepare("INSERT INTO test(id, json) VALUES (:id, :json);", holder.bindings())
             val result = iron.prepare("SELECT * FROM test LIMIT 1;")
                 .single<JsonHolder>()
 
-            assert(result.json.name == holder.json.name)
-            assert(result.json.age == holder.json.age)
+            result shouldBe holder
         }
     }
 })

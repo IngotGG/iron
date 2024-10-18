@@ -1,25 +1,26 @@
 package gg.ingot.iron.controller.query
 
-import gg.ingot.iron.bindings.SqlBindings
-import gg.ingot.iron.bindings.bind
+import gg.ingot.iron.controller.controller.TableController
+import org.jooq.*
+import org.jooq.impl.DSL
 
 class SqlPredicate internal constructor(
-    val queries: List<String>,
-    val values: Map<String, Any?>
+    val condition: Condition
 ) {
-    internal fun bindings(): SqlBindings {
-        return bind(values.mapKeys { it.key.removePrefix(":") })
-    }
+    internal companion object {
+        fun <T: Any> SelectJoinStep<out Record>.where(controller: TableController<T>, filter: SqlFilter<T>?): SelectConditionStep<out Record> {
+            val sql = filter?.invoke(SQL(controller.iron, controller.table))?.condition
+            return this.where(sql ?: DSL.trueCondition())
+        }
 
-    override fun toString(): String {
-        return queries.joinToString(" AND ")
-    }
+        fun <T: Any> DeleteUsingStep<out Record>.where(controller: TableController<T>, filter: SqlFilter<T>?): DeleteConditionStep<out Record> {
+            val sql = filter?.invoke(SQL(controller.iron, controller.table))?.condition
+            return this.where(sql ?: DSL.trueCondition())
+        }
 
-    companion object {
-        private val columnRegex = Regex("`([^`]*)`")
-
-        fun where(query: String, vararg values: Pair<String, Any?>): SqlPredicate {
-            return SqlPredicate(listOf(query), values.toMap())
+        fun <T: Any> DSLContext.fetchCount(table: Table<Record>, controller: TableController<T>, filter: SqlFilter<T>?): Int {
+            val sql = filter?.invoke(SQL(controller.iron, controller.table))?.condition
+            return this.fetchCount(table, sql ?: DSL.trueCondition())
         }
     }
 }

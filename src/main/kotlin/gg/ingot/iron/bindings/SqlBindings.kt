@@ -50,10 +50,17 @@ class SqlBindings internal constructor(
 
     fun parse(iron: Iron): Map<String, Any?> {
         val modelBindings = models
-            .map { it.bindings(it, iron) }
+            .map { Bindings.of(it, iron) }
             .fold(SqlBindings()) { acc, binding -> acc.concat(binding) }
 
         return this.concat(modelBindings).map
+    }
+
+    /**
+     * @return Checks if a variable is either null or not present in the bindings
+     */
+    fun isNull(variable: String): Boolean {
+        return map.getOrDefault(variable, null) == null
     }
 
 }

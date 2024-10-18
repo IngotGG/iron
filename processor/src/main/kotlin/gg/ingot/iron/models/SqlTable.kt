@@ -20,6 +20,11 @@ data class SqlTable(
     /** The hash of the table which changes when any details of the table change. */
     val hash: String,
 ) {
+
+    fun clazz(): Class<*> {
+        return Class.forName(clazz)
+    }
+
     companion object {
         private val logger = LoggerFactory.getLogger(SqlTable::class.java)
 
@@ -70,7 +75,7 @@ data class SqlTable(
          * @param T The class to get the table data from.
          * @return The table data for the class.
          */
-        inline fun <reified T: Any> KClass<T>.table(): SqlTable? {
+        fun KClass<*>.table(): SqlTable? {
             return get(this.java)
         }
     }

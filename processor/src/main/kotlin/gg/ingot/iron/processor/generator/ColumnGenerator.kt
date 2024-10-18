@@ -22,13 +22,15 @@ internal object ColumnGenerator {
             .add("  name = %S,\n", column.name)
             .add("  variable = %S,\n", column.variable)
             .add("  field = %S,\n", column.field)
-            .add("  clazz = %L::class.java,\n", column.boxedClass())
+            .add("  clazz = %S,\n", column.boxedClass())
             .add("  nullable = %L,\n", column.nullable)
             .add("  primaryKey = %L,\n", column.primaryKey)
             .add("  autoIncrement = %L,\n", column.autoIncrement)
             .apply {
                 // Nullable options
                 if (column.enum != null) add("  enum = %L::class.java,\n", column.enum)
+                if (column.json)         add("  json = true,\n")
+                if (column.timestamp)    add("  timestamp = true,\n")
             }
             .add("  hash = %S\n", column.hash())
             .add(")")

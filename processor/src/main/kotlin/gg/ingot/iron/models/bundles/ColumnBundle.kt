@@ -1,5 +1,6 @@
 package gg.ingot.iron.models.bundles
 
+import gg.ingot.iron.helper.ReflectionHelper
 import gg.ingot.iron.processor.reader.ModelReader
 import gg.ingot.iron.strategies.EnumTransformation
 import java.io.ByteArrayOutputStream
@@ -28,7 +29,11 @@ internal data class ColumnBundle(
     /** Whether the column is a primary key. */
     val primaryKey: Boolean,
     /** Whether the column is an auto increment. */
-    val autoIncrement: Boolean
+    val autoIncrement: Boolean,
+    /** Whether the column stores its data as json */
+    val json: Boolean,
+    /** Whether the column is a timestamp and should be serialized into a java.sql.Timestamp */
+    val timestamp: Boolean
 ) {
 
     /**
@@ -58,18 +63,7 @@ internal data class ColumnBundle(
      * @return The boxed type.
      */
     fun boxedClass(): String {
-        return when (clazz) {
-            "kotlin.Boolean", "bool" -> "java.lang.Boolean"
-            "kotlin.Byte", "byte" -> "java.lang.Byte"
-            "kotlin.Char", "char" -> "java.lang.Character"
-            "kotlin.Short", "short" -> "java.lang.Short"
-            "kotlin.Int", "int" -> "java.lang.Integer"
-            "kotlin.Long", "long" -> "java.lang.Long"
-            "kotlin.Float", "float" -> "java.lang.Float"
-            "kotlin.Double", "double" -> "java.lang.Double"
-            "kotlin.String" -> "java.lang.String"
-            else -> clazz
-        }
+        return ReflectionHelper.box(clazz)
     }
 
 }

@@ -9,7 +9,7 @@ import gg.ingot.iron.executor.impl.CoroutineIronExecutor
 import gg.ingot.iron.executor.impl.DeferredIronExecutor
 import gg.ingot.iron.executor.transaction.Transaction
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.transformer.PlaceholderTransformer
+import gg.ingot.iron.sql.params.ColumnJsonField
 import gg.ingot.iron.transformer.ResultMapper
 import kotlinx.coroutines.runBlocking
 import org.intellij.lang.annotations.Language
@@ -63,11 +63,8 @@ class Iron internal constructor(
     /** The connection pool used to manage connections to the database. We wrap over Hikari */
     internal var pool: HikariDataSource? = null
 
-    /** The placeholder transformer used to transform values from the result set into their corresponding types. */
-    internal val placeholderTransformer = PlaceholderTransformer(this)
-
     /** The value transformer used to transform values from the result set into their corresponding types. */
-    internal val resultMapper = ResultMapper(this)
+    val resultMapper = ResultMapper(this)
 
     /** The default executor to use if one isn't specified */
     private val executor = CoroutineIronExecutor(this)
@@ -94,7 +91,7 @@ class Iron internal constructor(
 
         val dbms = settings.driver
             ?: DBMS.fromValue(dbmsValue)
-        logger.trace("Using DBMS {} for value {}.", dbms?.name ?: "<user supplied>", dbmsValue)
+        logger.trace("Using DBMS {} for jdbc protocol {}.", dbms?.name ?: "<user supplied>", dbmsValue)
 
         if (dbms == null) {
             logger.warn("No DBMS found for value $dbmsValue, make sure you load the driver manually before calling connect().")
@@ -155,7 +152,9 @@ class Iron internal constructor(
         val connection = pool?.connection
             ?: error("Connection is not open, call connect() before using the connection.")
 
-        return block(connection)
+        return connection.use {
+            block(it)
+        }
     }
 
     /**
@@ -243,6 +242,18 @@ class Iron internal constructor(
     @JvmName("prepareBindings")
     suspend fun prepare(@Language("SQL") statement: String, variable: SqlBindings, vararg variables: SqlBindings): IronResultSet {
         return executor.prepare(statement, variable, *variables)
+    }
+
+    /**
+     * Helper method to create a JSON field for a value. When you pass a value into this method,
+     * it will tell any prepare statements that this value needs to be serialized into JSON before
+     * inserting. Note that this requires serialization to be setup on the iron instance.
+     * @param value The value to wrap in a JSON field.
+     * @return The JSON field.
+     * @see IronSettings
+     */
+    fun json(value: Any?): ColumnJsonField {
+        return ColumnJsonField(value)
     }
 
     companion object {

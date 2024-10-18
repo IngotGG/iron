@@ -45,5 +45,5 @@ annotation class Model(
      * Use [NamingStrategy.NONE] to disable any automatic column name transformation.
      * We recommend using [NamingStrategy.SNAKE_CASE] for most cases.
      */
-    val namingStrategy: NamingStrategy = NamingStrategy.NONE,
+    val naming: NamingStrategy = NamingStrategy.NONE,
 )

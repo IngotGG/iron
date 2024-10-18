@@ -26,6 +26,7 @@ import javax.lang.model.element.Modifier as JavaModifier
  * @author santio
  * @since 2.0
  */
+@Suppress("DuplicatedCode")
 internal object ColumnReader {
 
     /**
@@ -45,13 +46,14 @@ internal object ColumnReader {
                 ?: error("Data classes must have a primary constructor, please give '${model.simpleName}' a primary constructor.")
 
             constructor.parameters
-                .filter { !shouldIgnore(it, it.getAnnotationsByType(Column::class).firstOrNull()) }
-                .map { parameter ->
-                    val annotation = parameter.getAnnotationsByType(Column::class).firstOrNull()
+                .associateWith { it.getAnnotationsByType(Column::class).firstOrNull() }
+                .filter { !shouldIgnore(it.key, it.value) }
+                .map { (parameter, annotation) ->
                     val type = parameter.type.resolve()
                     val field = parameter.name!!.asString()
+
                     val name = annotation?.name?.takeIf { it.isNotBlank() }
-                        ?: modelAnnotation?.namingStrategy?.transform(field)
+                        ?: modelAnnotation?.naming?.transform(field)
                         ?: field
 
                     val ksAnnotation = getKSAnnotation(Column::class.java, parameter)
@@ -69,19 +71,22 @@ internal object ColumnReader {
                             ?: type.isMarkedNullable.takeIf { it }
                             ?: parameter.isAnnotationPresent(Nullable::class),
                         primaryKey = annotation?.primaryKey ?: false,
-                        autoIncrement = annotation?.autoIncrement ?: false
+                        autoIncrement = annotation?.autoIncrement ?: false,
+                        json = annotation?.json ?: false,
+                        timestamp = annotation?.timestamp
+                            ?: (type.toClassName().canonicalName == "java.sql.Timestamp")
                     )
                 }
         } else {
             // Get all variables in the class
            model.getAllProperties()
-                .filter { !shouldIgnore(it, it.getAnnotationsByType(Column::class).firstOrNull()) }
-                .map { property ->
-                    val annotation = property.getAnnotationsByType(Column::class).firstOrNull()
+               .associateWith { it.getAnnotationsByType(Column::class).firstOrNull() }
+               .filter { !shouldIgnore(it.key, it.value) }
+               .map { (property, annotation) ->
                     val type = property.type.resolve()
                     val field = property.simpleName.asString()
                     val name = annotation?.name?.takeIf { it.isNotBlank() }
-                        ?: modelAnnotation?.namingStrategy?.transform(field)
+                        ?: modelAnnotation?.naming?.transform(field)
                         ?: field
 
                     val ksAnnotation = getKSAnnotation(Column::class.java, property)
@@ -99,9 +104,12 @@ internal object ColumnReader {
                             ?: type.isMarkedNullable.takeIf { it }
                             ?: property.isAnnotationPresent(Nullable::class),
                         primaryKey = annotation?.primaryKey ?: false,
-                        autoIncrement = annotation?.autoIncrement ?: false
+                        autoIncrement = annotation?.autoIncrement ?: false,
+                        json = annotation?.json ?: false,
+                        timestamp = annotation?.timestamp
+                            ?: (type.toClassName().canonicalName == "java.sql.Timestamp")
                     )
-                }.toList()
+               }.toList()
         }
 
         return columns
@@ -120,13 +128,14 @@ internal object ColumnReader {
                 .distinctBy { it.simpleName } // Records can have duplicate fields, so we need to filter them out
         } else {
             model.enclosedElements.filterIsInstance<VariableElement>()
-        }.filter { !shouldIgnore(it, it.getAnnotationsByType(Column::class.java).firstOrNull()) }
+        }
+            .associateWith { it.getAnnotationsByType(Column::class.java).firstOrNull() }
+            .filter { !shouldIgnore(it.key, it.value) }
 
-        return fields.map { field ->
-            val annotation = field.getAnnotationsByType(Column::class.java).firstOrNull()
+        return fields.map { (field, annotation) ->
             val fieldName = field.simpleName.toString()
             val name = annotation?.name?.takeIf { it.isNotBlank() }
-                ?: modelAnnotation?.namingStrategy?.transform(fieldName)
+                ?: modelAnnotation?.naming?.transform(fieldName)
                 ?: fieldName
 
             val enumTransformation = field.getAnnotationClassValue<Column> { enum }
@@ -142,28 +151,30 @@ internal object ColumnReader {
                 nullable = annotation?.nullable
                     ?: (field.getAnnotation(Nullable::class.java) != null),
                 primaryKey = annotation?.primaryKey ?: false,
-                autoIncrement = annotation?.autoIncrement ?: false
+                autoIncrement = annotation?.autoIncrement ?: false,
+                json = annotation?.json ?: false,
+                timestamp = annotation?.timestamp
+                    ?: (field.asType().asTypeName().toString() == "java.sql.Timestamp")
             )
         }
     }
 
     @OptIn(KspExperimental::class)
     private fun shouldIgnore(property: Any, annotation: Column?): Boolean {
+        if (annotation != null && annotation.ignore) return true
+
         return when (property) {
             is KSPropertyDeclaration -> {
                 property.modifiers.contains(Modifier.JAVA_TRANSIENT)
-                    || (annotation != null && annotation.ignore)
                     || property.isAnnotationPresent(Transient::class)
             }
 
             is KSValueParameter -> {
-                (annotation != null && annotation.ignore)
-                    || property.isAnnotationPresent(Transient::class)
+                property.isAnnotationPresent(Transient::class)
             }
 
             is VariableElement -> {
-                (annotation != null && annotation.ignore)
-                    || property.modifiers.contains(JavaModifier.TRANSIENT)
+                property.modifiers.contains(JavaModifier.TRANSIENT)
                     || property.modifiers.contains(JavaModifier.STATIC)
             }
 
@@ -177,7 +188,7 @@ internal object ColumnReader {
      * @param f The function to get the value from.
      * @return The value of the annotation class.
      */
-    inline fun <reified T : Annotation> Element.getAnnotationClassValue(
+    private inline fun <reified T : Annotation> Element.getAnnotationClassValue(
         clazz: Class<T> = T::class.java,
         f: T.() -> KClass<*>
     ): TypeMirror? = try {

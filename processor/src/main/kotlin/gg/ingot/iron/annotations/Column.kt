@@ -52,6 +52,11 @@ annotation class Column(
      */
     val enum: KClass<out EnumTransformation> = EnumTransformation::class,
 
+    /**
+     * Whether this column is a sql timestamp and should be serialized into a java.sql.Timestamp
+     */
+    val timestamp: Boolean = false,
+
     val adapter: KClass<out ColumnAdapter<*, *>> = EmptyAdapter::class,
     val deserializer: KClass<out ColumnDeserializer<*, *>> = EmptyDeserializer::class,
     val serializer: KClass<out ColumnSerializer<*, *>> = EmptySerializer::class

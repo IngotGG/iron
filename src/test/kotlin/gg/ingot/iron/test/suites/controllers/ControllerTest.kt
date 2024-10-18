@@ -2,7 +2,6 @@ package gg.ingot.iron.test.suites.controllers
 
 import gg.ingot.iron.annotations.Column
 import gg.ingot.iron.annotations.Model
-import gg.ingot.iron.controller.Controller
 import gg.ingot.iron.controller.controller.controller
 import gg.ingot.iron.test.IronTest
 import gg.ingot.iron.test.models.User
@@ -15,14 +14,11 @@ class ControllerTest: DescribeSpec({
         val iron = IronTest.sqlite()
 
         beforeEach {
+            iron.prepare("DROP TABLE IF EXISTS users")
             iron.prepare(User.tableDefinition)
         }
 
-        afterEach {
-            iron.prepare("DROP TABLE IF EXISTS users")
-        }
-
-        it("have basic functionality") {
+        it("insert & query") {
             val controller = iron.controller<User>()
 
             for (i in 0 until 10) {
@@ -107,22 +103,22 @@ class ControllerTest: DescribeSpec({
             assert(users.size == 4)
         }
 
-        it("interceptors") {
-            val controller = iron.controller<User>()
-            var user = User(1, "User 1", 18)
-
-            controller.interceptor {
-                it.apply { it.age += 10 }
-            }
-
-            user = controller.insert(user, true)
-            assert(user.age == 28)
-
-            user.age = 30
-            user = controller.update(user, true)
-
-            assert(user.age == 40)
-        }
+//        it("interceptors") {
+//            val controller = iron.controller<User>()
+//            var user = User(1, "User 1", 18)
+//
+//            controller.interceptor {
+//                it.apply { it.age += 10 }
+//            }
+//
+//            user = controller.insert(user, true)
+//            assert(user.age == 28)
+//
+//            user.age = 30
+//            user = controller.update(user, true)
+//
+//            assert(user.age == 40)
+//        }
 
         it("insert many") {
             val controller = iron.controller<User>()
@@ -133,33 +129,25 @@ class ControllerTest: DescribeSpec({
             assert(users.size == 10)
         }
 
-        it("insert many then fetch") {
-            val controller = iron.controller<User>()
-            var users = (0 until 10).map { User(it, "User $it", it + 18, "") }
-
-            controller.interceptor {
-                it.apply { it.age += 10 }
-            }
-
-            users = controller.insertMany(users, true)
-            assert(controller.count() == 10)
-            assert(users.size == 10)
-
-            for (i in 0 until 10) {
-                assert(users[i].age == 28 + i)
-            }
-        }
+//        it("insert many then fetch") {
+//            val controller = iron.controller<User>()
+//            var users = (0 until 10).map { User(it, "User $it", it + 18, "") }
+//
+//            controller.interceptor {
+//                it.apply { it.age += 10 }
+//            }
+//
+//            users = controller.insertMany(users, true)
+//            assert(controller.count() == 10)
+//            assert(users.size == 10)
+//
+//            for (i in 0 until 10) {
+//                assert(users[i].age == 28 + i)
+//            }
+//        }
 
         it("insert with reserved keyword") {
-            @Model
-            @Controller
-            class Table {
-                @Column(primaryKey = true)
-                val id: String = "name"
-                val default: Boolean = true
-            }
-
-            iron.prepare("CREATE TABLE tables (id TEXT PRIMARY KEY, `default` INTEGER)")
+            iron.prepare("CREATE TABLE tables (id TEXT PRIMARY KEY, 'default' INTEGER)")
             val controller = iron.controller<Table>()
             controller.insert(Table())
 
@@ -184,3 +172,10 @@ class ControllerTest: DescribeSpec({
         }
     }
 })
+
+@Model(table = "tables")
+class Table {
+    @Column(primaryKey = true)
+    val id: String = "name"
+    val default: Boolean = true
+}

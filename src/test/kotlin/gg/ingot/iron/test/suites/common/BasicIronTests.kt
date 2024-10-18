@@ -23,7 +23,7 @@ class BasicIronTests: DescribeSpec({
 
         it("be able to query") {
             val iron = IronTest.sqlite()
-            iron.query("SELECT 1").get<Int>(1) shouldBe 1
+            iron.query("SELECT 1").single<Int>() shouldBe 1
         }
 
         it("be able to execute") {
@@ -137,7 +137,7 @@ class BasicIronTests: DescribeSpec({
         it("handle json") {
             data class NameHolder(val name: String)
 
-            val iron = IronTest.sqlite(IronTest.json())
+            val iron = IronTest.sqlite()
 
             iron.prepare("CREATE TABLE json (id INTEGER PRIMARY KEY, data TEXT)")
             iron.prepare("INSERT INTO json VALUES (1, '{\"name\": \"test\"}')")

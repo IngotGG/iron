@@ -11,7 +11,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 @Model
-private data class TestModel(val a: Int, val b: Int): Bindings
+private data class TransformModel(val a: Int, val b: Int): Bindings
 
 @AutoScan
 class BindingsTest: DescribeSpec({
@@ -56,7 +56,7 @@ class BindingsTest: DescribeSpec({
 
             val bindings = bind {
                 "hello" to "world"
-                with(TestModel(1, 2))
+                with(TransformModel(1, 2))
             }
 
             bindings.map shouldBe mapOf(
@@ -66,7 +66,7 @@ class BindingsTest: DescribeSpec({
         }
 
         it("parse bindings properly") {
-            val iron = IronTest.sqlite(IronTest.json())
+            val iron = IronTest.sqlite()
             val bindings = bind {
                 "hello" to "world"
                 "abc" to 2
@@ -74,7 +74,7 @@ class BindingsTest: DescribeSpec({
                     put("name", "John Doe")
                     put("age", 30)
                 }
-                with(TestModel(1, 2))
+                with(TransformModel(1, 2))
             }
 
             val parsed = bindings.parse(iron)
@@ -117,7 +117,7 @@ class BindingsTest: DescribeSpec({
 
         it("handle model bindings") {
             val iron = IronTest.sqlite()
-            val model = TestModel(2, 4)
+            val model = TransformModel(2, 4)
 
             val result = iron.prepare("SELECT :a + :b", bind(model))
                 .single<Int>()
