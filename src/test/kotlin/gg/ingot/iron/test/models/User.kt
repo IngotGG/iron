@@ -8,7 +8,7 @@ import gg.ingot.iron.strategies.NamingStrategy
 @Model(table = "users", naming = NamingStrategy.SNAKE_CASE)
 data class User(
     @Column(primaryKey = true)
-    val id: Int,
+    val id: Int?,
     val name: String,
     var age: Int,
     val email: String = "test@example.com",

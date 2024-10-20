@@ -11,6 +11,7 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/controller" />
             <option value="$PROJECT_DIR$/processor" />
+            <option value="$PROJECT_DIR$/sql" />
           </set>
         </option>
       </GradleProjectSettings>

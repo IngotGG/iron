@@ -27,7 +27,7 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
         System.setProperty("org.jooq.no-tips", "true");
     }
 
-    internal suspend fun <T: Any?> useJooq(block: suspend (DSLContext).() -> T): T = iron.use {
+    suspend fun <T: Any?> useJooq(block: suspend (DSLContext).() -> T): T = iron.use {
         val create: DSLContext = DSL.using(it, dialect)
         create.block()
     }

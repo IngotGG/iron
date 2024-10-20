@@ -129,22 +129,49 @@ class ControllerTest: DescribeSpec({
             assert(users.size == 10)
         }
 
-//        it("insert many then fetch") {
-//            val controller = iron.controller<User>()
-//            var users = (0 until 10).map { User(it, "User $it", it + 18, "") }
-//
-//            controller.interceptor {
-//                it.apply { it.age += 10 }
-//            }
-//
-//            users = controller.insertMany(users, true)
-//            assert(controller.count() == 10)
-//            assert(users.size == 10)
-//
-//            for (i in 0 until 10) {
-//                assert(users[i].age == 28 + i)
-//            }
-//        }
+        it("upsert with fetch") {
+            val controller = iron.controller<User>()
+            var user = User(1, "User 1", 18)
+
+            user = controller.upsert(user, true)
+            assert(controller.count() == 1)
+
+            user.age = 25
+            user = controller.upsert(user, true)
+            assert(controller.count() == 1)
+
+            assert(user.age == 25)
+        }
+
+        it("fetch with new id") {
+            val controller = iron.controller<User>()
+            val users = mutableListOf<User>()
+
+            for (i in 0 until 10) {
+                val user = User(null, "User $i", i + 18, "")
+                users.add(controller.insert(user, fetch = true))
+            }
+
+            assert(users.size == 10)
+            assert(controller.count() == 10)
+
+            for (i in 0 until 10) {
+                assert(users[i].id == i + 1)
+            }
+        }
+
+        it("insert many then fetch") {
+            val controller = iron.controller<User>()
+            var users = (0 until 10).map { User(it, "User $it", it + 18, "") }
+
+            users = controller.insertMany(users, true)
+            assert(controller.count() == 10)
+            assert(users.size == 10)
+
+            for (i in 0 until 10) {
+                assert(users[i].age == i + 18)
+            }
+        }
 
         it("insert with reserved keyword") {
             iron.prepare("CREATE TABLE tables (id TEXT PRIMARY KEY, 'default' INTEGER)")

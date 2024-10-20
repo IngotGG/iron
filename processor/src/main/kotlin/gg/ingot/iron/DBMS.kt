@@ -22,6 +22,7 @@ enum class DBMS(val value: String, val literalChar: String, private val classNam
     INFORMIX("informix", "\"", "com.informix.jdbc.IfxDriver"),
     FIREBIRD("firebird", "\"", "org.firebirdsql.jdbc.FBDriver"),
     INTERBASE("interbase", "\"", "interbase.interclient.Driver"),
+    UNKNOWN("?", "", "Unknown Driver"),
     ;
 
     /**
@@ -37,6 +38,7 @@ enum class DBMS(val value: String, val literalChar: String, private val classNam
 
     fun literal(name: String): String {
         return when (literalChar.length) {
+            0 -> name
             1 -> "$literalChar$name$literalChar"
             2 -> {
                 val prefix = literalChar[0]
