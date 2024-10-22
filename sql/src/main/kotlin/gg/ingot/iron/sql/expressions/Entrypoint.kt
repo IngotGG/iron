@@ -1,8 +1,9 @@
 package gg.ingot.iron.sql.expressions
 
 import gg.ingot.iron.sql.Sql
-import gg.ingot.iron.sql.expressions.query.SelectSql
-import gg.ingot.iron.sql.types.Reference
+import gg.ingot.iron.sql.expressions.query.SelectQuery
+import gg.ingot.iron.sql.scopes.select.SelectScope
+import gg.ingot.iron.sql.types.Expression
 import gg.ingot.iron.sql.types.column
 
 @Suppress("MemberVisibilityCanBePrivate")
@@ -17,20 +18,8 @@ open class Entrypoint(
      * Selects all columns from the database.
      * @return A type-safe API for chaining operations
      */
-    fun select(): SelectSql {
-        return select(listOf("*"))
-    }
-
-    /**
-     * Selects the expression from the database, useful for running
-     * mathematical operations or similar.
-     * @param expression The expression to select
-     * @return A type-safe API for chaining operations
-     */
-    fun select(expression: String): Sql {
-        return modify(this) {
-            append("SELECT $expression")
-        }
+    fun select(): SelectScope {
+        return select("*")
     }
 
     /**
@@ -38,7 +27,7 @@ open class Entrypoint(
      * @param columns The columns to select
      * @return A type-safe API for chaining operations
      */
-    fun select(columns: List<String>): SelectSql {
+    fun select(vararg columns: String): SelectScope {
         return select(*columns.map { column(it) }.toTypedArray())
     }
 
@@ -48,9 +37,9 @@ open class Entrypoint(
      * @return A type-safe API for chaining operations
      * @see column
      */
-    fun select(vararg columns: Reference): SelectSql {
-        return modify(SelectSql(this)) {
-            append("SELECT ${columns.joinToString(", ") { it.asString(sql) }}")
+    fun select(vararg columns: Expression): SelectScope {
+        return modify(SelectQuery(this)) {
+            append("SELECT", columns.joinToString(", ") { it.asString(sql) })
         }
     }
 }

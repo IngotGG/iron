@@ -4,7 +4,7 @@ import gg.ingot.iron.annotations.Model;
 
 import java.util.Optional;
 
-@SuppressWarnings({"MissingJavadoc", "OptionalUsedAsFieldOrParameterType", "FieldHasSetterButNoGetter"})
+@SuppressWarnings({"MissingJavadoc", "OptionalUsedAsFieldOrParameterType"})
 @Model
 public class UserOptional {
     private String name;

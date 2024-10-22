@@ -1,29 +1,29 @@
 package gg.ingot.iron.sql
 
 import gg.ingot.iron.DBMS
+import gg.ingot.iron.sql.builder.SqlBuilder
 import gg.ingot.iron.sql.expressions.Entrypoint
 import org.intellij.lang.annotations.Language
 
 open class Sql internal constructor(
     val driver: DBMS,
-    internal val builder: StringBuilder,
+    internal val builder: SqlBuilder,
 ) {
-    fun <S : Sql> modify(next: S, block: StringBuilder.() -> Unit): S {
+    internal fun <S : Sql> modify(next: S, block: SqlBuilder.() -> Unit): S {
         builder.block()
-        builder.append(' ')
         return next
     }
 
     override fun toString(): String {
-        return builder.toString().trim() + ';'
+        return "$builder;"
     }
 
     companion object {
         fun of(@Language("SQL") raw: String, driver: DBMS = DBMS.UNKNOWN): Sql {
-            return Sql(driver, StringBuilder(raw))
+            return Sql(driver, SqlBuilder(raw))
         }
     }
 }
 
 @Suppress("FunctionName")
-fun Sql(driver: DBMS): Entrypoint = Entrypoint(Sql(driver, StringBuilder()))
+fun Sql(driver: DBMS): Entrypoint = Entrypoint(Sql(driver, SqlBuilder()))

@@ -13,12 +13,12 @@ import gg.ingot.iron.sql.Sql
  * @author santio
  * @since 2.0
  */
-data class RefValue(
+data class ExpValue(
     val value: String,
-): Reference() {
+): Expression() {
     override fun asString(sql: Sql): String {
         val compiled = functions.fold(value) { acc, function ->
-            function(RefValue(acc), sql)
+            function(ExpValue(acc), sql)
         }
 
         return if (alias == null) compiled
@@ -26,11 +26,11 @@ data class RefValue(
     }
 
     companion object {
-        fun of(value: Any): Reference {
+        fun of(value: Any): Expression {
             return when (value) {
-                is Reference -> return value
+                is Expression -> return value
                 is String -> {
-                    RefValue(
+                    ExpValue(
                         "\"${
                             value.replace("\\", "\\\\")
                                 .replace("\"", "\\\"")
@@ -39,9 +39,9 @@ data class RefValue(
                     )
                 }
                 is List<*> -> {
-                    RefValue("(${value.joinToString(", ")})")
+                    ExpValue("(${value.joinToString(", ")})")
                 }
-                else -> RefValue(value.toString())
+                else -> ExpValue(value.toString())
             }
         }
     }
