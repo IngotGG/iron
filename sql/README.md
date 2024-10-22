@@ -4,7 +4,7 @@ Iron SQL is a type-safe SQL builder for Kotlin. The reason for its existence is 
 the ability to generate SQL queries dynamically and in a database-agnostic way. This library aims to
 provide a simple and easy-to-use API for generating SQL queries. 
 
-> ![NOTE]
+> [!NOTE]
 > This library is designed for Iron's internal use and while you can use it in your own projects, it
 > is not recommended because of it's lack of full coverage. SQL generation can only generate a
 > fraction of the SQL queries that a database supports. Because of this module's experimental nature,
