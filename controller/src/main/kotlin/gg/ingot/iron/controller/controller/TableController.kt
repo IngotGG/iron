@@ -1,89 +1,86 @@
 package gg.ingot.iron.controller.controller
 
+import gg.ingot.iron.DBMS
 import gg.ingot.iron.Iron
-import gg.ingot.iron.controller.Controller
-import gg.ingot.iron.controller.engine.DBMSEngine
+import gg.ingot.iron.bindings.Bindings
 import gg.ingot.iron.controller.query.SqlFilter
 import gg.ingot.iron.controller.query.SqlPredicate
-import gg.ingot.iron.representation.EntityModel
+import gg.ingot.iron.controller.query.SqlPredicate.Companion.fetchCount
+import gg.ingot.iron.controller.query.SqlPredicate.Companion.where
+import gg.ingot.iron.models.SqlTable
+import gg.ingot.iron.sql.IronResultSet
+import org.jooq.*
+import org.jooq.impl.DSL
 
+/**
+ * A controller for working with a model in the database. This provides an ORM-like interface for
+ * working with entities.
+ * @param clazz The class to use for the model
+ * @author santio
+ * @since 2.0
+ */
 @Suppress("MemberVisibilityCanBePrivate")
 class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
 
     init {
-        if (clazz.isSynthetic) {
-            throw IllegalArgumentException("Synthetic classes are not supported for security reasons")
-        }
+        System.setProperty("org.jooq.no-logo", "true");
+        System.setProperty("org.jooq.no-tips", "true");
     }
 
-    private val engine = DBMSEngine.getEngine(iron, this)
-    private val interceptors: MutableList<Interceptor<T>> = mutableListOf()
-
-    private val annotation: Controller = clazz.getAnnotation(Controller::class.java)
-        ?: throw IllegalStateException("Class ${clazz.simpleName} does not have the @Controller annotation")
-
-    /**
-     * Make sure the table name is valid, this is the only part of the query that is
-     * interpolated, and we don't want to allow SQL injection, even though user content
-     * shouldn't ever be coming in here. Better safe than sorry.
-     */
-    private fun isValid(tableName: String): Boolean {
-        return tableName.isNotBlank() && tableName.matches(tableRegex)
+    suspend fun <T: Any?> useJooq(block: suspend (DSLContext).() -> T): T = iron.use {
+        val create: DSLContext = DSL.using(it, dialect)
+        create.block()
     }
 
-    /**
-     * The effective table name for this controller
-     */
-    val tableName: String
-        get() {
-            return annotation.table.ifEmpty {
-                iron.inflector.tableName(clazz.simpleName)
-            }.takeIf { isValid(it) }
-                ?: throw IllegalStateException("Table name for ${clazz.simpleName} is invalid: ${annotation.table}")
-        }
-
-    /**
-     * The parsed entity model for the table for looking at the details of the model
-     * @return An entity model for the table
-     */
-    val model: EntityModel by lazy {
-        iron.modelTransformer.transform(clazz)
+    private val dialect = when(iron.settings.driver) {
+        DBMS.SQLITE -> SQLDialect.SQLITE
+        DBMS.H2 -> SQLDialect.H2
+        DBMS.POSTGRESQL -> SQLDialect.POSTGRES
+        DBMS.MYSQL -> SQLDialect.MYSQL
+        DBMS.MARIADB -> SQLDialect.MARIADB
+        else -> error("Unsupported DBMS: ${iron.settings.driver}, either Iron or Jooq does not support this DBMS, please see https://www.jooq.org/download/support-matrix")
     }
 
+    val table = SqlTable.get(clazz)
+        ?: error("Class ${clazz.simpleName} is not a model, please make sure you annotate your model with @Model")
+
     /**
-     * Creates a unique selector for the entity that only selects the primary key
+     * Creates a selector for the entity that only selects the primary keys
      * @param entity The entity to create a unique selector for
      * @return A unique selector for the entity
      */
-    fun uniqueSelector(entity: T): SqlPredicate {
-        val primaryKey = model.fields.firstOrNull { it.isPrimaryKey }
-        if (primaryKey == null) {
-            throw IllegalStateException("No primary key found for ${clazz.simpleName}, mark one with @Column(primaryKey = true)")
+    fun selector(entity: T): SqlFilter<T> {
+        val primaryKeys = table.columns.filter { it.primaryKey }
+        if (primaryKeys.isEmpty()) error("No primary keys found for ${clazz.simpleName}, mark one or more with @Column(primaryKey = true)")
+
+        var condition: Condition? = null
+
+        primaryKeys.forEach {
+            val value = iron.resultMapper.serialize(it, it.value(entity))
+            condition =
+                if (condition != null) DSL.and(condition, DSL.field(col(it.name)).eq(value))
+                else DSL.field(it.name).eq(value)
         }
 
-        return SqlPredicate.where(
-            "${primaryKey.columnName} = :${primaryKey.variableName}",
-            primaryKey.variableName to primaryKey.value(entity)
-        )
+        return { SqlPredicate(condition!!) }
     }
 
     /**
-     * Add an interceptor for entities before they are going to be inserted or updated in the
-     * database, this allows for easily updating a `updated_at` field, logging, or validating data, you however aren't
-     * able to prevent an update or insert operation from being performed.
-     *
-     * @param interceptor The interceptor itself
+     * Get the table name for the controller
+     * @return The table name in Jooq
      */
-    fun interceptor(interceptor: Interceptor<T>) {
-        interceptors.add(interceptor)
+    private fun tableName(): Table<Record> {
+        return iron.settings.driver?.literal(table.name)?.let { DSL.table(it) }
+            ?: DSL.table(table.name)
     }
 
     /**
-     * Run an entity through the interceptors
-     * @param entity The entity to run through the interceptors
+     * Get the literal column name for the specified column
+     * @param name The column name
+     * @return The column name in Jooq
      */
-    private fun intercept(entity: T): T {
-        return interceptors.fold(entity) { acc, interceptor -> interceptor.intercept(acc) }
+    private fun col(name: String): String {
+        return iron.settings.driver?.literal(name) ?: name
     }
 
     /**
@@ -92,7 +89,13 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @return A list of all entities in the table
      */
     suspend fun all(filter: SqlFilter<T>? = null): List<T> {
-        return engine.all(filter)
+        return useJooq {
+            val resultSet = select().from(table.name)
+                .where(this@TableController, filter)
+                .fetchResultSet()
+
+            IronResultSet(resultSet, iron).all(clazz)
+        }
     }
 
     /**
@@ -103,26 +106,73 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * complete entity, otherwise it will be exact same entity that was passed in
      */
     suspend fun insert(entity: T, fetch: Boolean = false): T {
-        return engine.insert(intercept(entity), fetch)
+        return useJooq {
+            val bindings = Bindings.of(entity, iron)
+            val columns = table.columns
+                .filter { !bindings.isNull(it.variable) }
+                .map { DSL.field(col(it.name)) }
+
+            val insert = insertInto(tableName())
+                .columns(columns)
+                .values(bindings.map.values.filterNotNull())
+
+            if (fetch) {
+                val resultSet = insert
+                    .returning()
+                    .fetchResultSet()
+
+                IronResultSet(resultSet, iron).single(clazz)
+            } else {
+                insert.execute()
+                entity
+            }
+        }
     }
 
     /**
      * Insert multiple entities into the table
      * @param entities The list of entities to insert
-     * @param fetch Whether to fetch the entities after inserting them
+     * @param fetch If true, the database values will be fetched and returned, otherwise the exact same list will be returned
      * @return The entities that were inserted, if `fetch` is true then this will reflect the
      * database values, otherwise it will be exact same list that was passed in
      */
-    suspend fun insertMany(entities: Collection<T>, fetch: Boolean = false): List<T> {
-        return engine.insertMany(entities.map { intercept(it) }, fetch)
+    suspend fun insertMany(entities: List<T>, fetch: Boolean = false): List<T> {
+        if (entities.isEmpty()) return emptyList()
+
+        return useJooq {
+            val bindings = entities.map { Bindings.of(it, iron) }
+            val columns = table.columns
+                .filter { !bindings.first().isNull(it.variable) }
+                .map { DSL.field(col(it.name)) }
+
+            var insert = insertInto(tableName())
+                .columns(columns)
+                .values(bindings.first().map.values.filterNotNull())
+
+            bindings.drop(1).forEach {
+                insert = insert.values(it.map.values)
+            }
+
+            return@useJooq if (fetch) {
+                val resultSet = insert.returning().fetchResultSet()
+                IronResultSet(resultSet, iron).all(clazz)
+            } else {
+                insert.execute()
+                entities
+            }
+        }
     }
 
     /**
      * Get the size of the table
+     * @param filter The filter to apply to the query
      * @return The amount of entities in the table
      */
-    suspend fun count(): Int {
-        return engine.count()
+    suspend fun count(filter: SqlFilter<T>? = null): Int {
+        return useJooq {
+            if (filter != null) fetchCount(tableName(), this@TableController, filter)
+            else fetchCount(tableName())
+        }
     }
 
     /**
@@ -130,7 +180,10 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @apiNote This is a destructive operation, it cannot be undone
      */
     suspend fun drop() {
-        engine.drop()
+        useJooq {
+            dropTable(tableName())
+                .execute()
+        }
     }
 
     /**
@@ -138,14 +191,25 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @param filter The filter to apply to the query
      */
     suspend fun first(filter: SqlFilter<T>? = null): T? {
-        return engine.first(filter)
+        return useJooq {
+            val fetch = if (filter != null) {
+                 select().from(tableName()).where(this@TableController, filter).limit(1)
+            } else {
+                select().from(tableName()).limit(1)
+            }
+
+            val resultSet = fetch.fetchResultSet()
+            IronResultSet(resultSet, iron).singleNullable(clazz)
+        }
     }
 
     /**
      * Delete all entities from the table
      */
     suspend fun clear() {
-        engine.clear()
+        useJooq {
+            deleteFrom(tableName()).execute()
+        }
     }
 
     /**
@@ -153,7 +217,9 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @param filter The filter to apply to the query
      */
     suspend fun delete(filter: SqlFilter<T>) {
-        engine.delete(filter)
+        useJooq {
+            delete(tableName()).where(this@TableController, filter).execute()
+        }
     }
 
     /**
@@ -161,7 +227,7 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @param entity The entity to delete
      */
     suspend fun delete(entity: T) {
-        engine.delete(entity)
+        delete(selector(entity))
     }
 
     /**
@@ -170,7 +236,22 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @param fetch Whether to fetch the entity after inserting it
      */
     suspend fun update(entity: T, fetch: Boolean = false): T {
-        return engine.update(intercept(entity), fetch)
+        return useJooq {
+            val bindings = Bindings.of(entity, iron)
+
+            val update = update(tableName())
+                .set(bindings.map.mapKeys {
+                    table.columns.first { column -> column.variable == it.key }.name
+                })
+
+            if (fetch) {
+                val resultSet = update.returning().fetchResultSet()
+                IronResultSet(resultSet, iron).single(clazz)
+            } else {
+                update.execute()
+                entity
+            }
+        }
     }
 
     /**
@@ -179,11 +260,31 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @param fetch Whether to fetch the entity after inserting or updating it
      */
     suspend fun upsert(entity: T, fetch: Boolean = false): T {
-        return engine.upsert(intercept(entity), fetch)
+        return useJooq {
+            val bindings = Bindings.of(entity, iron)
+            val columns = table.columns
+                .filter { !bindings.isNull(it.variable) }
+                .map { DSL.field(col(it.name)) }
+
+            val upsert = insertInto(tableName())
+                .columns(columns)
+                .values(*bindings.map.values.toTypedArray())
+                .onDuplicateKeyUpdate()
+                .set(bindings.map.mapKeys {
+                    table.columns.first { column -> column.variable == it.key }.name
+                })
+
+            if (fetch) {
+                val resultSet = upsert.returning().fetchResultSet()
+                IronResultSet(resultSet, iron).single(clazz)
+            } else {
+                upsert.execute()
+                entity
+            }
+        }
     }
 
     companion object {
-        private val tableRegex = Regex("^[a-zA-Z_][a-zA-Z0-9_]*$")
         private val controllers: MutableMap<Iron, MutableMap<Class<*>, TableController<*>>> = mutableMapOf()
 
         @Suppress("UNCHECKED_CAST")

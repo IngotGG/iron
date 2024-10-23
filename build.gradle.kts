@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin)
     alias(libs.plugins.kotlinx.serialization)
+    alias(libs.plugins.ksp)
 
     `maven-publish`
 }
@@ -49,7 +50,13 @@ allprojects {
 dependencies {
     // kotlin
     implementation(kotlin("reflect"))
-    compileOnly(libs.kotlinx.coroutines)
+    implementation(libs.kotlinx.coroutines)
+
+    // database
+    api(libs.hikari)
+
+    // core modules
+    api(project(":processor"))
 
     // serialization
     compileOnly(libs.kotlinx.serialization)
@@ -61,6 +68,8 @@ dependencies {
     // unit tests
     testImplementation(kotlin("test"))
     testImplementation(libs.bundles.testing)
+    testImplementation(project(":controller"))
+    kspTest(rootProject)
 
     // serialization
     testImplementation(libs.kotlinx.serialization)
@@ -71,4 +80,8 @@ buildscript {
     dependencies {
         classpath(kotlin("gradle-plugin", version = libs.versions.kotlin.get()))
     }
+}
+
+ksp {
+    arg("ksp.incremental", "false")
 }
