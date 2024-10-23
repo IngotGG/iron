@@ -17,6 +17,13 @@ internal class SqlBuilder(
     constructor(string: String): this(mutableListOf(string))
 
     /**
+     * @return The number of components in the builder.
+     */
+    fun count(): Int {
+        return components.size
+    }
+
+    /**
      * Appends a component to the builder.
      * @param values The strings to append.
      */
@@ -87,7 +94,18 @@ internal class SqlBuilder(
         else components.getOrNull(index)
     }
 
+    /**
+     * Replace a component at the specified index with a new component.
+     * @param index The index of the component to replace.
+     * @param value The new component to replace the old one with.
+     */
+    fun replace(index: Int, value: String) {
+        if (index < 0) components[components.size + index] = value
+        else components[index] = value
+    }
+
     override fun toString(): String {
         return components.joinToString(" ")
     }
+
 }

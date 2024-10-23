@@ -3,14 +3,15 @@ package gg.ingot.iron.sql.types
 import gg.ingot.iron.sql.Sql
 
 /**
- * Represents a type-safe column in the database.
+ * Represents a type-safe column identifier in the database. Unlike [ColumnData], this class is designed
+ * to reference an existing column, while the [ColumnData] class is designed to represent a column's definition.
  * @param name The name of the column
  * @param table The table the column belongs to
  * @author santio
  * @since 2.0
  */
 @Suppress("MemberVisibilityCanBePrivate")
-data class Column(
+data class ExpColumn(
     val name: String,
     val table: String? = null,
 ): Expression() {
@@ -49,8 +50,8 @@ data class Column(
  * @param name The name of the column
  * @return A type-safe column
  */
-fun column(name: String): Column {
-    return Column(name = name)
+fun column(name: String): ExpColumn {
+    return ExpColumn(name = name)
 }
 
 /**
@@ -59,8 +60,8 @@ fun column(name: String): Column {
  * @param name The name of the column
  * @return A type-safe column
  */
-fun column(table: String, name: String): Column {
-    return Column(name = name, table = table)
+fun column(table: String, name: String): ExpColumn {
+    return ExpColumn(name = name, table = table)
 }
 
 /**

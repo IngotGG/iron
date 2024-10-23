@@ -1,6 +1,7 @@
 package gg.ingot.iron.sql.types
 
 import gg.ingot.iron.sql.Sql
+import java.util.function.Function
 
 /**
  * Represents a value that can be selected from the database.
@@ -13,10 +14,14 @@ import gg.ingot.iron.sql.Sql
  * @author santio
  * @since 2.0
  */
+@Suppress("MemberVisibilityCanBePrivate")
 data class ExpValue(
-    val value: String,
+    val value: String?,
+    val func: ((Sql) -> String)? = null
 ): Expression() {
     override fun asString(sql: Sql): String {
+        val value = value ?: return func?.invoke(sql) ?: "NULL"
+
         val compiled = functions.fold(value) { acc, function ->
             function(ExpValue(acc), sql)
         }
@@ -26,23 +31,33 @@ data class ExpValue(
     }
 
     companion object {
-        fun of(value: Any): Expression {
+        fun of(value: Any?): Expression {
             return when (value) {
                 is Expression -> return value
                 is String -> {
-                    ExpValue(
-                        "\"${
-                            value.replace("\\", "\\\\")
-                                .replace("\"", "\\\"")
-                                .replace("\n", "\\n")
-                        }\""
-                    )
+                    of { it.driver.string(value) }
                 }
                 is List<*> -> {
                     ExpValue("(${value.joinToString(", ")})")
                 }
                 else -> ExpValue(value.toString())
             }
+        }
+
+        fun raw(value: String): Expression {
+            return ExpValue(value)
+        }
+
+        fun of(func: Function<Sql, String>): Expression {
+            return ExpValue(null) { func.apply(it) }
+        }
+
+        fun of(func: ((Sql) -> String)): Expression {
+            return ExpValue(null, func)
+        }
+
+        fun placeholder(): Expression {
+            return raw("?")
         }
     }
 }

@@ -130,7 +130,6 @@ data class User(
 ### Java
 ```java
 @Model
-@Model
 record User(
     int id,
     String name,

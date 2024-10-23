@@ -36,6 +36,11 @@ enum class DBMS(val value: String, val literalChar: String, private val classNam
         }
     }
 
+    /**
+     * Takes a column or table name and wraps it in the literal character to allow for using reserved keywords.
+     * @param name The name to wrap
+     * @return The literal representation of the name
+     */
     fun literal(name: String): String {
         return when (literalChar.length) {
             0 -> name
@@ -48,6 +53,19 @@ enum class DBMS(val value: String, val literalChar: String, private val classNam
             }
             else -> error("Literal character must be 1 or 2 characters, found ${literalChar.length}")
         }
+    }
+
+    /**
+     * Takes a string and escapes it for use in a SQL query.
+     * @param text The text to escape
+     * @return The escaped text
+     */
+    fun string(text: String): String {
+        val serialized =
+            text.replace("\n", "\\n")
+                .replace("'", "''")
+
+        return "'$serialized'"
     }
 
     companion object {

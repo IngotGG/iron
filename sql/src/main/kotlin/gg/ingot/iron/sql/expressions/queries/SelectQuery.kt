@@ -1,28 +1,66 @@
-package gg.ingot.iron.sql.expressions.query
+package gg.ingot.iron.sql.expressions.queries
 
+import gg.ingot.iron.models.SqlTable
 import gg.ingot.iron.sql.Sql
 import gg.ingot.iron.sql.builder.SqlBuilder
 import gg.ingot.iron.sql.expressions.Entrypoint
 import gg.ingot.iron.sql.expressions.filter.Filter
 import gg.ingot.iron.sql.expressions.ordering.Order
+import gg.ingot.iron.sql.expressions.queries.sub.JoinQuery
 import gg.ingot.iron.sql.scopes.select.*
-import gg.ingot.iron.sql.types.Column
+import gg.ingot.iron.sql.types.ExpColumn
 import gg.ingot.iron.sql.types.column
 import java.util.function.Consumer
 import java.util.function.Supplier
 
-internal class FromQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
+internal class SelectQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
     FromSelectScope, WhereSelectScope, LimitSelectScope, OffsetSelectScope,
-    AliasFromSelectScope, HavingSelectScope, OrderBySelectScope, GroupBySelectScope {
+    AliasFromSelectScope, HavingSelectScope, OrderBySelectScope, GroupBySelectScope,
+    SelectScope, DistinctSelectScope {
+
+    override fun distinct(): DistinctSelectScope {
+        return modify(this) {
+            if (!builder.contains("DISTINCT")) {
+                val index = builder.lastIndexOf("SELECT")
+                builder.append("DISTINCT", index + 1)
+            }
+        }
+    }
+
+    override fun from(table: String): FromSelectScope {
+        return modify(SelectQuery(this)) {
+            append("FROM", sql.driver.literal(table))
+        }
+    }
+
+    override fun from(table: SqlTable): FromSelectScope {
+        return from(table.name)
+    }
+
+    override fun from(subquery: Consumer<Entrypoint>): FromSelectScope {
+        val sql = Entrypoint(Sql(sql.driver, SqlBuilder()))
+        subquery.accept(sql)
+
+        return modify(SelectQuery(this)) {
+            append("FROM")
+            append(sql.builder)
+        }
+    }
+
+    override fun from(subquery: Entrypoint.() -> Unit): FromSelectScope {
+        return from(Consumer {
+            subquery(it)
+        })
+    }
 
     override fun where(expression: String): WhereSelectScope {
-        return modify(FromQuery(this)) {
+        return modify(SelectQuery(this)) {
             append("WHERE", expression)
         }
     }
 
     override fun where(filter: Filter): WhereSelectScope {
-        return modify(FromQuery(this)) {
+        return modify(SelectQuery(this)) {
             append("WHERE", filter.asString(sql))
         }
     }
@@ -32,13 +70,13 @@ internal class FromQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
     }
 
     override fun limit(limit: Int): LimitSelectScope {
-        return modify(FromQuery(this)) {
+        return modify(SelectQuery(this)) {
             append("LIMIT", limit.toString())
         }
     }
 
     override fun offset(offset: Int): OffsetSelectScope {
-        return modify(FromQuery(this)) {
+        return modify(SelectQuery(this)) {
             append("OFFSET", offset.toString())
         }
     }
@@ -47,7 +85,7 @@ internal class FromQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
         return groupBy(columns.map { column(it) })
     }
 
-    override fun groupBy(vararg columns: Column): GroupBySelectScope {
+    override fun groupBy(vararg columns: ExpColumn): GroupBySelectScope {
         return groupBy(columns.toList())
     }
 
@@ -55,11 +93,11 @@ internal class FromQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
         return groupBy(column(columns))
     }
 
-    override fun groupBy(column: Column): GroupBySelectScope {
+    override fun groupBy(column: ExpColumn): GroupBySelectScope {
         return groupBy(listOf(column))
     }
 
-    override fun groupBy(columns: List<Column>): GroupBySelectScope {
+    override fun groupBy(columns: List<ExpColumn>): GroupBySelectScope {
         return modify(this) {
             append("GROUP BY", columns.joinToString(", ") { it.qualified(sql) })
         }
@@ -73,7 +111,7 @@ internal class FromQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
         return orderBy(order.toList())
     }
 
-    override fun orderBy(vararg columns: Column): OrderBySelectScope {
+    override fun orderBy(vararg columns: ExpColumn): OrderBySelectScope {
         return orderBy(columns.map { Order(it.qualified(sql)) })
     }
 
@@ -83,7 +121,7 @@ internal class FromQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
         }
     }
 
-    override fun orderBy(column: Column): OrderBySelectScope {
+    override fun orderBy(column: ExpColumn): OrderBySelectScope {
         return orderBy(listOf(Order(column.qualified(sql))))
     }
 
@@ -129,13 +167,13 @@ internal class FromQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
     }
 
     override fun having(expression: String): HavingSelectScope {
-        return modify(FromQuery(this)) {
+        return modify(SelectQuery(this)) {
             append("HAVING", expression)
         }
     }
 
     override fun having(filter: Filter): HavingSelectScope {
-        return modify(FromQuery(this)) {
+        return modify(SelectQuery(this)) {
             append("HAVING", filter.asString(sql))
         }
     }
