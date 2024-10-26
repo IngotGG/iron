@@ -9,7 +9,6 @@ import gg.ingot.iron.sql.scopes.Scope
  */
 interface ColumnsInsertScope: Scope {
 
-    infix fun values(size: Int): ValuesInsertScope
     fun values(vararg values: Any?): ValuesInsertScope
 
 }

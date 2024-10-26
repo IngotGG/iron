@@ -1,6 +1,7 @@
 package gg.ingot.iron.sql.types
 
 import gg.ingot.iron.sql.Sql
+import gg.ingot.iron.sql.expressions.Entrypoint
 import java.util.function.Function
 
 /**
@@ -35,12 +36,25 @@ data class ExpValue(
             return when (value) {
                 is Expression -> return value
                 is String -> {
+                    if (value.trim() == "*") return ExpValue(value)
                     of { it.driver.string(value) }
                 }
                 is List<*> -> {
                     ExpValue("(${value.joinToString(", ")})")
                 }
+                is Sql -> {
+                    of { value.builder.next().sql }
+                }
+                null -> ExpValue("NULL")
                 else -> ExpValue(value.toString())
+            }
+        }
+
+        fun subquery(subquery: Entrypoint.() -> Unit): Expression {
+            return of {
+                "(${
+                    Entrypoint(it.driver).apply(subquery).builder.next().sql
+                })"
             }
         }
 

@@ -1,5 +1,6 @@
 package gg.ingot.iron.sql.expressions
 
+import gg.ingot.iron.DBMS
 import gg.ingot.iron.sql.Sql
 import gg.ingot.iron.sql.expressions.queries.*
 import gg.ingot.iron.sql.scopes.alter.AlterScope
@@ -10,13 +11,16 @@ import gg.ingot.iron.sql.scopes.select.SelectScope
 import gg.ingot.iron.sql.types.Expression
 import gg.ingot.iron.sql.types.column
 
+/**
+ * The entrypoint for the SQL DSL, requires the driver to be set to generate coherent SQL.
+ * @author santio
+ * @since 2.0
+ */
 @Suppress("MemberVisibilityCanBePrivate")
-open class Entrypoint(
+open class Entrypoint internal constructor(
     private val sql: Sql,
 ): Sql(sql.driver, sql.builder) {
-    override fun toString(): String {
-        return builder.toString().trim()
-    }
+    constructor(dbms: DBMS): this(Sql(dbms))
 
     /**
      * Selects all columns from the database.
@@ -87,3 +91,5 @@ open class Entrypoint(
         }
     }
 }
+
+typealias SQL = Entrypoint.() -> Unit

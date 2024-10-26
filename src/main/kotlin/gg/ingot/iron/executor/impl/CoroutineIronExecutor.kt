@@ -5,9 +5,9 @@ import gg.ingot.iron.bindings.SqlBindings
 import gg.ingot.iron.executor.IronConnection
 import gg.ingot.iron.executor.transaction.Transaction
 import gg.ingot.iron.sql.IronResultSet
+import gg.ingot.iron.sql.expressions.SQL
 import kotlinx.coroutines.withContext
 import org.intellij.lang.annotations.Language
-import java.util.function.Consumer
 
 open class CoroutineIronExecutor(private val iron: Iron): IronConnection {
     private val blockingExecutor = BlockingIronExecutor(iron)
@@ -19,12 +19,6 @@ open class CoroutineIronExecutor(private val iron: Iron): IronConnection {
             return@use withContext(iron.settings.dispatcher) {
                 return@withContext blockingExecutor.transaction(it, block)
             }
-        }
-    }
-
-    suspend fun transaction(block: Consumer<Transaction>) {
-        return transaction {
-            block.accept(this)
         }
     }
 
@@ -49,6 +43,12 @@ open class CoroutineIronExecutor(private val iron: Iron): IronConnection {
     suspend fun execute(@Language("SQL") statement: String): Boolean {
         return withContext(iron.settings.dispatcher) {
             return@withContext blockingExecutor.execute(statement)
+        }
+    }
+
+    suspend fun run(builder: SQL): IronResultSet {
+        return withContext(iron.settings.dispatcher) {
+            return@withContext blockingExecutor.run(builder)
         }
     }
 }

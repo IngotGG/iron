@@ -1,12 +1,11 @@
 package gg.ingot.iron.sql.scopes.select
 
-import gg.ingot.iron.sql.expressions.Entrypoint
+import gg.ingot.iron.sql.expressions.SQL
 import gg.ingot.iron.sql.expressions.filter.Filter
 import gg.ingot.iron.sql.scopes.Scope
 import gg.ingot.iron.sql.scopes.select.partial.GroupByPartial
 import gg.ingot.iron.sql.scopes.select.partial.LimitPartial
 import gg.ingot.iron.sql.scopes.select.partial.OrderByPartial
-import java.util.function.Consumer
 import java.util.function.Supplier
 
 /**
@@ -20,7 +19,7 @@ interface AliasFromSelectScope: Scope, OrderByPartial, GroupByPartial, LimitPart
     infix fun where(filter: Supplier<Filter>): WhereSelectScope
     infix fun where(filter: Filter): WhereSelectScope
 
-    infix fun join(subquery: Consumer<Entrypoint>): JoinSelectScope
-    fun join(alias: String, subquery: Consumer<Entrypoint>): JoinSelectScope
+    infix fun join(subquery: SQL): JoinSelectScope
+    fun join(alias: String, subquery: SQL): JoinSelectScope
 
 }

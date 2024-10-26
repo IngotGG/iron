@@ -1,3 +1,5 @@
+@file:JvmName("Column")
+
 package gg.ingot.iron.sql.types
 
 import gg.ingot.iron.sql.Sql
@@ -70,9 +72,7 @@ fun column(table: String, name: String): ExpColumn {
  * @return A type-safe column
  */
 fun avg(value: Any): Expression {
-    val compiled = ExpValue.of(value)
-    compiled.functions.add { "AVG(${this.asString(it)})" }
-    return compiled
+    return ExpValue.of { sql -> "AVG(${ExpValue.of(value).asString(sql)})" }
 }
 
 /**
@@ -81,9 +81,7 @@ fun avg(value: Any): Expression {
  * @return A type-safe column
  */
 fun count(value: Any): Expression {
-    val compiled = ExpValue.of(value)
-    compiled.functions.add { "COUNT(${this.asString(it)})" }
-    return compiled
+    return ExpValue.of { "COUNT(${ExpValue.of(value).asString(it)})" }
 }
 
 /**
@@ -92,9 +90,7 @@ fun count(value: Any): Expression {
  * @return A type-safe column
  */
 fun max(value: Any): Expression {
-    val compiled = ExpValue.of(value)
-    compiled.functions.add { "MAX(${this.asString(it)})" }
-    return compiled
+    return ExpValue.of { "MAX(${ExpValue.of(value).asString(it)})" }
 }
 
 /**
@@ -103,9 +99,7 @@ fun max(value: Any): Expression {
  * @return A type-safe column
  */
 fun min(value: Any): Expression {
-    val compiled = ExpValue.of(value)
-    compiled.functions.add { "MIN(${this.asString(it)})" }
-    return compiled
+    return ExpValue.of { "MIN(${ExpValue.of(value).asString(it)})" }
 }
 
 /**
@@ -114,9 +108,7 @@ fun min(value: Any): Expression {
  * @return A type-safe column
  */
 fun sum(value: Any): Expression {
-    val compiled = ExpValue.of(value)
-    compiled.functions.add { "SUM(${this.asString(it)})" }
-    return compiled
+    return ExpValue.of { "SUM(${ExpValue.of(value).asString(it)})" }
 }
 
 /**
@@ -125,9 +117,7 @@ fun sum(value: Any): Expression {
  * @return A type-safe column
  */
 fun ceil(value: Any): Expression {
-    val compiled = ExpValue.of(value)
-    compiled.functions.add { "CEIL(${this.asString(it)})" }
-    return compiled
+    return ExpValue.of { "CEIL(${ExpValue.of(value).asString(it)})" }
 }
 
 /**
@@ -136,9 +126,7 @@ fun ceil(value: Any): Expression {
  * @return A type-safe column
  */
 fun floor(value: Any): Expression {
-    val compiled = ExpValue.of(value)
-    compiled.functions.add { "FLOOR(${this.asString(it)})" }
-    return compiled
+    return ExpValue.of { "FLOOR(${ExpValue.of(value).asString(it)})" }
 }
 
 /**
@@ -147,9 +135,7 @@ fun floor(value: Any): Expression {
  * @return A type-safe column
  */
 fun round(value: Any): Expression {
-    val compiled = ExpValue.of(value)
-    compiled.functions.add { "ROUND(${this.asString(it)})" }
-    return compiled
+    return ExpValue.of { "ROUND(${ExpValue.of(value).asString(it)})" }
 }
 
 /**
@@ -158,9 +144,7 @@ fun round(value: Any): Expression {
  * @return A type-safe column
  */
 fun abs(value: Any): Expression {
-    val compiled = ExpValue.of(value)
-    compiled.functions.add { "ABS(${this.asString(it)})" }
-    return compiled
+    return ExpValue.of { "ABS(${ExpValue.of(value).asString(it)})" }
 }
 
 /**
@@ -169,9 +153,9 @@ fun abs(value: Any): Expression {
  * @param values The remaining values
  * @return A type-safe column
  */
-fun coalesce(value: Any, vararg values: Any): Expression {
+fun coalesce(value: Any?, vararg values: Any?): Expression {
     val compiled = ExpValue.of(value)
     val others = values.map { ExpValue.of(it) }
-    compiled.functions.add { sql -> "COALESCE(${this.asString(sql)}, ${others.joinToString { it.asString(sql) }})" }
-    return compiled
+    val concatenated = listOf(compiled) + others
+    return ExpValue.of { sql -> "COALESCE(${concatenated.joinToString { it.asString(sql) }})" }
 }

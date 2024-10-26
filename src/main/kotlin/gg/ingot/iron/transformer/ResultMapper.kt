@@ -13,6 +13,8 @@ import gg.ingot.iron.strategies.EnumTransformation.Companion.instance
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.lang.reflect.ParameterizedType
+import java.math.BigDecimal
+import java.math.BigInteger
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.sql.SQLFeatureNotSupportedException
@@ -265,6 +267,31 @@ class ResultMapper internal constructor(private val iron: Iron) {
             return if (trueValues.contains(value.toString())) true
             else if (falseValues.contains(value.toString())) false
             else error("Failed to convert boolean value for field '$label', found '$value'")
+        }
+
+        // Parse weird int types
+        if (clazz == java.lang.Integer::class.java) {
+            return when (value) {
+                is Float -> value.toInt()
+                is Long -> value.toInt()
+                is Short -> value.toInt()
+                is Byte -> value.toInt()
+                is BigInteger -> value.toInt()
+                is BigDecimal -> value.toInt()
+                else -> value
+            }
+        }
+
+        if (clazz == java.lang.Double::class.java) {
+            return when (value) {
+                is Float -> value.toDouble()
+                is Long -> value.toDouble()
+                is Short -> value.toDouble()
+                is Byte -> value.toDouble()
+                is BigDecimal -> value.toDouble()
+                is BigInteger -> value.toDouble()
+                else -> value
+            }
         }
 
         // Handle model specific parsing

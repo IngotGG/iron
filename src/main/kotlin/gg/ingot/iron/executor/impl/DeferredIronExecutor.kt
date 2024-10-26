@@ -1,9 +1,11 @@
 package gg.ingot.iron.executor.impl
 
 import gg.ingot.iron.Iron
+import gg.ingot.iron.bindings.SqlBindings
 import gg.ingot.iron.executor.IronConnection
 import gg.ingot.iron.executor.transaction.Transaction
-import gg.ingot.iron.bindings.SqlBindings
+import gg.ingot.iron.sql.IronResultSet
+import gg.ingot.iron.sql.expressions.SQL
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob
@@ -42,5 +44,9 @@ open class DeferredIronExecutor(private val iron: Iron): IronConnection {
 
     fun execute(@Language("SQL") statement: String): Deferred<Boolean> = scope.async {
         blockingExecutor.execute(statement)
+    }
+
+    fun run(builder: SQL): Deferred<IronResultSet> = scope.async {
+        blockingExecutor.run(builder)
     }
 }

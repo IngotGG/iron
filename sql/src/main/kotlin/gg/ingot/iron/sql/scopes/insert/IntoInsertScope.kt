@@ -14,9 +14,6 @@ interface IntoInsertScope: Scope {
     fun columns(vararg columns: Expression): ColumnsInsertScope
 
     fun defaultValues(): DefaultValuesInsertScope
-
-    infix fun values(size: Int): ValuesInsertScope
     fun values(vararg values: Any?): ValuesInsertScope
-    fun values(vararg values: Expression): ValuesInsertScope
 
 }

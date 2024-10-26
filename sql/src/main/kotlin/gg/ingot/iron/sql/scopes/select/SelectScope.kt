@@ -2,7 +2,9 @@ package gg.ingot.iron.sql.scopes.select
 
 import gg.ingot.iron.models.SqlTable
 import gg.ingot.iron.sql.expressions.Entrypoint
+import gg.ingot.iron.sql.expressions.SQL
 import gg.ingot.iron.sql.scopes.Scope
+import gg.ingot.iron.sql.types.Expression
 import java.util.function.Consumer
 
 /**
@@ -15,7 +17,8 @@ interface SelectScope: Scope {
     fun distinct(): DistinctSelectScope
     infix fun from(table: String): FromSelectScope
     infix fun from(table: SqlTable): FromSelectScope
+    infix fun from(expression: Expression): FromSelectScope
     infix fun from(subquery: Consumer<Entrypoint>): FromSelectScope
-    infix fun from(subquery: Entrypoint.() -> Unit): FromSelectScope
+    infix fun from(subquery: SQL): FromSelectScope
 
 }

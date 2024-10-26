@@ -37,12 +37,27 @@ enum class DBMS(val value: String, val literalChar: String, private val classNam
     }
 
     /**
+     * Removes the quotation marks from the literal character.
+     * @return The literal character without the quotation marks.
+     */
+    fun real(literal: String): String {
+        val withoutSurrounding = when (literalChar.length) {
+            0 -> literal
+            1 -> literal.removeSurrounding(literalChar)
+            2 -> literal.removeSurrounding(literalChar[0].toString(), literalChar[1].toString())
+            else -> error("Literal character must be 1 or 2 characters, found ${literalChar.length}")
+        }
+
+        return withoutSurrounding.removeSurrounding("'")
+    }
+
+    /**
      * Takes a column or table name and wraps it in the literal character to allow for using reserved keywords.
      * @param name The name to wrap
      * @return The literal representation of the name
      */
     fun literal(name: String): String {
-        return when (literalChar.length) {
+        var value = when (literalChar.length) {
             0 -> name
             1 -> "$literalChar$name$literalChar"
             2 -> {
@@ -53,6 +68,10 @@ enum class DBMS(val value: String, val literalChar: String, private val classNam
             }
             else -> error("Literal character must be 1 or 2 characters, found ${literalChar.length}")
         }
+
+        if (this == H2) value = value.uppercase()
+
+        return value
     }
 
     /**
@@ -69,6 +88,7 @@ enum class DBMS(val value: String, val literalChar: String, private val classNam
     }
 
     companion object {
+        @JvmStatic
         fun fromValue(value: String): DBMS? {
             return entries.firstOrNull { it.value == value.lowercase() }
         }

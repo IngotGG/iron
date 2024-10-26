@@ -1,16 +1,17 @@
 package gg.ingot.iron.executor.impl
 
 import gg.ingot.iron.Iron
+import gg.ingot.iron.bindings.SqlBindings
 import gg.ingot.iron.executor.IronConnection
 import gg.ingot.iron.executor.transaction.Transaction
 import gg.ingot.iron.sql.IronResultSet
-import gg.ingot.iron.bindings.SqlBindings
+import gg.ingot.iron.sql.expressions.Entrypoint
+import gg.ingot.iron.sql.expressions.SQL
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.intellij.lang.annotations.Language
 import java.util.concurrent.CompletableFuture
-import java.util.function.Consumer
 
 class CompletableIronExecutor(private val iron: Iron): IronConnection {
     private val blockingExecutor = BlockingIronExecutor(iron)
@@ -33,13 +34,7 @@ class CompletableIronExecutor(private val iron: Iron): IronConnection {
 
     fun <T> transaction(block: Transaction.() -> T): CompletableFuture<T> {
         return complete {
-            blockingExecutor.transaction<T>(block)
-        }
-    }
-
-    fun transaction(block: Consumer<Transaction>): CompletableFuture<Unit> {
-        return transaction<Unit> {
-            block.accept(this)
+            blockingExecutor.transaction(block)
         }
     }
 
@@ -64,6 +59,12 @@ class CompletableIronExecutor(private val iron: Iron): IronConnection {
     fun execute(@Language("SQL") statement: String): CompletableFuture<Boolean> {
         return complete {
             blockingExecutor.execute(statement)
+        }
+    }
+
+    fun run(builder: SQL): CompletableFuture<IronResultSet> {
+        return complete {
+            blockingExecutor.run(builder)
         }
     }
 }

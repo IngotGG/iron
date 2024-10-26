@@ -24,7 +24,7 @@ class JavaDatabaseTest {
             });
             
             transaction.prepare("CREATE TABLE IF NOT EXISTS users (name TEXT PRIMARY KEY, age INTEGER, active BOOLEAN)");
-            transaction.prepare("INSERT INTO users (name, age, active) VALUES (?, ?, ?)", "John Doe", 30, true);
+            return transaction.prepare("INSERT INTO users (name, age, active) VALUES (?, ?, ?)", "John Doe", 30, true);
         }).thenCompose((ignored) -> {
             
             return iron.prepare("SELECT * FROM users").thenAccept((result) -> {
@@ -73,7 +73,7 @@ class JavaDatabaseTest {
         
         iron.transaction((transaction) -> {
             transaction.prepare("CREATE TABLE IF NOT EXISTS users (name TEXT PRIMARY KEY, age INTEGER, active BOOLEAN)");
-            transaction.prepare("INSERT INTO users (name, age, active) VALUES (?, ?, ?)", "John Doe", 30, true);
+            return transaction.prepare("INSERT INTO users (name, age, active) VALUES (?, ?, ?)", "John Doe", 30, true);
         });
         
         final var user = iron.prepare("SELECT * FROM users").single(UserClass.class);
@@ -114,7 +114,7 @@ class JavaDatabaseTest {
         
         iron.transaction((transaction) -> {
             transaction.prepare("CREATE TABLE IF NOT EXISTS users (name TEXT PRIMARY KEY, age INTEGER, active BOOLEAN)");
-            transaction.prepare("INSERT INTO users (name, age, active) VALUES (?, ?, ?)", "John Doe", Optional.empty(), true);
+            return transaction.prepare("INSERT INTO users (name, age, active) VALUES (?, ?, ?)", "John Doe", Optional.empty(), true);
         });
         
         var user = iron.prepare("SELECT * FROM users").single(UserOptional.class);

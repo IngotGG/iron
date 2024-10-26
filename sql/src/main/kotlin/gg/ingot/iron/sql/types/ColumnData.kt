@@ -30,13 +30,16 @@ data class ColumnData internal constructor(
     }
 
     fun create(sql: Sql): String {
-        val builder = SqlBuilder()
+        val builder = SqlBuilder(sql.driver)
 
         builder.append(sql.driver.literal(name))
         builder.append(type)
         if (!nullable) builder.append(" NOT NULL")
         if (autoIncrement) builder.append(" AUTO_INCREMENT")
         if (primaryKey) builder.append(" PRIMARY KEY")
+        if (defaultValue != null) {
+            builder.append("DEFAULT", ExpValue.of(defaultValue).asString(sql))
+        }
 
         return builder.toString()
     }

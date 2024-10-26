@@ -9,6 +9,7 @@ import gg.ingot.iron.executor.impl.CoroutineIronExecutor
 import gg.ingot.iron.executor.impl.DeferredIronExecutor
 import gg.ingot.iron.executor.transaction.Transaction
 import gg.ingot.iron.sql.IronResultSet
+import gg.ingot.iron.sql.expressions.SQL
 import gg.ingot.iron.sql.params.ColumnJsonField
 import gg.ingot.iron.transformer.ResultMapper
 import kotlinx.coroutines.runBlocking
@@ -89,7 +90,10 @@ class Iron internal constructor(
      * @see DBMS
      */
     fun connect(): Iron {
-        val dbmsValue = connectionString.removePrefix("jdbc:").substringBefore(":")
+        val dbmsValue = connectionString
+            .removePrefix("jdbc:") // JDBC protocol
+            .removePrefix("tc:") // Testcontainers protocol
+            .substringBefore(":") // DBMS
 
         val dbms = settings.driver
             ?: DBMS.fromValue(dbmsValue)
@@ -244,6 +248,10 @@ class Iron internal constructor(
     @JvmName("prepareBindings")
     suspend fun prepare(@Language("SQL") statement: String, variable: SqlBindings, vararg variables: SqlBindings): IronResultSet {
         return executor.prepare(statement, variable, *variables)
+    }
+
+    suspend fun run(builder: SQL): IronResultSet {
+        return executor.run(builder)
     }
 
     /**

@@ -4,11 +4,14 @@ import gg.ingot.iron.models.SqlTable
 import gg.ingot.iron.sql.Sql
 import gg.ingot.iron.sql.builder.SqlBuilder
 import gg.ingot.iron.sql.expressions.Entrypoint
+import gg.ingot.iron.sql.expressions.SQL
 import gg.ingot.iron.sql.expressions.filter.Filter
 import gg.ingot.iron.sql.expressions.ordering.Order
 import gg.ingot.iron.sql.expressions.queries.sub.JoinQuery
 import gg.ingot.iron.sql.scopes.select.*
 import gg.ingot.iron.sql.types.ExpColumn
+import gg.ingot.iron.sql.types.ExpValue
+import gg.ingot.iron.sql.types.Expression
 import gg.ingot.iron.sql.types.column
 import java.util.function.Consumer
 import java.util.function.Supplier
@@ -22,13 +25,13 @@ internal class SelectQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
         return modify(this) {
             if (!builder.contains("DISTINCT")) {
                 val index = builder.lastIndexOf("SELECT")
-                builder.append("DISTINCT", index + 1)
+                builder.append(index + 1, "DISTINCT")
             }
         }
     }
 
     override fun from(table: String): FromSelectScope {
-        return modify(SelectQuery(this)) {
+        return modify(this) {
             append("FROM", sql.driver.literal(table))
         }
     }
@@ -37,30 +40,34 @@ internal class SelectQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
         return from(table.name)
     }
 
+    override fun from(expression: Expression): FromSelectScope {
+        return from(expression.asString(sql))
+    }
+
     override fun from(subquery: Consumer<Entrypoint>): FromSelectScope {
-        val sql = Entrypoint(Sql(sql.driver, SqlBuilder()))
+        val sql = Entrypoint(Sql(sql.driver, SqlBuilder(sql.driver)))
         subquery.accept(sql)
 
-        return modify(SelectQuery(this)) {
+        return modify(this) {
             append("FROM")
             append(sql.builder)
         }
     }
 
-    override fun from(subquery: Entrypoint.() -> Unit): FromSelectScope {
+    override fun from(subquery: SQL): FromSelectScope {
         return from(Consumer {
             subquery(it)
         })
     }
 
     override fun where(expression: String): WhereSelectScope {
-        return modify(SelectQuery(this)) {
+        return modify(this) {
             append("WHERE", expression)
         }
     }
 
     override fun where(filter: Filter): WhereSelectScope {
-        return modify(SelectQuery(this)) {
+        return modify(this) {
             append("WHERE", filter.asString(sql))
         }
     }
@@ -70,13 +77,13 @@ internal class SelectQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
     }
 
     override fun limit(limit: Int): LimitSelectScope {
-        return modify(SelectQuery(this)) {
+        return modify(this) {
             append("LIMIT", limit.toString())
         }
     }
 
     override fun offset(offset: Int): OffsetSelectScope {
-        return modify(SelectQuery(this)) {
+        return modify(this) {
             append("OFFSET", offset.toString())
         }
     }
@@ -133,27 +140,15 @@ internal class SelectQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
         return orderBy(listOf(order))
     }
 
-    override fun join(subquery: Consumer<Entrypoint>): JoinSelectScope {
-        val sql = Entrypoint(Sql(sql.driver, SqlBuilder()))
-        subquery.accept(sql)
+    override fun join(subquery: SQL): JoinSelectScope {
+        val query = ExpValue.subquery(subquery)
 
         return modify(JoinQuery(this)) {
-            append("INNER JOIN")
-            append(sql.builder)
+            append("INNER JOIN", query.asString(sql))
         }
     }
 
-    override fun join(subquery: Entrypoint.() -> Unit): JoinSelectScope {
-        return join(Consumer {
-            subquery(it)
-        })
-    }
-
-    override fun join(alias: String, subquery: Consumer<Entrypoint>): JoinSelectScope {
-        return join(subquery).alias(alias)
-    }
-
-    override fun join(alias: String, subquery: Entrypoint.() -> Unit): JoinSelectScope {
+    override fun join(alias: String, subquery: SQL): JoinSelectScope {
         return join(subquery).alias(alias)
     }
 
@@ -167,13 +162,13 @@ internal class SelectQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
     }
 
     override fun having(expression: String): HavingSelectScope {
-        return modify(SelectQuery(this)) {
+        return modify(this) {
             append("HAVING", expression)
         }
     }
 
     override fun having(filter: Filter): HavingSelectScope {
-        return modify(SelectQuery(this)) {
+        return modify(this) {
             append("HAVING", filter.asString(sql))
         }
     }

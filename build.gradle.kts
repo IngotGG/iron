@@ -57,6 +57,7 @@ dependencies {
 
     // core modules
     api(project(":processor"))
+    api(project(":sql"))
 
     // serialization
     compileOnly(libs.kotlinx.serialization)

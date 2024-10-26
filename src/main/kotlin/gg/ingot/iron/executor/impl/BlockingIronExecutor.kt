@@ -5,12 +5,13 @@ import gg.ingot.iron.bindings.SqlBindings
 import gg.ingot.iron.executor.IronConnection
 import gg.ingot.iron.executor.transaction.Transaction
 import gg.ingot.iron.sql.IronResultSet
+import gg.ingot.iron.sql.Sql
+import gg.ingot.iron.sql.expressions.SQL
 import gg.ingot.iron.transformer.PlaceholderParser
 import kotlinx.coroutines.runBlocking
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.sql.Connection
-import java.util.function.Consumer
 import javax.sql.rowset.CachedRowSet
 import javax.sql.rowset.RowSetFactory
 import javax.sql.rowset.RowSetProvider
@@ -50,12 +51,6 @@ open class BlockingIronExecutor(
         }
     }
 
-    fun transaction(block: Consumer<Transaction>) {
-        return transaction<Unit> {
-            block.accept(this)
-        }
-    }
-
     internal fun <T> use(block: (Connection) -> T): T {
         return if (connection?.isClosed == false) block(connection!!)
         else iron.useBlocking(block)
@@ -75,6 +70,7 @@ open class BlockingIronExecutor(
         }
     }
 
+    @Suppress("SqlSourceToSinkFlow")
     fun prepare(@Language("SQL") statement: String, vararg values: Any?): IronResultSet {
         logger.trace("Preparing Statement\n{}", statement)
 
@@ -133,6 +129,26 @@ open class BlockingIronExecutor(
 
         return use { connection ->
             return@use connection.createStatement().execute(statement)
+        }
+    }
+
+    fun run(builder: SQL): IronResultSet {
+        val driver = iron.settings.driver ?: error("Driver is not set, make sure Iron is connected.")
+        val sql = Sql(driver).apply(builder)
+        val statements = sql.statements()
+
+        return if (statements.size == 1) {
+            val statement = statements.first()
+            prepare(statement.sql, *statement.values.toTypedArray())
+        } else {
+            transaction {
+                statements.dropLast(1).forEach { statement ->
+                    prepare(statement.sql, *statement.values.toTypedArray())
+                }
+
+                val lastStatement = statements.last()
+                prepare(lastStatement.sql, *lastStatement.values.toTypedArray())
+            }
         }
     }
 

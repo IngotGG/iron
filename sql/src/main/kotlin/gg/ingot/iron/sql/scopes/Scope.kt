@@ -14,7 +14,3 @@ interface Scope {
      */
     override fun toString(): String
 }
-
-fun main() {
-    val select: SelectScope = null!!
-}
