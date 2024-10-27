@@ -14,6 +14,6 @@ interface FromDeleteScope: Scope, ReturningPartial {
 
     infix fun where(expression: String): WhereDeleteScope
     infix fun where(filter: Supplier<Filter>): WhereDeleteScope
-    infix fun where(filter: Filter): WhereDeleteScope
+    infix fun where(filter: Filter?): WhereDeleteScope
 
 }

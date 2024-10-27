@@ -1,6 +1,7 @@
 package gg.ingot.iron.sql.expressions
 
 import gg.ingot.iron.DBMS
+import gg.ingot.iron.models.SqlTable
 import gg.ingot.iron.sql.Sql
 import gg.ingot.iron.sql.expressions.queries.*
 import gg.ingot.iron.sql.scopes.alter.AlterScope
@@ -8,6 +9,7 @@ import gg.ingot.iron.sql.scopes.delete.DeleteScope
 import gg.ingot.iron.sql.scopes.drop.DropScope
 import gg.ingot.iron.sql.scopes.insert.InsertScope
 import gg.ingot.iron.sql.scopes.select.SelectScope
+import gg.ingot.iron.sql.scopes.update.UpdateScope
 import gg.ingot.iron.sql.types.Expression
 import gg.ingot.iron.sql.types.column
 
@@ -18,7 +20,7 @@ import gg.ingot.iron.sql.types.column
  */
 @Suppress("MemberVisibilityCanBePrivate")
 open class Entrypoint internal constructor(
-    private val sql: Sql,
+    val sql: Sql,
 ): Sql(sql.driver, sql.builder) {
     constructor(dbms: DBMS): this(Sql(dbms))
 
@@ -89,6 +91,24 @@ open class Entrypoint internal constructor(
         return modify(AlterQuery(this)) {
             append("ALTER TABLE")
         }
+    }
+
+    /**
+     * Update data in a specified table.
+     * @return A type-safe API for chaining operations
+     */
+    fun update(table: String): UpdateScope {
+        return modify(UpdateQuery(this)) {
+            append("UPDATE", table)
+        }
+    }
+
+    /**
+     * Update data in a specified table.
+     * @return A type-safe API for chaining operations
+     */
+    fun update(table: SqlTable): UpdateScope {
+        return update(table.name)
     }
 }
 

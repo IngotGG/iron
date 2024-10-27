@@ -36,7 +36,14 @@ internal class InsertQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
 
     override fun orReplace(): ConditionedInsertScope {
         return modify(this) {
-            append("OR REPLACE")
+            when (sql.driver) {
+                DBMS.H2 -> replace(0, "MERGE")
+                DBMS.SQLITE, DBMS.MYSQL -> replace(0, "REPLACE")
+                DBMS.POSTGRESQL -> {
+                    // todo: add support for postgresql
+                }
+                else -> append("OR REPLACE")
+            }
         }
     }
 

@@ -9,6 +9,7 @@ import gg.ingot.iron.executor.impl.CoroutineIronExecutor
 import gg.ingot.iron.executor.impl.DeferredIronExecutor
 import gg.ingot.iron.executor.transaction.Transaction
 import gg.ingot.iron.sql.IronResultSet
+import gg.ingot.iron.sql.Sql
 import gg.ingot.iron.sql.expressions.SQL
 import gg.ingot.iron.sql.params.ColumnJsonField
 import gg.ingot.iron.transformer.ResultMapper
@@ -250,7 +251,21 @@ class Iron internal constructor(
         return executor.prepare(statement, variable, *variables)
     }
 
+    /**
+     * Executes a database-agnostic SQL statement using SQL DSL.
+     * @param builder The SQL DSL builder to execute.
+     * @return The result set from the query.
+     */
     suspend fun run(builder: SQL): IronResultSet {
+        return executor.run(builder)
+    }
+
+    /**
+     * Executes a database-agnostic SQL statement using SQL DSL.
+     * @param builder The SQL DSL builder to execute.
+     * @return The result set from the query.
+     */
+    suspend fun run(builder: Sql): IronResultSet {
         return executor.run(builder)
     }
 

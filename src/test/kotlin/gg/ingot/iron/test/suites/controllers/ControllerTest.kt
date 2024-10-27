@@ -82,7 +82,7 @@ class ControllerTest: DescribeSpec({
             controller.insert(user)
             user.age = 25
 
-            controller.update(user)
+            controller.update(user) { User::age eq 25 }
             user = controller.first()!!
 
             assert(user.age == 25)

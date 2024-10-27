@@ -64,7 +64,7 @@ infix fun Expression.ilike(value: Any): Filter {
     return Filter(this, ExpValue.of(value)) { "ILIKE" }
 }
 
-infix fun Expression.inList(values: List<Any>): Filter {
+infix fun Expression.inList(values: List<Any?>): Filter {
     return Filter(this, ExpValue.of(values)) { "IN" }
 }
 
@@ -72,6 +72,6 @@ infix fun Expression.inList(query: SQL): Filter {
     return Filter(this, ExpValue.subquery(query)) { "IN" }
 }
 
-infix fun Expression.notInList(values: List<Any>): Filter {
+infix fun Expression.notInList(values: List<Any?>): Filter {
     return Filter(this, ExpValue.of(values)) { "NOT IN" }
 }

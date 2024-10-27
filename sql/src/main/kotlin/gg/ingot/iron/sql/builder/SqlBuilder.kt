@@ -28,6 +28,9 @@ internal class SqlBuilder(
      */
     val context: SqlContext = SqlContext(this)
 
+    /** The list of statements to run before building the query. */
+    val preBuild: MutableList<SqlBuilder.() -> Unit> = mutableListOf()
+
     /**
      * Converts all the components in the builder into a single statement and adds it to the builder.
      * Any components after this method will be made into a new statement.
@@ -47,12 +50,31 @@ internal class SqlBuilder(
     }
 
     /**
-     * Get all the statements in the builder.
+     * Builds and gets all the statements in the builder.
      * @return The statements in the builder.
      */
     fun statements(): List<SqlStatement> {
         if (components.isNotEmpty()) next()
+        preBuild.forEach { it(this) }
+
         return statements
+    }
+
+    /**
+     * Add a statement to run before building the query.
+     * @param index The index to add the statement at, or -1 to add it to the end.
+     * @param statement The statement to add.
+     */
+    fun addStatement(index: Int = -1, statement: SqlStatement) {
+        if (index == -1) statements.add(statement)
+        else statements.add(index, statement)
+    }
+    /**
+     * Add a statement to run before building the query.
+     * @param block The block to run.
+     */
+    fun preBuild(block: SqlBuilder.() -> Unit) {
+        preBuild.add(block)
     }
 
     /**

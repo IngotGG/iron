@@ -17,7 +17,7 @@ interface FromSelectScope: Scope, OrderByPartial, GroupByPartial, LimitPartial {
 
     infix fun where(expression: String): WhereSelectScope
     infix fun where(filter: Supplier<Filter>): WhereSelectScope
-    infix fun where(filter: Filter): WhereSelectScope
+    infix fun where(filter: Filter?): WhereSelectScope
 
     infix fun join(subquery: SQL): JoinSelectScope
     fun join(alias: String, subquery: SQL): JoinSelectScope

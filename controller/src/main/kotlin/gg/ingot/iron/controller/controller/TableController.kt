@@ -1,16 +1,17 @@
 package gg.ingot.iron.controller.controller
 
-import gg.ingot.iron.DBMS
 import gg.ingot.iron.Iron
 import gg.ingot.iron.bindings.Bindings
+import gg.ingot.iron.controller.query.SQL
 import gg.ingot.iron.controller.query.SqlFilter
 import gg.ingot.iron.controller.query.SqlPredicate
-import gg.ingot.iron.controller.query.SqlPredicate.Companion.fetchCount
-import gg.ingot.iron.controller.query.SqlPredicate.Companion.where
 import gg.ingot.iron.models.SqlTable
-import gg.ingot.iron.sql.IronResultSet
-import org.jooq.*
-import org.jooq.impl.DSL
+import gg.ingot.iron.sql.Sql
+import gg.ingot.iron.sql.expressions.filter.Filter
+import gg.ingot.iron.sql.expressions.filter.eq
+import gg.ingot.iron.sql.scopes.insert.ValuesInsertScope
+import gg.ingot.iron.sql.types.column
+import gg.ingot.iron.sql.types.count as sqlCount
 
 /**
  * A controller for working with a model in the database. This provides an ORM-like interface for
@@ -19,27 +20,8 @@ import org.jooq.impl.DSL
  * @author santio
  * @since 2.0
  */
-@Suppress("MemberVisibilityCanBePrivate")
+@Suppress("MemberVisibilityCanBePrivate", "unused")
 class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
-
-    init {
-        System.setProperty("org.jooq.no-logo", "true");
-        System.setProperty("org.jooq.no-tips", "true");
-    }
-
-    suspend fun <T: Any?> useJooq(block: suspend (DSLContext).() -> T): T = iron.use {
-        val create: DSLContext = DSL.using(it, dialect)
-        create.block()
-    }
-
-    private val dialect = when(iron.settings.driver) {
-        DBMS.SQLITE -> SQLDialect.SQLITE
-        DBMS.H2 -> SQLDialect.H2
-        DBMS.POSTGRESQL -> SQLDialect.POSTGRES
-        DBMS.MYSQL -> SQLDialect.MYSQL
-        DBMS.MARIADB -> SQLDialect.MARIADB
-        else -> error("Unsupported DBMS: ${iron.settings.driver}, either Iron or Jooq does not support this DBMS, please see https://www.jooq.org/download/support-matrix")
-    }
 
     val table = SqlTable.get(clazz)
         ?: error("Class ${clazz.simpleName} is not a model, please make sure you annotate your model with @Model")
@@ -51,36 +33,19 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      */
     fun selector(entity: T): SqlFilter<T> {
         val primaryKeys = table.columns.filter { it.primaryKey }
-        if (primaryKeys.isEmpty()) error("No primary keys found for ${clazz.simpleName}, mark one or more with @Column(primaryKey = true)")
-
-        var condition: Condition? = null
-
-        primaryKeys.forEach {
-            val value = iron.resultMapper.serialize(it, it.value(entity))
-            condition =
-                if (condition != null) DSL.and(condition, DSL.field(col(it.name)).eq(value))
-                else DSL.field(it.name).eq(value)
+        if (primaryKeys.isEmpty()) {
+            error("No primary keys found for ${clazz.simpleName}, mark one or more with @Column(primaryKey = true)")
         }
 
-        return { SqlPredicate(condition!!) }
-    }
+        var condition: Filter? = null
+        primaryKeys.forEach {
+            val value = iron.resultMapper.serialize(it, it.value(entity))
+            condition = condition?.and(column(it.name) eq value)
+                ?: (column(it.name) eq value)
+        }
 
-    /**
-     * Get the table name for the controller
-     * @return The table name in Jooq
-     */
-    private fun tableName(): Table<Record> {
-        return iron.settings.driver?.literal(table.name)?.let { DSL.table(it) }
-            ?: DSL.table(table.name)
-    }
-
-    /**
-     * Get the literal column name for the specified column
-     * @param name The column name
-     * @return The column name in Jooq
-     */
-    private fun col(name: String): String {
-        return iron.settings.driver?.literal(name) ?: name
+        return condition?.let { { SqlPredicate(it) } }
+            ?: error("No primary keys found for ${clazz.simpleName}, mark one or more with @Column(primaryKey = true)")
     }
 
     /**
@@ -89,13 +54,9 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @return A list of all entities in the table
      */
     suspend fun all(filter: SqlFilter<T>? = null): List<T> {
-        return useJooq {
-            val resultSet = select().from(table.name)
-                .where(this@TableController, filter)
-                .fetchResultSet()
-
-            IronResultSet(resultSet, iron).all(clazz)
-        }
+        return iron.run {
+            select().from(table.name).where(filter?.invoke(SQL(iron, table))?.condition)
+        }.all(clazz)
     }
 
     /**
@@ -106,26 +67,22 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * complete entity, otherwise it will be exact same entity that was passed in
      */
     suspend fun insert(entity: T, fetch: Boolean = false): T {
-        return useJooq {
-            val bindings = Bindings.of(entity, iron)
-            val columns = table.columns
-                .filter { !bindings.isNull(it.variable) }
-                .map { DSL.field(col(it.name)) }
+        val bindings = Bindings.of(entity, iron)
+        val values = bindings.map.values.filterNotNull()
+        val columns = table.columns
+            .filter { !bindings.isNull(it.variable) }
 
-            val insert = insertInto(tableName())
-                .columns(columns)
-                .values(bindings.map.values.filterNotNull())
+        val sql = Sql(iron.settings.driver!!)
+            .insert()
+            .into(table.name)
+            .columns(*columns.map { it.name }.toTypedArray())
+            .values(*values.toTypedArray())
 
-            if (fetch) {
-                val resultSet = insert
-                    .returning()
-                    .fetchResultSet()
-
-                IronResultSet(resultSet, iron).single(clazz)
-            } else {
-                insert.execute()
-                entity
-            }
+        return if (fetch) {
+            iron.run(sql.returning() as Sql).single(clazz)
+        } else {
+            iron.run(sql as Sql)
+            entity
         }
     }
 
@@ -139,27 +96,24 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
     suspend fun insertMany(entities: List<T>, fetch: Boolean = false): List<T> {
         if (entities.isEmpty()) return emptyList()
 
-        return useJooq {
-            val bindings = entities.map { Bindings.of(it, iron) }
-            val columns = table.columns
-                .filter { !bindings.first().isNull(it.variable) }
-                .map { DSL.field(col(it.name)) }
+        val bindings = entities.map { Bindings.of(it, iron) }
+        val columns = table.columns
+            .filter { !bindings.first().isNull(it.variable) }
 
-            var insert = insertInto(tableName())
-                .columns(columns)
-                .values(bindings.first().map.values.filterNotNull())
+        var sql: ValuesInsertScope = Sql(iron.settings.driver!!)
+            .insert()
+            .into(table.name)
+            .columns(*columns.map { it.name }.toTypedArray()) as ValuesInsertScope
 
-            bindings.drop(1).forEach {
-                insert = insert.values(it.map.values)
-            }
+        for (i in 1 until entities.size) {
+            sql = sql.values(bindings[i].map.values.filterNotNull())
+        }
 
-            return@useJooq if (fetch) {
-                val resultSet = insert.returning().fetchResultSet()
-                IronResultSet(resultSet, iron).all(clazz)
-            } else {
-                insert.execute()
-                entities
-            }
+        return if (fetch) {
+            iron.run(sql.returning() as Sql).all(clazz)
+        } else {
+            iron.run(sql as Sql)
+            entities
         }
     }
 
@@ -169,10 +123,11 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @return The amount of entities in the table
      */
     suspend fun count(filter: SqlFilter<T>? = null): Int {
-        return useJooq {
-            if (filter != null) fetchCount(tableName(), this@TableController, filter)
-            else fetchCount(tableName())
-        }
+        return iron.run {
+            select(sqlCount("*"))
+                .from(table.name)
+                .where(filter?.invoke(SQL(iron, table))?.condition)
+        }.single<Int>()
     }
 
     /**
@@ -180,10 +135,7 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @apiNote This is a destructive operation, it cannot be undone
      */
     suspend fun drop() {
-        useJooq {
-            dropTable(tableName())
-                .execute()
-        }
+        iron.prepare("DROP TABLE ${table.name}")
     }
 
     /**
@@ -191,25 +143,17 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @param filter The filter to apply to the query
      */
     suspend fun first(filter: SqlFilter<T>? = null): T? {
-        return useJooq {
-            val fetch = if (filter != null) {
-                 select().from(tableName()).where(this@TableController, filter).limit(1)
-            } else {
-                select().from(tableName()).limit(1)
-            }
-
-            val resultSet = fetch.fetchResultSet()
-            IronResultSet(resultSet, iron).singleNullable(clazz)
-        }
+        return iron.run {
+            select().from(table.name).where(filter?.invoke(SQL(iron, table))?.condition).limit(1)
+        }.singleNullable(clazz)
     }
 
     /**
      * Delete all entities from the table
      */
+    @Suppress("SqlWithoutWhere")
     suspend fun clear() {
-        useJooq {
-            deleteFrom(tableName()).execute()
-        }
+        iron.prepare("DELETE FROM ${table.name}")
     }
 
     /**
@@ -217,8 +161,10 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @param filter The filter to apply to the query
      */
     suspend fun delete(filter: SqlFilter<T>) {
-        useJooq {
-            delete(tableName()).where(this@TableController, filter).execute()
+        iron.run {
+            this.delete()
+                .from(table.name)
+                .where(filter.invoke(SQL(iron, table)).condition)
         }
     }
 
@@ -233,25 +179,20 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
     /**
      * Update a single entity in the table
      * @param entity The entity to update
-     * @param fetch Whether to fetch the entity after inserting it
+     * @param filter The filter to apply to the query
      */
-    suspend fun update(entity: T, fetch: Boolean = false): T {
-        return useJooq {
+    suspend fun update(entity: T, filter: SqlFilter<T>): T {
+        iron.run {
             val bindings = Bindings.of(entity, iron)
 
-            val update = update(tableName())
+            update(table.name)
                 .set(bindings.map.mapKeys {
                     table.columns.first { column -> column.variable == it.key }.name
                 })
-
-            if (fetch) {
-                val resultSet = update.returning().fetchResultSet()
-                IronResultSet(resultSet, iron).single(clazz)
-            } else {
-                update.execute()
-                entity
-            }
+                .where(filter.invoke(SQL(iron, table)).condition)
         }
+
+        return entity
     }
 
     /**
@@ -260,27 +201,22 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @param fetch Whether to fetch the entity after inserting or updating it
      */
     suspend fun upsert(entity: T, fetch: Boolean = false): T {
-        return useJooq {
-            val bindings = Bindings.of(entity, iron)
-            val columns = table.columns
-                .filter { !bindings.isNull(it.variable) }
-                .map { DSL.field(col(it.name)) }
+        val bindings = Bindings.of(entity, iron)
+        val columns = table.columns
+            .filter { !bindings.isNull(it.variable) }
 
-            val upsert = insertInto(tableName())
-                .columns(columns)
-                .values(*bindings.map.values.toTypedArray())
-                .onDuplicateKeyUpdate()
-                .set(bindings.map.mapKeys {
-                    table.columns.first { column -> column.variable == it.key }.name
-                })
+        val sql = Sql(iron.settings.driver!!)
+            .insert()
+            .orReplace()
+            .into(table.name)
+            .columns(*columns.map { it.name }.toTypedArray())
+            .values(bindings.map.values.filterNotNull())
 
-            if (fetch) {
-                val resultSet = upsert.returning().fetchResultSet()
-                IronResultSet(resultSet, iron).single(clazz)
-            } else {
-                upsert.execute()
-                entity
-            }
+        return if (fetch) {
+            iron.run(sql.returning() as Sql).single(clazz)
+        } else {
+            iron.run(sql as Sql)
+            entity
         }
     }
 

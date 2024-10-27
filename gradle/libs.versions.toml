@@ -17,7 +17,6 @@ kotest = "5.9.1"
 kotest-testcontainers = "2.0.2"
 testcontainers = "1.20.3"
 hikari = "6.0.0"
-jooq = "3.19.13"
 
 [plugins]
 kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
@@ -34,7 +33,6 @@ ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.re
 kotlinpoet-jvm = { module = "com.squareup:kotlinpoet-jvm", version.ref = "kotlinpoet" }
 kotlinpoet-ksp = { module = "com.squareup:kotlinpoet-ksp", version.ref = "kotlinpoet" }
 hikari = { module = "com.zaxxer:HikariCP", version.ref = "hikari" }
-jooq = { module = "org.jooq:jooq", version.ref = "jooq" }
 
 test-kotlinx-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 test-driver-sqlite = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite" }

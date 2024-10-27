@@ -135,7 +135,11 @@ open class BlockingIronExecutor(
     fun run(builder: SQL): IronResultSet {
         val driver = iron.settings.driver ?: error("Driver is not set, make sure Iron is connected.")
         val sql = Sql(driver).apply(builder)
-        val statements = sql.statements()
+        return run(sql)
+    }
+
+    fun run(builder: Sql): IronResultSet {
+        val statements = builder.statements()
 
         return if (statements.size == 1) {
             val statement = statements.first()

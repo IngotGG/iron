@@ -35,7 +35,8 @@ internal class DeleteQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
         return where(filter.get())
     }
 
-    override fun where(filter: Filter): WhereDeleteScope {
+    override fun where(filter: Filter?): WhereDeleteScope {
+        if (filter == null) return this
         return modify(this) {
             append("WHERE", filter.asString(sql))
         }

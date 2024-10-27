@@ -66,7 +66,8 @@ internal class SelectQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
         }
     }
 
-    override fun where(filter: Filter): WhereSelectScope {
+    override fun where(filter: Filter?): WhereSelectScope {
+        if (filter == null) return this
         return modify(this) {
             append("WHERE", filter.asString(sql))
         }

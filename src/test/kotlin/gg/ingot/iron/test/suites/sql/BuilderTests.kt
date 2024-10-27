@@ -269,6 +269,54 @@ private suspend fun DescribeSpecContainerScope.runTests(iron: Iron) {
         }
     }
 
+    it("upsert") {
+        @Suppress("SqlWithoutWhere")
+        iron.prepare("DELETE FROM sql_users")
+
+        iron.run {
+            insert()
+                .orReplace()
+                .into("sql_users")
+                .columns("name", "age", "active")
+                .values("Bob Doe", 32, true)
+        }
+
+        val result = iron.run {
+            insert()
+                .orReplace()
+                .into("sql_users")
+                .columns("name", "age", "active")
+                .values("Bob Doe", 33, true)
+                .returning("age")
+        }
+
+        result shouldBe 33
+    }
+
+    it("update") {
+        @Suppress("SqlWithoutWhere")
+        iron.prepare("DELETE FROM sql_users")
+
+        iron.run {
+            insert()
+                .into("sql_users")
+                .columns("name", "age", "active")
+                .values("Bob Doe", 32, false)
+        }
+
+        iron.run {
+            update("sql_users")
+                .set("name", "Bob Doe")
+                .where { column("active") eq true }
+        }
+
+        val result = iron.run {
+            select("name") from "sql_users" where { column("active") eq true }
+        }.single<String>()
+
+        result shouldBe "Bob Doe"
+    }
+
     it("rename table") {
         iron.run {
             alter().table("sql_users").rename("sql_users_renamed")
