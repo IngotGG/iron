@@ -1,89 +1,52 @@
 package gg.ingot.iron.controller.controller
 
 import gg.ingot.iron.Iron
-import gg.ingot.iron.controller.Controller
-import gg.ingot.iron.controller.engine.DBMSEngine
+import gg.ingot.iron.bindings.Bindings
+import gg.ingot.iron.controller.query.SQL
 import gg.ingot.iron.controller.query.SqlFilter
 import gg.ingot.iron.controller.query.SqlPredicate
-import gg.ingot.iron.representation.EntityModel
+import gg.ingot.iron.models.SqlTable
+import gg.ingot.iron.sql.Sql
+import gg.ingot.iron.sql.expressions.filter.Filter
+import gg.ingot.iron.sql.expressions.filter.eq
+import gg.ingot.iron.sql.scopes.insert.ValuesInsertScope
+import gg.ingot.iron.sql.types.ContextualValue
+import gg.ingot.iron.sql.types.column
+import gg.ingot.iron.sql.types.count as sqlCount
 
-@Suppress("MemberVisibilityCanBePrivate")
+/**
+ * A controller for working with a model in the database. This provides an ORM-like interface for
+ * working with entities.
+ * @param clazz The class to use for the model
+ * @author santio
+ * @since 2.0
+ */
+@Suppress("MemberVisibilityCanBePrivate", "unused")
 class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
 
-    init {
-        if (clazz.isSynthetic) {
-            throw IllegalArgumentException("Synthetic classes are not supported for security reasons")
-        }
-    }
-
-    private val engine = DBMSEngine.getEngine(iron, this)
-    private val interceptors: MutableList<Interceptor<T>> = mutableListOf()
-
-    private val annotation: Controller = clazz.getAnnotation(Controller::class.java)
-        ?: throw IllegalStateException("Class ${clazz.simpleName} does not have the @Controller annotation")
+    val table = SqlTable.get(clazz)
+        ?: error("Class ${clazz.simpleName} is not a model, please make sure you annotate your model with @Model")
 
     /**
-     * Make sure the table name is valid, this is the only part of the query that is
-     * interpolated, and we don't want to allow SQL injection, even though user content
-     * shouldn't ever be coming in here. Better safe than sorry.
-     */
-    private fun isValid(tableName: String): Boolean {
-        return tableName.isNotBlank() && tableName.matches(tableRegex)
-    }
-
-    /**
-     * The effective table name for this controller
-     */
-    val tableName: String
-        get() {
-            return annotation.table.ifEmpty {
-                iron.inflector.tableName(clazz.simpleName)
-            }.takeIf { isValid(it) }
-                ?: throw IllegalStateException("Table name for ${clazz.simpleName} is invalid: ${annotation.table}")
-        }
-
-    /**
-     * The parsed entity model for the table for looking at the details of the model
-     * @return An entity model for the table
-     */
-    val model: EntityModel by lazy {
-        iron.modelTransformer.transform(clazz)
-    }
-
-    /**
-     * Creates a unique selector for the entity that only selects the primary key
+     * Creates a selector for the entity that only selects the primary keys
      * @param entity The entity to create a unique selector for
      * @return A unique selector for the entity
      */
-    fun uniqueSelector(entity: T): SqlPredicate {
-        val primaryKey = model.fields.firstOrNull { it.isPrimaryKey }
-        if (primaryKey == null) {
-            throw IllegalStateException("No primary key found for ${clazz.simpleName}, mark one with @Column(primaryKey = true)")
+    fun selector(entity: T): SqlFilter<T> {
+        val primaryKeys = table.columns.filter { it.primaryKey }
+        if (primaryKeys.isEmpty()) {
+            error("No primary keys found for ${clazz.simpleName}, mark one or more with @Column(primaryKey = true)")
         }
 
-        return SqlPredicate.where(
-            "${primaryKey.columnName} = :${primaryKey.variableName}",
-            primaryKey.variableName to primaryKey.value(entity)
-        )
-    }
+        var condition: Filter? = null
+        primaryKeys.forEach {
+            val value = iron.resultMapper.serialize(it, it.value(entity))
+            condition = condition?.and(column(it.name) eq value)
+                ?: (column(it.name) eq value)
+        }
 
-    /**
-     * Add an interceptor for entities before they are going to be inserted or updated in the
-     * database, this allows for easily updating a `updated_at` field, logging, or validating data, you however aren't
-     * able to prevent an update or insert operation from being performed.
-     *
-     * @param interceptor The interceptor itself
-     */
-    fun interceptor(interceptor: Interceptor<T>) {
-        interceptors.add(interceptor)
-    }
-
-    /**
-     * Run an entity through the interceptors
-     * @param entity The entity to run through the interceptors
-     */
-    private fun intercept(entity: T): T {
-        return interceptors.fold(entity) { acc, interceptor -> interceptor.intercept(acc) }
+        return condition?.let { { SqlPredicate(it) } }
+            ?: error("No primary keys found for ${clazz.simpleName}, mark one or more with @Column(primaryKey = true)")
     }
 
     /**
@@ -92,7 +55,9 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @return A list of all entities in the table
      */
     suspend fun all(filter: SqlFilter<T>? = null): List<T> {
-        return engine.all(filter)
+        return iron.run {
+            select().from(table.name).where(filter?.invoke(SQL(iron, table))?.condition)
+        }.all(clazz)
     }
 
     /**
@@ -103,26 +68,73 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * complete entity, otherwise it will be exact same entity that was passed in
      */
     suspend fun insert(entity: T, fetch: Boolean = false): T {
-        return engine.insert(intercept(entity), fetch)
+        val bindings = Bindings.of(entity, iron)
+        val columns = table.columns
+            .filter { !bindings.isNull(it.variable) }
+        val values = bindings.map.entries
+            .filterNot { it.value == null }
+            .map { ContextualValue(it.value, table.columns.first { c -> c.variable == it.key }) }
+
+        val sql = Sql(iron.settings.driver!!)
+            .insert()
+            .into(table.name)
+            .columns(*columns.map { it.name }.toTypedArray())
+            .values(*values.toTypedArray())
+
+        return if (fetch) {
+            iron.run(sql.returning() as Sql).single(clazz)
+        } else {
+            iron.run(sql as Sql)
+            entity
+        }
     }
 
     /**
      * Insert multiple entities into the table
      * @param entities The list of entities to insert
-     * @param fetch Whether to fetch the entities after inserting them
+     * @param fetch If true, the database values will be fetched and returned, otherwise the exact same list will be returned
      * @return The entities that were inserted, if `fetch` is true then this will reflect the
      * database values, otherwise it will be exact same list that was passed in
      */
-    suspend fun insertMany(entities: Collection<T>, fetch: Boolean = false): List<T> {
-        return engine.insertMany(entities.map { intercept(it) }, fetch)
+    suspend fun insertMany(entities: List<T>, fetch: Boolean = false): List<T> {
+        if (entities.isEmpty()) return emptyList()
+
+        val bindings = entities.map { Bindings.of(it, iron) }
+        val columns = table.columns
+            .filter { !bindings.first().isNull(it.variable) }
+
+        var sql: ValuesInsertScope = Sql(iron.settings.driver!!)
+            .insert()
+            .into(table.name)
+            .columns(*columns.map { it.name }.toTypedArray()) as ValuesInsertScope
+
+        for (i in entities.indices) {
+            val values = bindings[i].map.entries
+                .filterNot { it.value == null }
+                .map { ContextualValue(it.value, table.columns.first { c -> c.variable == it.key }) }
+
+            sql = sql.values(*values.toTypedArray())
+        }
+
+        return if (fetch) {
+            iron.run(sql.returning() as Sql).all(clazz)
+        } else {
+            iron.run(sql as Sql)
+            entities
+        }
     }
 
     /**
      * Get the size of the table
+     * @param filter The filter to apply to the query
      * @return The amount of entities in the table
      */
-    suspend fun count(): Int {
-        return engine.count()
+    suspend fun count(filter: SqlFilter<T>? = null): Int {
+        return iron.run {
+            select(sqlCount("*"))
+                .from(table.name)
+                .where(filter?.invoke(SQL(iron, table))?.condition)
+        }.single<Int>()
     }
 
     /**
@@ -130,7 +142,7 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @apiNote This is a destructive operation, it cannot be undone
      */
     suspend fun drop() {
-        engine.drop()
+        iron.prepare("DROP TABLE ${table.name}")
     }
 
     /**
@@ -138,14 +150,17 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @param filter The filter to apply to the query
      */
     suspend fun first(filter: SqlFilter<T>? = null): T? {
-        return engine.first(filter)
+        return iron.run {
+            select().from(table.name).where(filter?.invoke(SQL(iron, table))?.condition).limit(1)
+        }.singleNullable(clazz)
     }
 
     /**
      * Delete all entities from the table
      */
+    @Suppress("SqlWithoutWhere")
     suspend fun clear() {
-        engine.clear()
+        iron.prepare("DELETE FROM ${table.name}")
     }
 
     /**
@@ -153,7 +168,11 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @param filter The filter to apply to the query
      */
     suspend fun delete(filter: SqlFilter<T>) {
-        engine.delete(filter)
+        iron.run {
+            this.delete()
+                .from(table.name)
+                .where(filter.invoke(SQL(iron, table)).condition)
+        }
     }
 
     /**
@@ -161,16 +180,26 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @param entity The entity to delete
      */
     suspend fun delete(entity: T) {
-        engine.delete(entity)
+        delete(selector(entity))
     }
 
     /**
      * Update a single entity in the table
      * @param entity The entity to update
-     * @param fetch Whether to fetch the entity after inserting it
+     * @param filter The filter to apply to the query
      */
-    suspend fun update(entity: T, fetch: Boolean = false): T {
-        return engine.update(intercept(entity), fetch)
+    suspend fun update(entity: T, filter: SqlFilter<T> = selector(entity)): T {
+        iron.run {
+            val bindings = Bindings.of(entity, iron)
+
+            update(table.name)
+                .set(bindings.map.mapKeys {
+                    table.columns.first { column -> column.variable == it.key }.name
+                })
+                .where(filter.invoke(SQL(iron, table)).condition)
+        }
+
+        return entity
     }
 
     /**
@@ -179,11 +208,35 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @param fetch Whether to fetch the entity after inserting or updating it
      */
     suspend fun upsert(entity: T, fetch: Boolean = false): T {
-        return engine.upsert(intercept(entity), fetch)
+        val bindings = Bindings.of(entity, iron)
+        val columns = table.columns
+            .filter { !bindings.isNull(it.variable) }
+
+        val primaryKeys = table.columns.filter { it.primaryKey }
+            .map { column(it.name) }
+            .toTypedArray()
+
+        val sql = Sql(iron.settings.driver!!)
+            .insert()
+            .orReplace(*primaryKeys)
+            .into(table.name)
+            .columns(*columns.map { it.name }.toTypedArray())
+            .values(
+                *bindings.map.entries
+                    .filterNot { it.value == null }
+                    .map { ContextualValue(it.value, table.columns.first { c -> c.variable == it.key }) }
+                    .toTypedArray()
+            )
+
+        return if (fetch) {
+            iron.run(sql.returning() as Sql).single(clazz)
+        } else {
+            iron.run(sql as Sql)
+            entity
+        }
     }
 
     companion object {
-        private val tableRegex = Regex("^[a-zA-Z_][a-zA-Z0-9_]*$")
         private val controllers: MutableMap<Iron, MutableMap<Class<*>, TableController<*>>> = mutableMapOf()
 
         @Suppress("UNCHECKED_CAST")

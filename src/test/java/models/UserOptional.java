@@ -4,14 +4,30 @@ import gg.ingot.iron.annotations.Model;
 
 import java.util.Optional;
 
-/**
- * @param name The name of the user
- * @param age The optional age of the user
- * @param active The active status of the user
- */
+@SuppressWarnings({"MissingJavadoc", "OptionalUsedAsFieldOrParameterType"})
 @Model
-public record UserOptional(
-    String name,
-    Optional<Integer> age,
-    boolean active
-) {}
+public class UserOptional {
+    private String name;
+    private Optional<Integer> age;
+    private boolean active;
+    
+    public UserOptional(String name, Optional<Integer> age, boolean active) {
+        this.name = name;
+        this.age = age;
+        this.active = active;
+    }
+    
+    public UserOptional() {}
+    
+    public String name() {
+        return name;
+    }
+    
+    public Optional<Integer> age() {
+        return age;
+    }
+    
+    public boolean active() {
+        return active;
+    }
+}
