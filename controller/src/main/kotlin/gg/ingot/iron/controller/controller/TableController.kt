@@ -10,6 +10,7 @@ import gg.ingot.iron.sql.Sql
 import gg.ingot.iron.sql.expressions.filter.Filter
 import gg.ingot.iron.sql.expressions.filter.eq
 import gg.ingot.iron.sql.scopes.insert.ValuesInsertScope
+import gg.ingot.iron.sql.types.ContextualValue
 import gg.ingot.iron.sql.types.column
 import gg.ingot.iron.sql.types.count as sqlCount
 
@@ -68,9 +69,11 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      */
     suspend fun insert(entity: T, fetch: Boolean = false): T {
         val bindings = Bindings.of(entity, iron)
-        val values = bindings.map.values.filterNotNull()
         val columns = table.columns
             .filter { !bindings.isNull(it.variable) }
+        val values = bindings.map.entries
+            .filterNot { it.value == null }
+            .map { ContextualValue(it.value, table.columns.first { c -> c.variable == it.key }) }
 
         val sql = Sql(iron.settings.driver!!)
             .insert()
@@ -105,8 +108,12 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
             .into(table.name)
             .columns(*columns.map { it.name }.toTypedArray()) as ValuesInsertScope
 
-        for (i in 1 until entities.size) {
-            sql = sql.values(bindings[i].map.values.filterNotNull())
+        for (i in entities.indices) {
+            val values = bindings[i].map.entries
+                .filterNot { it.value == null }
+                .map { ContextualValue(it.value, table.columns.first { c -> c.variable == it.key }) }
+
+            sql = sql.values(*values.toTypedArray())
         }
 
         return if (fetch) {
@@ -181,7 +188,7 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
      * @param entity The entity to update
      * @param filter The filter to apply to the query
      */
-    suspend fun update(entity: T, filter: SqlFilter<T>): T {
+    suspend fun update(entity: T, filter: SqlFilter<T> = selector(entity)): T {
         iron.run {
             val bindings = Bindings.of(entity, iron)
 
@@ -205,12 +212,21 @@ class TableController<T: Any>(val iron: Iron, internal val clazz: Class<T>) {
         val columns = table.columns
             .filter { !bindings.isNull(it.variable) }
 
+        val primaryKeys = table.columns.filter { it.primaryKey }
+            .map { column(it.name) }
+            .toTypedArray()
+
         val sql = Sql(iron.settings.driver!!)
             .insert()
-            .orReplace()
+            .orReplace(*primaryKeys)
             .into(table.name)
             .columns(*columns.map { it.name }.toTypedArray())
-            .values(bindings.map.values.filterNotNull())
+            .values(
+                *bindings.map.entries
+                    .filterNot { it.value == null }
+                    .map { ContextualValue(it.value, table.columns.first { c -> c.variable == it.key }) }
+                    .toTypedArray()
+            )
 
         return if (fetch) {
             iron.run(sql.returning() as Sql).single(clazz)

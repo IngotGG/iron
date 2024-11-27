@@ -7,6 +7,7 @@ import gg.ingot.iron.executor.transaction.Transaction
 import gg.ingot.iron.sql.IronResultSet
 import gg.ingot.iron.sql.Sql
 import gg.ingot.iron.sql.expressions.SQL
+import gg.ingot.iron.sql.types.ContextualValue
 import gg.ingot.iron.transformer.PlaceholderParser
 import kotlinx.coroutines.runBlocking
 import org.intellij.lang.annotations.Language
@@ -143,11 +144,33 @@ open class BlockingIronExecutor(
 
         return if (statements.size == 1) {
             val statement = statements.first()
-            prepare(statement.sql, *statement.values.toTypedArray())
+            val values = statement.values
+                .map {
+                    if (it is ContextualValue) {
+                        println("column is ${it.column}")
+                        println("value is ${it.value}")
+                        iron.resultMapper.serialize(it.column, it.value)
+                    }
+                    else iron.resultMapper.serialize(null, it)
+                }
+                .toTypedArray()
+
+            prepare(statement.sql, *values)
         } else {
             transaction {
                 statements.dropLast(1).forEach { statement ->
-                    prepare(statement.sql, *statement.values.toTypedArray())
+                    val values = statement.values
+                        .map {
+                            if (it is ContextualValue) {
+                                println("column is ${it.column}")
+                                println("value is ${it.value}")
+                                iron.resultMapper.serialize(it.column, it.value)
+                            }
+                            else iron.resultMapper.serialize(null, it)
+                        }
+                        .toTypedArray()
+
+                    prepare(statement.sql, *values)
                 }
 
                 val lastStatement = statements.last()

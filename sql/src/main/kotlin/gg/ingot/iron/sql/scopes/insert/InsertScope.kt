@@ -2,6 +2,7 @@ package gg.ingot.iron.sql.scopes.insert
 
 import gg.ingot.iron.models.SqlTable
 import gg.ingot.iron.sql.scopes.Scope
+import gg.ingot.iron.sql.types.Expression
 
 /**
  * The scope for the `INSERT` clause.
@@ -16,6 +17,8 @@ interface InsertScope: Scope {
 
     fun orIgnore(): ConditionedInsertScope
     fun orReplace(): ConditionedInsertScope
+    fun orReplace(vararg primaryKey: String): ConditionedInsertScope
+    fun orReplace(vararg primaryKey: Expression): ConditionedInsertScope
     fun orRollback(): ConditionedInsertScope
     fun orAbort(): ConditionedInsertScope
     fun orFail(): ConditionedInsertScope

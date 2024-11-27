@@ -7,9 +7,12 @@ import gg.ingot.iron.sql.expressions.Entrypoint
 import gg.ingot.iron.sql.scopes.Scope
 import org.intellij.lang.annotations.Language
 
+/**
+ * The entrypoint for the SQL DSL
+ */
 open class Sql internal constructor(
     val driver: DBMS,
-    internal val builder: SqlBuilder,
+    internal val builder: SqlBuilder
 ): Scope {
     internal fun <S : Sql> modify(next: S, block: SqlBuilder.() -> Unit): S {
         builder.block()

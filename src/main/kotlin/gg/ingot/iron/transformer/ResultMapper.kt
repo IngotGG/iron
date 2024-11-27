@@ -341,6 +341,7 @@ class ResultMapper internal constructor(private val iron: Iron) {
 
     /**
      * Prepares the value to be transformed into a database-acceptable value.
+     * @param column The column to prepare.
      * @param value The value to prepare.
      * @return The prepared value.
      */

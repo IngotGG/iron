@@ -52,7 +52,8 @@ internal class UpdateQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
             if (!contains("SET")) append("SET")
             else replace(-1, get(-1) + ",")
 
-            append(column.asString(sql), "=", ExpValue.of(value).asString(sql))
+            append(column.asString(sql), "=", ExpValue.placeholder().asString(sql))
+            addValue(value)
         }
     }
 

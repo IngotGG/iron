@@ -6,6 +6,7 @@ import gg.ingot.iron.sql.Sql
 import gg.ingot.iron.sql.expressions.filter.Filter
 import gg.ingot.iron.sql.expressions.filter.eq
 import gg.ingot.iron.sql.scopes.insert.*
+import gg.ingot.iron.sql.types.ExpValue
 import gg.ingot.iron.sql.types.Expression
 import gg.ingot.iron.sql.types.column
 
@@ -39,11 +40,37 @@ internal class InsertQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
             when (sql.driver) {
                 DBMS.H2 -> replace(0, "MERGE")
                 DBMS.SQLITE, DBMS.MYSQL -> replace(0, "REPLACE")
-                DBMS.POSTGRESQL -> {
-                    // todo: add support for postgresql
-                }
+                DBMS.POSTGRESQL -> error("Postgres does not support OR REPLACE without specifying the primary key")
                 else -> append("OR REPLACE")
             }
+        }
+    }
+
+    override fun orReplace(vararg primaryKey: String): ConditionedInsertScope {
+        return orReplace(*primaryKey.map { column(it) }.toTypedArray())
+    }
+
+    override fun orReplace(vararg primaryKey: Expression): ConditionedInsertScope {
+        return when(sql.driver) {
+            DBMS.POSTGRESQL -> modify(this) {
+                preBuild {
+                    statements().last().modify {
+                        append("ON CONFLICT (${primaryKey.joinToString(", ") { it.asString(sql) }}) DO UPDATE", "SET")
+
+                        val changes = context.changes().firstOrNull() ?: error("Failed to get changes from query, make sure you are using the correct syntax for your database")
+                        var index = 0
+
+                        changes.forEach { (column, value) ->
+                            if (index > 0) replace(-1, get(-1) + ",")
+                            append(column, "=", ExpValue.placeholder().asString(sql))
+                            addValue(value)
+
+                            index++
+                        }
+                    }
+                }
+            }
+            else -> orReplace()
         }
     }
 
@@ -112,7 +139,7 @@ internal class InsertQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
                         ?: error("Failed to get table name from query, make sure you are using the correct syntax for your database")
 
                     val insertedColumns = context.columns()
-                    if (insertedColumns.isEmpty()) error("You need to specify the columns when using RETURNING to allow Iron to generate a SELECT statement for you (limitation by ${sql.driver.name})")
+                    if (insertedColumns.isEmpty()) error("You need to specify the columns with columns(...) when using RETURNING to allow Iron to generate a SELECT statement for you (limitation by ${sql.driver.name})")
 
                     val values = this.values()
 
@@ -154,7 +181,11 @@ internal class InsertQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
                     append(values, "OUTPUT", columns.joinToString(", ") { it.asString(sql) })
                 }
                 else -> {
-                    append("RETURNING", columns.joinToString(", ") { it.asString(sql) })
+                    preBuild {
+                        statements().last().modify {
+                            append("RETURNING", columns.joinToString(", ") { it.asString(sql) })
+                        }
+                    }
                 }
             }
         }

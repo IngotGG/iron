@@ -3,6 +3,7 @@ package gg.ingot.iron.sql
 import gg.ingot.iron.Iron
 import gg.ingot.iron.serialization.ColumnDeserializer
 import java.sql.ResultSet
+import java.sql.SQLException
 
 /**
  * A wrapper over result set allowing for iron-specific operations
@@ -27,7 +28,11 @@ class IronResultSet(
      */
     fun next(): Boolean {
         requireNotNull(resultSet) { "The prepared statement did not return a result" }
-        return resultSet.next()
+        return try {
+            resultSet.next()
+        } catch (e: SQLException) { // It will sometimes throw depending on driver
+            false
+        }
     }
 
 //    Get Functions

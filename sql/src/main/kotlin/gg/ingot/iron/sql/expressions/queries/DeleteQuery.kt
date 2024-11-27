@@ -1,6 +1,5 @@
 package gg.ingot.iron.sql.expressions.queries
 
-import gg.ingot.iron.DBMS.*
 import gg.ingot.iron.models.SqlTable
 import gg.ingot.iron.sql.Sql
 import gg.ingot.iron.sql.expressions.filter.Filter
@@ -42,25 +41,16 @@ internal class DeleteQuery(private val sql: Sql): Sql(sql.driver, sql.builder),
         }
     }
 
-    /**
-     * Not supported by [MYSQL], [H2] and [ORACLE].
-     */
     override fun returning(vararg columns: String): Scope {
         return returning(*columns.map { column(it) }.toTypedArray())
     }
 
-    /**
-     * Not supported by [MYSQL], [H2] and [ORACLE].
-     */
     override fun returning(vararg columns: Expression): Scope {
         return modify(this) {
             append("RETURNING", columns.joinToString(", ") { it.asString(sql) })
         }
     }
 
-    /**
-     * Not supported by [MYSQL], [H2] and [ORACLE].
-     */
     override fun returning(): Scope {
         return returning("*")
     }

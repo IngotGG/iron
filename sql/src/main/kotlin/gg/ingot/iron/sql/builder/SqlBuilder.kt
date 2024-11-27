@@ -7,7 +7,7 @@ import gg.ingot.iron.DBMS
  * @author santio
  * @since 2.0
  */
-internal class SqlBuilder(
+class SqlBuilder(
     internal val driver: DBMS,
     private val components: MutableList<String> = mutableListOf(),
     private val statements: MutableList<SqlStatement> = mutableListOf(),
@@ -29,7 +29,7 @@ internal class SqlBuilder(
     val context: SqlContext = SqlContext(this)
 
     /** The list of statements to run before building the query. */
-    val preBuild: MutableList<SqlBuilder.() -> Unit> = mutableListOf()
+    private val preBuild: MutableList<SqlBuilder.() -> Unit> = mutableListOf()
 
     /**
      * Converts all the components in the builder into a single statement and adds it to the builder.
@@ -39,10 +39,16 @@ internal class SqlBuilder(
     fun next(): SqlStatement {
         val statement = SqlStatement(
             sql = toString(),
-            values = values.toList()
+            values = values.toList(),
+            builder = SqlBuilder(
+                driver,
+                components.toMutableList(),
+                statements.toMutableList(),
+                values.toMutableList()
+            )
         )
-        statements.add(statement)
 
+        statements.add(statement)
         values.clear()
         components.clear()
 
@@ -55,7 +61,11 @@ internal class SqlBuilder(
      */
     fun statements(): List<SqlStatement> {
         if (components.isNotEmpty()) next()
-        preBuild.forEach { it(this) }
+
+        val preBuilds = preBuild.toList()
+        preBuild.clear()
+        preBuilds.forEach { it(this@SqlBuilder) }
+        preBuild.addAll(preBuilds)
 
         return statements
     }
@@ -65,12 +75,12 @@ internal class SqlBuilder(
      * @param index The index to add the statement at, or -1 to add it to the end.
      * @param statement The statement to add.
      */
-    fun addStatement(index: Int = -1, statement: SqlStatement) {
+    fun addStatement(statement: SqlStatement, index: Int = -1) {
         if (index == -1) statements.add(statement)
         else statements.add(index, statement)
     }
     /**
-     * Add a statement to run before building the query.
+     * Add a statement to run before building the query, useful for adding changes to any part of the query.
      * @param block The block to run.
      */
     fun preBuild(block: SqlBuilder.() -> Unit) {
@@ -91,6 +101,15 @@ internal class SqlBuilder(
      */
     fun addValue(vararg value: Any?) {
         values.addAll(value)
+    }
+
+    /**
+     * Add a value to a specific index in the builder
+     * @param index The index to add the value at
+     * @param value The value to add
+     */
+    fun addIndexedValue(index: Int, value: Any?) {
+        values.add(index, value)
     }
 
     /**

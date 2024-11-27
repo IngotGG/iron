@@ -275,7 +275,7 @@ private suspend fun DescribeSpecContainerScope.runTests(iron: Iron) {
 
         iron.run {
             insert()
-                .orReplace()
+                .orReplace("name")
                 .into("sql_users")
                 .columns("name", "age", "active")
                 .values("Bob Doe", 32, true)
@@ -283,12 +283,12 @@ private suspend fun DescribeSpecContainerScope.runTests(iron: Iron) {
 
         val result = iron.run {
             insert()
-                .orReplace()
+                .orReplace("name")
                 .into("sql_users")
                 .columns("name", "age", "active")
                 .values("Bob Doe", 33, true)
                 .returning("age")
-        }
+        }.single<Int>()
 
         result shouldBe 33
     }
@@ -306,8 +306,8 @@ private suspend fun DescribeSpecContainerScope.runTests(iron: Iron) {
 
         iron.run {
             update("sql_users")
-                .set("name", "Bob Doe")
-                .where { column("active") eq true }
+                .set("active", true)
+                .where { column("name") eq "Bob Doe" }
         }
 
         val result = iron.run {
