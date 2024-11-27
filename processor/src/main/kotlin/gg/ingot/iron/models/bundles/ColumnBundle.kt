@@ -33,7 +33,11 @@ internal data class ColumnBundle(
     /** Whether the column stores its data as json */
     val json: Boolean,
     /** Whether the column is a timestamp and should be serialized into a java.sql.Timestamp */
-    val timestamp: Boolean
+    val timestamp: Boolean,
+    /** The custom deserializer specified for this column */
+    val deserializer: String?,
+    /** The custom deserializer specified for this column */
+    val serializer: String?
 ) {
 
     /**

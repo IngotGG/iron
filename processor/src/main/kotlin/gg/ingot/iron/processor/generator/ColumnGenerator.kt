@@ -29,9 +29,11 @@ internal object ColumnGenerator {
             .add("  autoIncrement = %L,\n", column.autoIncrement)
             .apply {
                 // Nullable options
-                if (column.enum != null) add("  enum = %L::class.java,\n", column.enum)
-                if (column.json)         add("  json = true,\n")
-                if (column.timestamp)    add("  timestamp = true,\n")
+                if (column.enum != null)         add("  enum = %L::class.java,\n", column.enum)
+                if (column.json)                 add("  json = true,\n")
+                if (column.timestamp)            add("  timestamp = true,\n")
+                if (column.deserializer != null) add("  deserializer = %L::class.java,\n", column.deserializer)
+                if (column.serializer != null)   add("  serializer = %L::class.java,\n", column.serializer)
             }
             .add("  hash = %S\n", column.hash())
             .add(")")

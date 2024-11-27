@@ -1,6 +1,9 @@
 package gg.ingot.iron.models
 
+import gg.ingot.iron.serialization.ColumnDeserializer
+import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.strategies.EnumTransformation
+import kotlin.reflect.full.createInstance
 
 /**
  * Represents a column a table, this should contain all possible information about the column.
@@ -32,7 +35,11 @@ data class SqlColumn(
     /** The hash of the column which changes when any details of the column change. */
     val hash: String,
     /** Whether the column is a timestamp and should be serialized into a java.sql.Timestamp */
-    val timestamp: Boolean = false
+    val timestamp: Boolean = false,
+    /** The custom deserializer specified for this column */
+    val deserializer: Class<out ColumnDeserializer<*, *>>? = null,
+    /** The custom deserializer specified for this column */
+    val serializer: Class<out ColumnSerializer<*, *>>? = null
 ) {
 
     fun originalClass(): Class<*> {
@@ -41,6 +48,28 @@ data class SqlColumn(
 
     fun clazz(): Class<*> {
         return Class.forName(clazz)
+    }
+
+    fun deserializer(): ColumnDeserializer<*, *>? {
+        return if (deserializer != null) {
+            val kotlin = deserializer.kotlin
+            if (kotlin.objectInstance != null) {
+                return kotlin.objectInstance
+            } else {
+                return kotlin.createInstance()
+            }
+        } else null
+    }
+
+    fun serializer(): ColumnSerializer<*, *>? {
+        return if (serializer != null) {
+            val kotlin = serializer.kotlin
+            if (kotlin.objectInstance != null) {
+                return kotlin.objectInstance
+            } else {
+                return kotlin.createInstance()
+            }
+        } else null
     }
 
     /**

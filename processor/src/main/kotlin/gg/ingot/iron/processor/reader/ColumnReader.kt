@@ -5,6 +5,7 @@ import com.google.devtools.ksp.getAnnotationsByType
 import com.google.devtools.ksp.isAnnotationPresent
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.DelicateKotlinPoetApi
+import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.asTypeName
 import com.squareup.kotlinpoet.ksp.toClassName
 import gg.ingot.iron.annotations.Column
@@ -61,6 +62,24 @@ internal object ColumnReader {
                     val enumTransformation = enumTransformationType?.declaration
                         ?.qualifiedName?.asString()
 
+                    val adapterType = ksAnnotation?.getKClass("adapter")
+                    val adapter = adapterType?.declaration
+                        ?.qualifiedName?.asString()?.takeIf {
+                            it != "gg.ingot.iron.serialization.EmptyAdapter"
+                        }
+
+                    val serializerType = ksAnnotation?.getKClass("serializer")
+                    val serializer = serializerType?.declaration
+                        ?.qualifiedName?.asString()?.takeIf {
+                            it != "gg.ingot.iron.serialization.EmptySerializer"
+                        }
+
+                    val deserializerType = ksAnnotation?.getKClass("deserializer")
+                    val deserializer = deserializerType?.declaration
+                        ?.qualifiedName?.asString()?.takeIf {
+                            it != "gg.ingot.iron.serialization.EmptyDeserializer"
+                        }
+
                     return@map ColumnBundle(
                         name = name,
                         variable = annotation?.variable?.takeIf { it.isNotBlank() } ?: parameter.name!!.asString(),
@@ -74,7 +93,9 @@ internal object ColumnReader {
                         autoIncrement = annotation?.autoIncrement ?: false,
                         json = annotation?.json ?: false,
                         timestamp = annotation?.timestamp
-                            ?: (type.toClassName().canonicalName == "java.sql.Timestamp")
+                            ?: (type.toClassName().canonicalName == "java.sql.Timestamp"),
+                        deserializer = deserializer ?: adapter,
+                        serializer = serializer ?: adapter
                     )
                 }
         } else {
@@ -94,6 +115,24 @@ internal object ColumnReader {
                     val enumTransformation = enumTransformationType?.declaration
                         ?.qualifiedName?.asString()
 
+                   val adapterType = ksAnnotation?.getKClass("adapter")
+                   val adapter = adapterType?.declaration
+                       ?.qualifiedName?.asString()?.takeIf {
+                           it != "gg.ingot.iron.serialization.EmptyAdapter"
+                       }
+
+                   val serializerType = ksAnnotation?.getKClass("serializer")
+                   val serializer = serializerType?.declaration
+                       ?.qualifiedName?.asString()?.takeIf {
+                           it != "gg.ingot.iron.serialization.EmptySerializer"
+                       }
+
+                   val deserializerType = ksAnnotation?.getKClass("deserializer")
+                   val deserializer = deserializerType?.declaration
+                       ?.qualifiedName?.asString()?.takeIf {
+                           it != "gg.ingot.iron.serialization.EmptyDeserializer"
+                       }
+
                     return@map ColumnBundle(
                         name = name,
                         variable = annotation?.variable?.takeIf { it.isNotBlank() } ?: property.simpleName.asString(),
@@ -107,7 +146,9 @@ internal object ColumnReader {
                         autoIncrement = annotation?.autoIncrement ?: false,
                         json = annotation?.json ?: false,
                         timestamp = annotation?.timestamp
-                            ?: (type.toClassName().canonicalName == "java.sql.Timestamp")
+                            ?: (type.toClassName().canonicalName == "java.sql.Timestamp"),
+                        deserializer = deserializer ?: adapter,
+                        serializer = serializer ?: adapter
                     )
                }.toList()
         }
@@ -142,6 +183,8 @@ internal object ColumnReader {
                 ?.asTypeName()
                 ?.takeIf { it != EnumTransformation::class.asTypeName() }
 
+            val adapter = annotation?.adapter?.asClassName()?.toString()
+
             ColumnBundle(
                 name = name,
                 variable = annotation?.variable?.takeIf { it.isNotBlank() } ?: field.simpleName.toString(),
@@ -154,7 +197,9 @@ internal object ColumnReader {
                 autoIncrement = annotation?.autoIncrement ?: false,
                 json = annotation?.json ?: false,
                 timestamp = annotation?.timestamp
-                    ?: (field.asType().asTypeName().toString() == "java.sql.Timestamp")
+                    ?: (field.asType().asTypeName().toString() == "java.sql.Timestamp"),
+                deserializer = annotation?.deserializer?.asClassName()?.toString() ?: adapter,
+                serializer = annotation?.serializer?.asClassName()?.toString() ?: adapter
             )
         }
     }

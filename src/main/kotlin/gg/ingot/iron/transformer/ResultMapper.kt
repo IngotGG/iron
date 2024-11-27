@@ -8,6 +8,7 @@ import gg.ingot.iron.models.SqlColumn
 import gg.ingot.iron.models.SqlTable
 import gg.ingot.iron.models.SqlTable.Companion.table
 import gg.ingot.iron.serialization.ColumnDeserializer
+import gg.ingot.iron.serialization.ColumnSerializer
 import gg.ingot.iron.strategies.EnumTransformation
 import gg.ingot.iron.strategies.EnumTransformation.Companion.instance
 import java.io.ByteArrayInputStream
@@ -124,7 +125,13 @@ class ResultMapper internal constructor(private val iron: Iron) {
             ?: error("Failed to get table data for class '${clazz.name}', make sure your annotation processor is setup correctly.")
 
         val mapping = table.columns.associate {
-            it.field to read(resultSet, it.name, it.clazz(), column = it)
+            it.field to read(
+                resultSet,
+                it.name,
+                it.clazz(),
+                deserializer = it.deserializer(),
+                column = it
+            )
         }.toMutableMap()
 
         // If we're using java, we want to opt for only a no-arg constructor because the names of the parameters
@@ -214,7 +221,7 @@ class ResultMapper internal constructor(private val iron: Iron) {
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
+    @Suppress("UNCHECKED_CAST", "NAME_SHADOWING")
     private fun deserialize(
         value: Any?,
         label: String,
@@ -229,8 +236,13 @@ class ResultMapper internal constructor(private val iron: Iron) {
         // Handle transformations
         if (deserializer != null) {
             // User provided deserializer
-            @Suppress("NAME_SHADOWING")
             val deserializer = deserializer as ColumnDeserializer<Any, *>
+            return deserializer.fromDatabaseValue(value)
+        }
+
+        val instanceDeserializer = iron.settings.adapters?.retrieveDeserializer(clazz)
+        if (instanceDeserializer != null) {
+            val deserializer = instanceDeserializer as ColumnDeserializer<Any, *>
             return deserializer.fromDatabaseValue(value)
         }
 
@@ -345,6 +357,7 @@ class ResultMapper internal constructor(private val iron: Iron) {
      * @param value The value to prepare.
      * @return The prepared value.
      */
+    @Suppress("UNCHECKED_CAST")
     fun serialize(column: SqlColumn?, value: Any?): Any? {
         if (value == null) return null
         if (value is Byte) return value
@@ -357,6 +370,12 @@ class ResultMapper internal constructor(private val iron: Iron) {
         // Handle models
         if (value::class.table() != null) {
             return Bindings.of(value, iron)
+        }
+
+        val instanceSerializer = iron.settings.adapters?.retrieveSerializer(value::class.java)
+        if (instanceSerializer != null) {
+            val serializer = instanceSerializer as ColumnSerializer<Any, *>
+            return serializer.toDatabaseValue(value)
         }
 
         // Handle enums

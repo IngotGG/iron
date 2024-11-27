@@ -147,8 +147,6 @@ open class BlockingIronExecutor(
             val values = statement.values
                 .map {
                     if (it is ContextualValue) {
-                        println("column is ${it.column}")
-                        println("value is ${it.value}")
                         iron.resultMapper.serialize(it.column, it.value)
                     }
                     else iron.resultMapper.serialize(null, it)

@@ -39,6 +39,7 @@ data class IronSettings internal constructor(
     /** The password to use for the connection. */
     var password: String? = null,
     /** Naming Strategy to use when handling column names. */
+    @Deprecated("This is no longer used, models are now the source of truth")
     var namingStrategy: NamingStrategy = NamingStrategy.NONE,
     /** The dispatcher to use when running coroutines. */
     var dispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -70,13 +71,14 @@ data class IronSettings internal constructor(
     /**
      * Represents the default adapters for the [Iron] instance.
      */
-    class Adapters {
+    data class Adapters(
         /** The default adapters for the [Iron] instance. */
-        private val defaultAdapters = mutableMapOf<Class<*>, ColumnAdapter<*, *>>()
+        private val defaultAdapters: MutableMap<Class<*>, ColumnAdapter<*, *>> = mutableMapOf(),
         /** The default serializers for the [Iron] instance. */
-        private val defaultSerializers = mutableMapOf<Class<*>, ColumnSerializer<*, *>>()
+        private val defaultSerializers: MutableMap<Class<*>, ColumnSerializer<*, *>> = mutableMapOf(),
         /** The default deserializers for the [Iron] instance. */
-        private val defaultDeserializers = mutableMapOf<Class<*>, ColumnDeserializer<*, *>>()
+        private val defaultDeserializers: MutableMap<Class<*>, ColumnDeserializer<*, *>> = mutableMapOf()
+    ) {
 
         /**
          * Adds a default adapter for the [Iron] instance.
